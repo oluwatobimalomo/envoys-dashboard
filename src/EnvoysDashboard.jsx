@@ -1568,6 +1568,56 @@ function CSVImport({ onDone }) {
     reader.readAsText(file);
   };
 
+  // ========================================================
+  const sanitizeMaritalStatus = (status) => {
+    if (!status) return null;
+    const clean = status.toString().trim().toLowerCase();
+    if (clean === 'single') return 'Single';
+    if (clean === 'married') return 'Married';
+    if (clean === 'divorced') return 'Divorced';
+    if (clean === 'widowed') return 'Widowed';
+    return null;
+  };
+
+  const sanitizeGender = (g) => {
+    if (!g) return null;
+    const clean = g.toString().trim().toLowerCase();
+    if (clean === 'male') return 'Male';
+    if (clean === 'female') return 'Female';
+    return null;
+  };
+
+  const sanitizeDecision = (d) => {
+    if (!d) return null;
+    const clean = d.toString().trim().toLowerCase();
+    if (clean === 'member') return 'Member';
+    if (clean === 'visitor') return 'Visitor';
+    if (clean === 'undecided') return 'Undecided';
+    return null;
+  };
+
+  const sanitizeLifeStage = (ls) => {
+    if (!ls) return null;
+    const clean = ls.toString().trim().toLowerCase();
+    if (clean === 'student') return 'Student';
+    if (clean === 'employee') return 'Employee';
+    if (clean === 'business owner' || clean === 'businessowner') return 'Business Owner';
+    return null;
+  };
+
+  const cleanPostgresDate = (dateStr) => {
+    if (!dateStr) return null;
+    const cleanStr = dateStr.toString().trim();
+    if ((cleanStr.includes('/') || cleanStr.includes('-')) && !cleanStr.startsWith('20') && !cleanStr.startsWith('19')) {
+      const parts = cleanStr.split(/[\/\-]/);
+      if (parts.length === 3) {
+        const [day, month, year] = parts;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    return cleanStr;
+  };
+  
   const importAll = async () => {
     if (!rows.length) return;
     setLoading(true); setErr("");
