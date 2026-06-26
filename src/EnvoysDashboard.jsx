@@ -76,42 +76,35 @@ async function sb(path, opts = {}) {
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 const C = {
-  // Primary greens
   green:        "#1A7A3C",
   greenDark:    "#0F5228",
-  greenDeep:    "#1B3A2D",   // sidebar bg — legible forest green
+  greenDeep:    "#1B3A2D",
   greenMid:     "#22963F",
   greenLight:   "#E6F2EB",
   greenXLight:  "#F2FAF5",
   greenBorder:  "#C8E0D0",
-  // Gold
   gold:         "#D4922A",
   goldDark:     "#A66D15",
   goldLight:    "#FEF6E4",
   goldMid:      "#F0B84A",
-  // Accent / semantic
   amber:        "#C97A1A",
   amberLight:   "#FFF3E0",
   blue:         "#2563EB",
   blueLight:    "#EFF6FF",
-  // Surfaces
   bg:           "#F4F7F5",
   surface:      "#FFFFFF",
   border:       "#DDE8E2",
-  // Sidebar
   sidebar:      "#1B3A2D",
   sidebarHover: "rgba(255,255,255,.06)",
   sidebarActive:"rgba(212,146,42,.12)",
-  // Text
   textPrimary:  "#0E2218",
   textSecondary:"#3D5C4A",
   textMuted:    "#7A9585",
-  // Semantic
   danger:       "#C0392B",
   dangerLight:  "#FDEDEC",
   flag:         "#DC2626",
   flagLight:    "#FEF2F2",
-  soul:         "#5B21B6",   // purple accent for Soul Care
+  soul:         "#5B21B6",
   soulLight:    "#F5F3FF",
 };
 
@@ -157,7 +150,6 @@ const ROLE_META = {
   soulcare: { label: "Soul Care",       color: C.soul,      bg: C.soulLight  },
 };
 
-// Icon map for nav items
 const NAV_ICONS = {
   admin_overview: Home, admin_users: Users, admin_adduser: UserPlus,
   firsttimers: Users, addmember: UserPlus, report: BarChart2,
@@ -210,7 +202,6 @@ const inputBase = {
   background: C.surface, outline: "none", fontFamily: F.body,
   transition: "border-color .15s, box-shadow .15s", display: "block",
 };
-const inputFocus = { borderColor: C.green, boxShadow: `0 0 0 3px ${C.greenLight}` };
 
 const BTN_STYLES = {
   primary: { background: C.green,   color: "#fff", border: "none" },
@@ -260,7 +251,9 @@ function parseAreas(raw) {
 function FieldInput({ label, id, type = "text", required, value, onChange,
   placeholder, options, hint, disabled }) {
   const [focused, setFocused] = useState(false);
-  const base = { ...inputBase, borderColor: focused ? C.green : C.border,
+  const base = {
+    ...inputBase,
+    borderColor: focused ? C.green : C.border,
     ...(focused ? { boxShadow: `0 0 0 3px ${C.greenLight}` } : {}),
     ...(disabled ? { opacity: .6, cursor: "not-allowed" } : {}),
   };
@@ -280,7 +273,8 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
 
   if (type === "select") return wrap(
     <select id={id} value={value} onChange={onChange} required={required}
-      disabled={disabled} style={{ ...base, background: C.surface, cursor: disabled ? "not-allowed" : "pointer" }}
+      disabled={disabled}
+      style={{ ...base, background: C.surface, cursor: disabled ? "not-allowed" : "pointer" }}
       onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
       <option value="">Select…</option>
       {(options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -302,11 +296,13 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
           return (
             <button key={o.value} type="button"
               onClick={() => onChange(on ? sel.filter(x => x !== o.value) : [...sel, o.value])}
-              style={{ padding: "6px 13px", borderRadius: 20, fontSize: 13, cursor: "pointer",
+              style={{
+                padding: "6px 13px", borderRadius: 20, fontSize: 13, cursor: "pointer",
                 border: `1.5px solid ${on ? C.green : C.border}`,
                 background: on ? C.greenLight : C.surface,
                 color: on ? C.green : C.textSecondary,
-                fontWeight: on ? 700 : 400, fontFamily: F.body, transition: "all .15s" }}>
+                fontWeight: on ? 700 : 400, fontFamily: F.body, transition: "all .15s",
+              }}>
               {o.label}
             </button>
           );
@@ -318,18 +314,29 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   if (type === "toggle") {
     return (
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: disabled ? "not-allowed" : "pointer",
-          fontSize: 13, fontWeight: 600, color: C.textSecondary, fontFamily: F.body }}>
+        <label style={{
+          display: "flex", alignItems: "center", gap: 10,
+          cursor: disabled ? "not-allowed" : "pointer",
+          fontSize: 13, fontWeight: 600, color: C.textSecondary, fontFamily: F.body,
+        }}>
           <div onClick={() => !disabled && onChange(!value)}
-            style={{ width: 40, height: 22, borderRadius: 11,
+            style={{
+              width: 40, height: 22, borderRadius: 11,
               background: value ? C.flag : C.border,
-              position: "relative", transition: "background .2s", flexShrink: 0 }}>
-            <div style={{ position: "absolute", top: 3, left: value ? 20 : 3, width: 16, height: 16,
-              borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: SHADOW.xs }} />
+              position: "relative", transition: "background .2s", flexShrink: 0,
+            }}>
+            <div style={{
+              position: "absolute", top: 3, left: value ? 20 : 3, width: 16, height: 16,
+              borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: SHADOW.xs,
+            }} />
           </div>
           {label}
-          {value && <span style={{ fontSize: 11, color: C.flag, fontWeight: 700,
-            background: C.flagLight, padding: "2px 8px", borderRadius: 10 }}>⚠ Will be flagged</span>}
+          {value && (
+            <span style={{
+              fontSize: 11, color: C.flag, fontWeight: 700,
+              background: C.flagLight, padding: "2px 8px", borderRadius: 10,
+            }}>⚠ Will be flagged</span>
+          )}
         </label>
         {hint && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, marginLeft: 50 }}>{hint}</div>}
       </div>
@@ -339,14 +346,20 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   if (type === "bool-toggle") {
     return (
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 10,
-          cursor: "pointer", fontSize: 13, fontWeight: 600, color: C.textSecondary, fontFamily: F.body }}>
+        <label style={{
+          display: "flex", alignItems: "center", gap: 10,
+          cursor: "pointer", fontSize: 13, fontWeight: 600, color: C.textSecondary, fontFamily: F.body,
+        }}>
           <div onClick={() => onChange(!value)}
-            style={{ width: 40, height: 22, borderRadius: 11,
+            style={{
+              width: 40, height: 22, borderRadius: 11,
               background: value ? C.green : C.border,
-              position: "relative", transition: "background .2s", flexShrink: 0 }}>
-            <div style={{ position: "absolute", top: 3, left: value ? 20 : 3, width: 16, height: 16,
-              borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: SHADOW.xs }} />
+              position: "relative", transition: "background .2s", flexShrink: 0,
+            }}>
+            <div style={{
+              position: "absolute", top: 3, left: value ? 20 : 3, width: 16, height: 16,
+              borderRadius: "50%", background: "#fff", transition: "left .2s", boxShadow: SHADOW.xs,
+            }} />
           </div>
           {label}
         </label>
@@ -366,28 +379,37 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
 function Logo({ size = 48 }) {
   const [failed, setFailed] = useState(false);
   if (failed) return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: C.green,
+    <div style={{
+      width: size, height: size, borderRadius: "50%", background: C.green,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * .42, fontWeight: 800, color: "#fff", fontFamily: F.head, flexShrink: 0 }}>E</div>
+      fontSize: size * .42, fontWeight: 800, color: "#fff", fontFamily: F.head, flexShrink: 0,
+    }}>E</div>
   );
-  return <img src="/logo.png" alt="The Envoys" onError={() => setFailed(true)}
-    style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, display: "block" }} />;
+  return (
+    <img src="/logo.png" alt="The Envoys" onError={() => setFailed(true)}
+      style={{ width: size, height: size, objectFit: "contain", flexShrink: 0, display: "block" }} />
+  );
 }
 
 function Alert({ type, msg, onClose }) {
   if (!msg) return null;
   const col = type === "error" ? C.danger : type === "warn" ? C.amber : C.green;
-  const bg = type === "error" ? C.dangerLight : type === "warn" ? C.amberLight : C.greenLight;
+  const bg  = type === "error" ? C.dangerLight : type === "warn" ? C.amberLight : C.greenLight;
   const Icon = type === "error" ? AlertCircle : type === "warn" ? AlertCircle : CheckCircle;
   return (
-    <div style={{ background: bg, border: `1px solid ${col}22`, borderLeft: `3px solid ${col}`,
+    <div style={{
+      background: bg, border: `1px solid ${col}22`, borderLeft: `3px solid ${col}`,
       borderRadius: 8, padding: "10px 14px", fontSize: 13, color: col,
-      display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16 }}>
+      display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 16,
+    }}>
       <Icon size={15} style={{ marginTop: 1, flexShrink: 0 }} />
       <span style={{ flex: 1, lineHeight: 1.5 }}>{msg}</span>
-      {onClose && <button onClick={onClose} style={{ background: "none", border: "none",
-        cursor: "pointer", color: col, fontWeight: 700, fontSize: 18, lineHeight: 1,
-        padding: 0, flexShrink: 0, opacity: .7 }}>×</button>}
+      {onClose && (
+        <button onClick={onClose} style={{
+          background: "none", border: "none", cursor: "pointer", color: col,
+          fontWeight: 700, fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0, opacity: .7,
+        }}>×</button>
+      )}
     </div>
   );
 }
@@ -400,11 +422,15 @@ function CredsBanner() {
 
 function PageHeader({ title, subtitle, action }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-      marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+      marginBottom: 24, flexWrap: "wrap", gap: 12,
+    }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 22, fontFamily: F.head, fontWeight: 800,
-          color: C.textPrimary, letterSpacing: "-.01em" }}>{title}</h2>
+        <h2 style={{
+          margin: 0, fontSize: 22, fontFamily: F.head, fontWeight: 800,
+          color: C.textPrimary, letterSpacing: "-.01em",
+        }}>{title}</h2>
         {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textMuted }}>{subtitle}</p>}
       </div>
       {action}
@@ -416,18 +442,23 @@ function PageHeader({ title, subtitle, action }) {
 function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) {
   return (
     <div onClick={onClick}
-      style={{ ...card, padding: "1.1rem 1.25rem", borderLeft: `3px solid ${accent}`,
+      style={{
+        ...card, padding: "1.1rem 1.25rem", borderLeft: `3px solid ${accent}`,
         cursor: onClick ? "pointer" : "default",
-        transition: "box-shadow .15s", display: "flex", alignItems: "center", gap: 14 }}
+        transition: "box-shadow .15s", display: "flex", alignItems: "center", gap: 14,
+      }}
       onMouseOver={e => onClick && (e.currentTarget.style.boxShadow = SHADOW.md)}
       onMouseOut={e => onClick && (e.currentTarget.style.boxShadow = SHADOW.xs)}>
-      <div style={{ width: 44, height: 44, borderRadius: 10, background: `${accent}14`,
-        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 10, background: `${accent}14`,
+        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      }}>
         {Icon && <Icon size={20} color={accent} strokeWidth={1.8} />}
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 26, fontWeight: 800, color: accent, fontFamily: F.head,
-          lineHeight: 1.1 }}>{value ?? "—"}</div>
+        <div style={{
+          fontSize: 26, fontWeight: 800, color: accent, fontFamily: F.head, lineHeight: 1.1,
+        }}>{value ?? "—"}</div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: accent, marginTop: 1 }}>{sub}</div>}
       </div>
@@ -440,37 +471,49 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
   const ri = ROLE_META[role] || ROLE_META.expteam;
   return (
     <>
-      {mobileOpen && <div onClick={onClose}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 98 }} />}
+      {mobileOpen && (
+        <div onClick={onClose}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 98 }} />
+      )}
       <div className={`sidebar${mobileOpen ? " open" : ""}`}
-        style={{ width: 224, background: C.sidebar, minHeight: "100vh",
+        style={{
+          width: 224, background: C.sidebar, minHeight: "100vh",
           display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 100,
-          boxShadow: "2px 0 12px rgba(0,0,0,.15)" }}>
+          boxShadow: "2px 0 12px rgba(0,0,0,.15)",
+        }}>
 
         {/* Brand */}
         <div style={{ padding: "20px 16px 14px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <Logo size={38} />
             <div>
-              <div style={{ color: "#fff", fontWeight: 800, fontSize: 13, fontFamily: F.head,
-                lineHeight: 1.2, letterSpacing: "-.01em" }}>THE ENVOYS</div>
+              <div style={{
+                color: "#fff", fontWeight: 800, fontSize: 13, fontFamily: F.head,
+                lineHeight: 1.2, letterSpacing: "-.01em",
+              }}>THE ENVOYS</div>
               <div style={{ color: C.goldMid, fontSize: 10, letterSpacing: ".06em", marginTop: 1 }}>
                 EnvoysByte
               </div>
             </div>
           </div>
           {/* User chip */}
-          <div style={{ background: "rgba(255,255,255,.07)", borderRadius: 8, padding: "8px 10px",
-            display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: "50%",
+          <div style={{
+            background: "rgba(255,255,255,.07)", borderRadius: 8, padding: "8px 10px",
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: "50%",
               background: `${ri.color}30`, border: `1.5px solid ${ri.color}60`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700, color: ri.color, fontFamily: F.head, flexShrink: 0 }}>
+              fontSize: 12, fontWeight: 700, color: ri.color, fontFamily: F.head, flexShrink: 0,
+            }}>
               {(user || "?").charAt(0).toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ color: "rgba(255,255,255,.9)", fontSize: 12, fontWeight: 600,
-                fontFamily: F.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{
+                color: "rgba(255,255,255,.9)", fontSize: 12, fontWeight: 600,
+                fontFamily: F.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
                 {user}
               </div>
               <div style={{ ...badge(ri.color, `${ri.color}22`), fontSize: 10, padding: "1px 7px", marginTop: 2 }}>
@@ -488,20 +531,24 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
             const isFlag = item.id === "flagged";
             return (
               <button key={item.id} onClick={() => { setActive(item.id); onClose?.(); }}
-                style={{ display: "flex", alignItems: "center", gap: 10, width: "100%",
+                style={{
+                  display: "flex", alignItems: "center", gap: 10, width: "100%",
                   padding: "9px 10px", border: "none", cursor: "pointer", borderRadius: 8,
                   marginBottom: 2,
                   background: on ? C.sidebarActive : "transparent",
                   color: on ? C.goldMid : "rgba(255,255,255,.6)",
                   fontSize: 13, fontWeight: on ? 700 : 400, fontFamily: F.body,
-                  textAlign: "left", transition: "all .15s" }}
+                  textAlign: "left", transition: "all .15s",
+                }}
                 onMouseOver={e => !on && (e.currentTarget.style.background = C.sidebarHover)}
                 onMouseOut={e => !on && (e.currentTarget.style.background = "transparent")}>
                 <Icon size={15} strokeWidth={on ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{item.label}</span>
                 {isFlag && flagCount > 0 && (
-                  <span style={{ background: C.flag, color: "#fff", borderRadius: 10,
-                    fontSize: 10, fontWeight: 700, padding: "1px 7px", lineHeight: 1.6 }}>{flagCount}</span>
+                  <span style={{
+                    background: C.flag, color: "#fff", borderRadius: 10,
+                    fontSize: 10, fontWeight: 700, padding: "1px 7px", lineHeight: 1.6,
+                  }}>{flagCount}</span>
                 )}
                 {on && <ChevronRight size={12} style={{ opacity: .5 }} />}
               </button>
@@ -512,12 +559,20 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
         {/* Sign out */}
         <div style={{ padding: "10px 8px", borderTop: "1px solid rgba(255,255,255,.06)" }}>
           <button onClick={onLogout}
-            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%",
+            style={{
+              display: "flex", alignItems: "center", gap: 10, width: "100%",
               padding: "9px 10px", borderRadius: 8, border: "none",
               background: "transparent", color: "rgba(255,255,255,.4)",
-              cursor: "pointer", fontSize: 13, fontFamily: F.body, transition: "all .15s" }}
-            onMouseOver={e => { e.currentTarget.style.background = C.sidebarHover; e.currentTarget.style.color = "rgba(255,255,255,.7)"; }}
-            onMouseOut={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(255,255,255,.4)"; }}>
+              cursor: "pointer", fontSize: 13, fontFamily: F.body, transition: "all .15s",
+            }}
+            onMouseOver={e => {
+              e.currentTarget.style.background = C.sidebarHover;
+              e.currentTarget.style.color = "rgba(255,255,255,.7)";
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "rgba(255,255,255,.4)";
+            }}>
             <LogOut size={14} strokeWidth={1.8} />
             <span>Sign out</span>
           </button>
@@ -530,15 +585,21 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
 function MobileHeader({ onMenu, title }) {
   return (
     <div className="mob-header"
-      style={{ position: "sticky", top: 0, zIndex: 50, background: C.sidebar,
+      style={{
+        position: "sticky", top: 0, zIndex: 50, background: C.sidebar,
         padding: "12px 16px", alignItems: "center", gap: 12,
-        borderBottom: "1px solid rgba(255,255,255,.07)" }}>
-      <button onClick={onMenu} style={{ background: "none", border: "none", color: "#fff",
-        fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1, display: "flex" }}>
+        borderBottom: "1px solid rgba(255,255,255,.07)",
+      }}>
+      <button onClick={onMenu} style={{
+        background: "none", border: "none", color: "#fff",
+        fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1, display: "flex",
+      }}>
         <Menu size={22} />
       </button>
       <Logo size={26} />
-      <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{title || "The Envoys"}</span>
+      <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: F.head }}>
+        {title || "The Envoys"}
+      </span>
     </div>
   );
 }
@@ -565,10 +626,12 @@ const BLANK_FT = {
 // ── Section Heading ───────────────────────────────────────────────────────────
 function SH({ title, icon: Icon }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700,
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700,
       letterSpacing: ".08em", color: C.textMuted, textTransform: "uppercase",
       marginBottom: 16, paddingBottom: 8, borderBottom: `1.5px solid ${C.greenLight}`,
-      fontFamily: F.head }}>
+      fontFamily: F.head,
+    }}>
       {Icon && <Icon size={13} strokeWidth={2} />}
       {title}
     </div>
@@ -578,11 +641,14 @@ function SH({ title, icon: Icon }) {
 // ── First-Timer Form ──────────────────────────────────────────────────────────
 function FirstTimerForm({ onSuccess, editData, onCancel }) {
   const [form, setForm] = useState(() =>
-    editData ? { ...editData, areas_of_interest: parseAreas(editData.areas_of_interest) } : { ...BLANK_FT }
+    editData
+      ? { ...editData, areas_of_interest: parseAreas(editData.areas_of_interest) }
+      : { ...BLANK_FT }
   );
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const settersRef = useRef({});
+
   const set = useCallback((key) => {
     if (!settersRef.current[key]) {
       settersRef.current[key] = (valOrEvt) => {
@@ -595,27 +661,53 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
 
   const submit = async () => {
     if (!form.full_name.trim() || !form.phone.trim() || !form.gender) {
-      setErr("Full name, phone and gender are required."); return;
+      setErr("Full name, phone and gender are required.");
+      return;
     }
-    setLoading(true); setErr("");
+    setLoading(true);
+    setErr("");
     try {
-      const payload = { ...form, areas_of_interest: JSON.stringify(form.areas_of_interest) };
+      const nullIfEmpty = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const payload = {
+        full_name:           form.full_name.trim(),
+        phone:               form.phone.trim(),
+        email:               nullIfEmpty(form.email),
+        gender:              nullIfEmpty(form.gender),
+        dob:                 nullIfEmpty(form.dob),
+        marital_status:      nullIfEmpty(form.marital_status),
+        house_address:       nullIfEmpty(form.house_address),
+        nearest_landmark:    nullIfEmpty(form.nearest_landmark),
+        membership_decision: nullIfEmpty(form.membership_decision),
+        life_stage:          nullIfEmpty(form.life_stage),
+        heard_from:          nullIfEmpty(form.heard_from),
+        areas_of_interest:   JSON.stringify(form.areas_of_interest || []),
+        service_feedback:    nullIfEmpty(form.service_feedback),
+        service_date:        form.service_date || new Date().toISOString().slice(0, 10),
+      };
       if (editData?.id) {
         await sb(`first_timers?id=eq.${editData.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       } else {
         await sb("first_timers", { method: "POST", body: JSON.stringify(payload) });
       }
       onSuccess();
-    } catch (e) { setErr(e.message); }
+    } catch (e) {
+      setErr(e.message);
+    }
     setLoading(false);
   };
 
   return (
     <div style={card} className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title={editData ? "Edit Record" : "New First-Timer"}
+      <PageHeader
+        title={editData ? "Edit Record" : "New First-Timer"}
         subtitle={`Service date: ${form.service_date}`}
-        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+        action={onCancel && (
+          <button style={btn("ghost")} onClick={onCancel}>
+            <ArrowLeft size={14} />Back
+          </button>
+        )}
+      />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
       <div style={{ marginBottom: 24 }}>
@@ -632,8 +724,10 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
         <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
           <FieldInput label="Date of Birth" id="db" type="date" value={form.dob} onChange={set("dob")} />
           <FieldInput label="Marital Status" id="ms" type="select" value={form.marital_status} onChange={set("marital_status")}
-            options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" },
-            { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
+            options={[
+              { value: "Single", label: "Single" }, { value: "Married", label: "Married" },
+              { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" },
+            ]} />
         </div>
         <FieldInput label="House Address" id="ha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
         <FieldInput label="Nearest Landmark" id="nl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
@@ -643,17 +737,25 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
         <SH title="Visit Details" icon={Star} />
         <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
           <FieldInput label="Membership Decision" id="md" type="select" required value={form.membership_decision} onChange={set("membership_decision")}
-            options={[{ value: "Member", label: "Member" }, { value: "Visitor", label: "Visitor" }, { value: "Undecided", label: "Undecided" }]} />
+            options={[
+              { value: "Member", label: "Member" }, { value: "Visitor", label: "Visitor" },
+              { value: "Undecided", label: "Undecided" },
+            ]} />
           <FieldInput label="Life Stage" id="ls" type="select" value={form.life_stage} onChange={set("life_stage")}
-            options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
+            options={[
+              { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
+              { value: "Business Owner", label: "Business Owner" },
+            ]} />
         </div>
         <FieldInput label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" />
         <FieldInput label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} />
         <FieldInput label="Service Feedback" id="sf" type="textarea" value={form.service_feedback} onChange={set("service_feedback")} placeholder="What was your experience like today?" />
       </div>
 
-      <button style={{ ...btn("primary"), width: "100%", padding: "12px", fontSize: 15 }}
-        onClick={submit} disabled={loading}>
+      <button
+        style={{ ...btn("primary"), width: "100%", padding: "12px", fontSize: 15 }}
+        onClick={submit}
+        disabled={loading}>
         {loading ? "Saving…" : editData ? "Update Record" : "Submit"}
       </button>
     </div>
@@ -664,14 +766,20 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
 function PublicForm() {
   const [done, setDone] = useState(false);
   if (done) return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+    <div style={{
+      minHeight: "100vh", background: C.bg, fontFamily: F.body,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem",
+    }}>
       <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.greenLight,
-          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: "50%", background: C.greenLight,
+          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
+        }}>
           <CheckCircle size={32} color={C.green} />
         </div>
-        <h2 style={{ color: C.green, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>Thank you for visiting!</h2>
+        <h2 style={{ color: C.green, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>
+          Thank you for visiting!
+        </h2>
         <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
           We're glad you joined us today. Our Envoys Experience Team will be in touch shortly.
         </p>
@@ -705,15 +813,20 @@ function QRCodePage() {
   const download = () => {
     const a = document.createElement("a");
     a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
-    a.download = "envoys-registration-qr.png"; a.target = "_blank"; a.click();
+    a.download = "envoys-registration-qr.png";
+    a.target = "_blank";
+    a.click();
   };
   return (
     <div className="page-enter">
       <PageHeader title="Registration QR Code" subtitle="Display or print this QR code — visitors scan it to open the first-timer registration form." />
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
         <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
-          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
-          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <img src={qrSrc} alt="QR Code" width={240} height={240}
+            style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>
+            {display}
+          </div>
           <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
             <button style={btn("primary")} onClick={download}><Download size={14} />Download PNG</button>
             <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
@@ -724,9 +837,15 @@ function QRCodePage() {
           <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 14px", lineHeight: 1.6 }}>
             Auto-set to your live site. Update below if your URL has changed.
           </p>
-          <FieldInput label="Registration URL" id="rurl" value={custom} onChange={e => setCustom(e.target.value)} placeholder="https://your-site.vercel.app/#register" />
-          <button style={{ ...btn("gold"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
-          <div style={{ marginTop: 20, padding: 14, background: C.greenXLight, borderRadius: 8, fontSize: 12, color: C.textSecondary, lineHeight: 1.7 }}>
+          <FieldInput label="Registration URL" id="rurl" value={custom}
+            onChange={e => setCustom(e.target.value)} placeholder="https://your-site.vercel.app/#register" />
+          <button style={{ ...btn("gold"), width: "100%" }} onClick={() => setDisplay(custom)}>
+            Update QR Code
+          </button>
+          <div style={{
+            marginTop: 20, padding: 14, background: C.greenXLight, borderRadius: 8,
+            fontSize: 12, color: C.textSecondary, lineHeight: 1.7,
+          }}>
             <strong style={{ color: C.green }}>💡 Tip</strong><br />
             Download the PNG → print on a card, banner, or welcome screen.<br />
             Recommended print size: at least <strong>5 × 5 cm</strong> for reliable scanning.
@@ -753,7 +872,8 @@ function FirstTimersList({ onEdit }) {
   useEffect(() => { load(); }, [load]);
 
   const filtered = data.filter(r =>
-    r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search));
+    r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
+  );
 
   const dc = {
     Member:    [C.green,    C.greenLight],
@@ -781,12 +901,16 @@ function FirstTimersList({ onEdit }) {
           {filtered.map(r => {
             const [col, bg] = dc[r.membership_decision] || [C.textMuted, C.bg];
             return (
-              <div key={r.id} style={{ ...card, display: "flex", justifyContent: "space-between",
-                alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px" }}>
+              <div key={r.id} style={{
+                ...card, display: "flex", justifyContent: "space-between",
+                alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
+              }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.greenLight,
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "50%", background: C.greenLight,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 15, fontWeight: 800, color: C.green, fontFamily: F.head, flexShrink: 0 }}>
+                    fontSize: 15, fontWeight: 800, color: C.green, fontFamily: F.head, flexShrink: 0,
+                  }}>
                     {r.full_name?.charAt(0) || "?"}
                   </div>
                   <div>
@@ -843,26 +967,27 @@ function CallQueue({ onLogFeedback }) {
   const filtered = views[filter] || data;
 
   const tabs = [
-    { k: "pending",   label: `Pending`,   count: pending.length,   col: C.gold   },
-    { k: "callback",  label: `Call Back`,  count: callback.length,  col: C.amber  },
-    { k: "reached",   label: `Reached`,    count: reached.length,   col: C.green  },
-    { k: "incorrect", label: `Incorrect`,  count: incorrect.length, col: C.danger },
-    { k: "all",       label: `All`,        count: data.length,      col: C.textMuted },
+    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold   },
+    { k: "callback",  label: "Call Back",  count: callback.length,  col: C.amber  },
+    { k: "reached",   label: "Reached",    count: reached.length,   col: C.green  },
+    { k: "incorrect", label: "Incorrect",  count: incorrect.length, col: C.danger },
+    { k: "all",       label: "All",        count: data.length,      col: C.textMuted },
   ];
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title="Call Queue" subtitle="Track and log calls for every first-timer" />
-      {/* Tabs */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {tabs.map(t => (
           <button key={t.k} onClick={() => setFilter(t.k)}
-            style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
               cursor: "pointer", fontFamily: F.body, transition: "all .15s",
               background: filter === t.k ? t.col : C.bg,
               color: filter === t.k ? "#fff" : C.textSecondary,
-              border: `1.5px solid ${filter === t.k ? t.col : C.border}` }}>
+              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+            }}>
             {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
           </button>
         ))}
@@ -877,19 +1002,27 @@ function CallQueue({ onLogFeedback }) {
             const fb = r.latestFb;
             const sm = fb ? statusMeta(fb.call_status) : { color: C.gold, bg: C.goldLight, label: "Pending" };
             return (
-              <div key={r.id} style={{ ...card, display: "flex", justifyContent: "space-between",
+              <div key={r.id} style={{
+                ...card, display: "flex", justifyContent: "space-between",
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
-                borderLeft: `3px solid ${sm.color}` }}>
+                borderLeft: `3px solid ${sm.color}`,
+              }}>
                 <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                  <div style={{
+                    width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                     background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head }}>
+                    fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
+                  }}>
                     {r.full_name?.charAt(0)}
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.membership_decision} · {r.service_date}</div>
-                    {fb?.caller_name && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Last called by <strong>{fb.caller_name}</strong></div>}
+                    {fb?.caller_name && (
+                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
+                        Last called by <strong>{fb.caller_name}</strong>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
@@ -950,10 +1083,16 @@ function CallBackQueue({ onLogFeedback }) {
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
-                    {fb?.follow_up_date && <div style={{ fontSize: 12, color: C.amber, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Calendar size={11} />Follow-up: {fb.follow_up_date}
-                    </div>}
-                    {fb?.notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.5 }}>Note: {fb.notes}</div>}
+                    {fb?.follow_up_date && (
+                      <div style={{ fontSize: 12, color: C.amber, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                        <Calendar size={11} />Follow-up: {fb.follow_up_date}
+                      </div>
+                    )}
+                    {fb?.notes && (
+                      <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+                        Note: {fb.notes}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
                     <span style={badge(C.amber, C.amberLight)}><span style={dot(C.amber)} />Call Back</span>
@@ -1000,7 +1139,8 @@ function LogFeedback({ person, onBack, callerName = "" }) {
         const rows = await sb(`call_feedback?first_timer_id=eq.${person.id}&order=created_at.desc&limit=1`);
         if (rows && rows.length > 0) {
           const r = rows[0];
-          setExistingId(r.id); setIsEdit(true);
+          setExistingId(r.id);
+          setIsEdit(true);
           setForm({
             call_status: r.call_status || "", experience_rating: r.experience_rating || "",
             returning_likelihood: r.returning || "", notes: r.notes || "",
@@ -1029,17 +1169,21 @@ function LogFeedback({ person, onBack, callerName = "" }) {
   const submit = async () => {
     if (!form.call_status) { setErr("Call status is required."); return; }
     if (!form.caller_name.trim()) { setErr("Please enter your name as the caller."); return; }
-    if (form.flagged_for_pastoral && !form.flag_reason.trim()) { setErr("Please describe the reason for flagging."); return; }
+    if (form.flagged_for_pastoral && !form.flag_reason.trim()) {
+      setErr("Please describe the reason for flagging."); return;
+    }
     setLoading(true); setErr("");
     try {
       const payload = {
-        first_timer_id: person.id, call_status: form.call_status,
-        experience_rating: isReached ? (form.experience_rating || null) : null,
-        returning: isReached ? (form.returning_likelihood || null) : null,
-        notes: form.notes || null, follow_up_date: form.follow_up_date || null,
-        caller_name: form.caller_name,
-        flagged_for_pastoral: form.flagged_for_pastoral,
-        flag_reason: form.flagged_for_pastoral ? (form.flag_reason || null) : null,
+        first_timer_id:       person.id,
+        call_status:          form.call_status,
+        experience_rating:    isReached ? (form.experience_rating || null)   : null,
+        returning:            isReached ? (form.returning_likelihood || null) : null,
+        notes:                form.notes          || null,
+        follow_up_date:       form.follow_up_date || null,
+        caller_name:          form.caller_name.trim(),
+        flagged_for_pastoral: !!form.flagged_for_pastoral,
+        flag_reason:          form.flagged_for_pastoral ? (form.flag_reason || null) : null,
       };
       if (existingId) {
         await sb(`call_feedback?id=eq.${existingId}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -1051,7 +1195,9 @@ function LogFeedback({ person, onBack, callerName = "" }) {
     setLoading(false);
   };
 
-  if (fetching) return <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>Loading…</div>;
+  if (fetching) return (
+    <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>Loading…</div>
+  );
 
   if (done) return (
     <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
@@ -1064,7 +1210,9 @@ function LogFeedback({ person, onBack, callerName = "" }) {
           <Flag size={12} />Flagged for Pastoral Team
         </div>
       )}
-      <button style={{ ...btn("outline"), marginTop: 20 }} onClick={onBack}><ArrowLeft size={14} />Back to queue</button>
+      <button style={{ ...btn("outline"), marginTop: 20 }} onClick={onBack}>
+        <ArrowLeft size={14} />Back to queue
+      </button>
     </div>
   );
 
@@ -1082,8 +1230,11 @@ function LogFeedback({ person, onBack, callerName = "" }) {
         </div>
       </div>
       {isEdit && (
-        <div style={{ marginBottom: 16, padding: "8px 14px", background: C.goldLight,
-          borderRadius: 8, fontSize: 13, color: C.goldDark, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{
+          marginBottom: 16, padding: "8px 14px", background: C.goldLight,
+          borderRadius: 8, fontSize: 13, color: C.goldDark, fontWeight: 600,
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
           <Edit3 size={13} />Editing existing feedback — changes will overwrite the previous entry.
         </div>
       )}
@@ -1099,8 +1250,11 @@ function LogFeedback({ person, onBack, callerName = "" }) {
       {form.call_status && (() => {
         const sm = statusMeta(form.call_status);
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: -8, marginBottom: 16,
-            padding: "8px 12px", borderRadius: 8, background: sm.bg, fontSize: 13, color: sm.color, fontWeight: 600 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8, marginTop: -8, marginBottom: 16,
+            padding: "8px 12px", borderRadius: 8, background: sm.bg,
+            fontSize: 13, color: sm.color, fontWeight: 600,
+          }}>
             <span style={dot(sm.color)} />Will be logged as: <strong>{sm.label}</strong>
           </div>
         );
@@ -1110,12 +1264,16 @@ function LogFeedback({ person, onBack, callerName = "" }) {
         <>
           <FieldInput label="Experience Rating" id="er" type="select"
             value={form.experience_rating} onChange={lset("experience_rating")}
-            options={[{ value: "Excellent", label: "Excellent" }, { value: "Good", label: "Good" },
-            { value: "Average", label: "Average" }, { value: "Poor", label: "Poor" }]} />
+            options={[
+              { value: "Excellent", label: "Excellent" }, { value: "Good", label: "Good" },
+              { value: "Average", label: "Average" }, { value: "Poor", label: "Poor" },
+            ]} />
           <FieldInput label="Returning?" id="rl" type="select"
             value={form.returning_likelihood} onChange={lset("returning_likelihood")}
-            options={[{ value: "Yes", label: "Yes — will return" }, { value: "Maybe", label: "Maybe" },
-            { value: "No", label: "No" }, { value: "Undecided", label: "Undecided" }]} />
+            options={[
+              { value: "Yes", label: "Yes — will return" }, { value: "Maybe", label: "Maybe" },
+              { value: "No", label: "No" }, { value: "Undecided", label: "Undecided" },
+            ]} />
         </>
       )}
       {!isReached && form.call_status && (
@@ -1127,10 +1285,14 @@ function LogFeedback({ person, onBack, callerName = "" }) {
         value={form.notes} onChange={lset("notes")}
         placeholder={isReached ? "Key points from the conversation…" : "Reason / any context for the team…"} />
 
-      <div style={{ background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10,
-        padding: "16px", marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.flag, marginBottom: 10,
-          display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{
+        background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10,
+        padding: "16px", marginBottom: 16,
+      }}>
+        <div style={{
+          fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.flag, marginBottom: 10,
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
           <Flag size={13} />Flag for Pastoral Team
         </div>
         <FieldInput label="Flag this person for Pastoral Team attention" id="fp" type="toggle"
@@ -1207,35 +1369,55 @@ function AllFeedback() {
             const ft = r.first_timers || {};
             const sm = statusMeta(r.call_status);
             return (
-              <div key={r.id} style={{ ...card, padding: "12px 16px",
-                borderLeft: r.flagged_for_pastoral ? `3px solid ${C.flag}` : `3px solid ${sm.color}` }}>
+              <div key={r.id} style={{
+                ...card, padding: "12px 16px",
+                borderLeft: r.flagged_for_pastoral ? `3px solid ${C.flag}` : `3px solid ${sm.color}`,
+              }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{ft.full_name}</span>
                     <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 8 }}>{ft.phone} · {ft.service_date}</span>
-                    {r.caller_name && <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 8 }}>· Called by <strong>{r.caller_name}</strong></span>}
+                    {r.caller_name && (
+                      <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 8 }}>
+                        · Called by <strong>{r.caller_name}</strong>
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    {r.flagged_for_pastoral && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>}
+                    {r.flagged_for_pastoral && (
+                      <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>
+                    )}
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{sm.label}</span>
                   </div>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: r.notes || r.flag_reason ? 8 : 0 }}>
-                  {r.experience_rating && <span style={badge(C.textSecondary, C.bg, { fontSize: 11 })}>Rating: {r.experience_rating}</span>}
-                  {r.returning && <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>Returning: {r.returning}</span>}
-                  {r.follow_up_date && <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}><Calendar size={10} />{r.follow_up_date}</span>}
+                  {r.experience_rating && (
+                    <span style={badge(C.textSecondary, C.bg, { fontSize: 11 })}>Rating: {r.experience_rating}</span>
+                  )}
+                  {r.returning && (
+                    <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>Returning: {r.returning}</span>
+                  )}
+                  {r.follow_up_date && (
+                    <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}><Calendar size={10} />{r.follow_up_date}</span>
+                  )}
                 </div>
-                {r.notes && <p style={{ margin: "0 0 4px", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>{r.notes}</p>}
+                {r.notes && (
+                  <p style={{ margin: "0 0 4px", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>{r.notes}</p>
+                )}
                 {r.flag_reason && (
-                  <p style={{ margin: 0, fontSize: 13, color: C.flag, lineHeight: 1.55,
-                    background: C.flagLight, padding: "6px 10px", borderRadius: 6 }}>
+                  <p style={{
+                    margin: 0, fontSize: 13, color: C.flag, lineHeight: 1.55,
+                    background: C.flagLight, padding: "6px 10px", borderRadius: 6,
+                  }}>
                     🚩 {r.flag_reason}
                   </p>
                 )}
               </div>
             );
           })}
-          {filtered.length === 0 && <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>No feedback yet.</p>}
+          {filtered.length === 0 && (
+            <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>No feedback yet.</p>
+          )}
         </div>
       )}
     </div>
@@ -1262,7 +1444,8 @@ function FlaggedRecords() {
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Flagged for Pastoral" subtitle={`${rows.length} record${rows.length !== 1 ? "s" : ""} requiring pastoral attention`} />
+      <PageHeader title="Flagged for Pastoral"
+        subtitle={`${rows.length} record${rows.length !== 1 ? "s" : ""} requiring pastoral attention`} />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 10 }}>
@@ -1275,20 +1458,28 @@ function FlaggedRecords() {
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.head }}>{ft.full_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{ft.phone} · {ft.service_date}</div>
-                    {r.caller_name && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Reported by <strong>{r.caller_name}</strong></div>}
+                    {r.caller_name && (
+                      <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
+                        Reported by <strong>{r.caller_name}</strong>
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
                     <span style={badge(C.flag, C.flagLight)}><Flag size={11} />Flagged</span>
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{sm.label}</span>
                   </div>
                 </div>
-                <div style={{ background: C.flagLight, borderRadius: 8, padding: "10px 14px",
-                  fontSize: 13, color: C.flag, lineHeight: 1.6 }}>
+                <div style={{
+                  background: C.flagLight, borderRadius: 8, padding: "10px 14px",
+                  fontSize: 13, color: C.flag, lineHeight: 1.6,
+                }}>
                   <strong>Reason flagged:</strong> {r.flag_reason || "No reason provided"}
                 </div>
-                {r.notes && <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>
-                  <strong>Call notes:</strong> {r.notes}
-                </p>}
+                {r.notes && (
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>
+                    <strong>Call notes:</strong> {r.notes}
+                  </p>
+                )}
               </div>
             );
           })}
@@ -1325,7 +1516,9 @@ function Report() {
         const v = r[key] || "Unknown"; a[v] = (a[v] || 0) + 1; return a;
       }, {});
       const areasTally = {};
-      ft.forEach(r => { parseAreas(r.areas_of_interest).forEach(v => { areasTally[v] = (areasTally[v] || 0) + 1; }); });
+      ft.forEach(r => {
+        parseAreas(r.areas_of_interest).forEach(v => { areasTally[v] = (areasTally[v] || 0) + 1; });
+      });
       const callerTally = {};
       fb.forEach(f => {
         if (!f.caller_name) return;
@@ -1334,9 +1527,13 @@ function Report() {
         if (normaliseStatus(f.call_status) === "Reached") callerTally[f.caller_name].reached++;
       });
       const callStatusNorm = {};
-      fb.forEach(f => { const n = normaliseStatus(f.call_status) || "Unknown"; callStatusNorm[n] = (callStatusNorm[n] || 0) + 1; });
+      fb.forEach(f => {
+        const n = normaliseStatus(f.call_status) || "Unknown";
+        callStatusNorm[n] = (callStatusNorm[n] || 0) + 1;
+      });
       setStats({
-        total: ft.length, totalCalls: fb.length, flagged: fb.filter(f => f.flagged_for_pastoral).length,
+        total: ft.length, totalCalls: fb.length,
+        flagged: fb.filter(f => f.flagged_for_pastoral).length,
         decisions: tally(ft, "membership_decision"), lifeStage: tally(ft, "life_stage"),
         gender: tally(ft, "gender"), callStatus: callStatusNorm,
         rating: tally(fb, "experience_rating"), returning: tally(fb, "returning"),
@@ -1356,8 +1553,11 @@ function Report() {
         <span style={{ fontWeight: 600, color: C.textPrimary }}>{value}</span>
       </div>
       <div style={{ height: 7, background: C.border, borderRadius: 4 }}>
-        <div style={{ height: 7, borderRadius: 4, transition: "width .5s",
-          background: color || C.green, width: `${Math.round((value / (max || 1)) * 100)}%` }} />
+        <div style={{
+          height: 7, borderRadius: 4, transition: "width .5s",
+          background: color || C.green,
+          width: `${Math.round((value / (max || 1)) * 100)}%`,
+        }} />
       </div>
     </div>
   );
@@ -1385,10 +1585,10 @@ function Report() {
       {stats && (
         <>
           <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-            <StatCard label="First-Timers"  value={stats.total}                      icon={Users}       accent={C.green}   />
-            <StatCard label="Calls Logged"  value={stats.totalCalls}                 icon={Phone}       accent={C.greenMid}/>
-            <StatCard label="Members"       value={stats.decisions["Member"] || 0}   icon={UserCheck}   accent={C.goldDark}/>
-            <StatCard label="Flagged"       value={stats.flagged}                    icon={Flag}        accent={C.flag}
+            <StatCard label="First-Timers"  value={stats.total}                     icon={Users}     accent={C.green}   />
+            <StatCard label="Calls Logged"  value={stats.totalCalls}                icon={Phone}     accent={C.greenMid}/>
+            <StatCard label="Members"       value={stats.decisions["Member"] || 0}  icon={UserCheck} accent={C.goldDark}/>
+            <StatCard label="Flagged"       value={stats.flagged}                   icon={Flag}      accent={C.flag}
               sub={stats.flagged > 0 ? "Needs attention" : ""} />
           </div>
 
@@ -1437,8 +1637,10 @@ function Report() {
                     <span style={{ color: C.textMuted, fontSize: 12 }}>{s.reached}/{s.total} reached</span>
                   </div>
                   <div style={{ height: 7, background: C.border, borderRadius: 4 }}>
-                    <div style={{ height: 7, borderRadius: 4, background: C.green,
-                      width: `${Math.round((s.total / Math.max(...Object.values(stats.callers).map(x => x.total), 1)) * 100)}%` }} />
+                    <div style={{
+                      height: 7, borderRadius: 4, background: C.green,
+                      width: `${Math.round((s.total / Math.max(...Object.values(stats.callers).map(x => x.total), 1)) * 100)}%`,
+                    }} />
                   </div>
                 </div>
               ))}
@@ -1465,7 +1667,7 @@ function Report() {
 // SOUL CARE MODULE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ── Member Picker (search first_timers, auto-fill) ────────────────────────────
+// ── Member Picker ─────────────────────────────────────────────────────────────
 function MemberPicker({ onSelect, onAddNew }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -1476,8 +1678,10 @@ function MemberPicker({ onSelect, onAddNew }) {
     if (!query.trim()) return;
     setLoading(true); setSearched(true);
     try {
-      const q = query.trim().toLowerCase();
-      const data = await sb(`first_timers?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&order=created_at.desc&limit=15`);
+      const enc = encodeURIComponent(query.trim().toLowerCase());
+      const data = await sb(
+        `first_timers?or=(full_name.ilike.*${enc}*,phone.ilike.*${enc}*)&order=created_at.desc&limit=15`
+      );
       setResults(data || []);
     } catch (e) { setResults([]); }
     setLoading(false);
@@ -1508,20 +1712,26 @@ function MemberPicker({ onSelect, onAddNew }) {
         <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", boxShadow: SHADOW.xs }}>
           {results.length === 0 ? (
             <div style={{ padding: "20px", textAlign: "center", color: C.textMuted, fontSize: 13 }}>
-              No members found. <button onClick={onAddNew} style={{ ...btn("soul", { padding: "4px 12px", fontSize: 12 }), marginLeft: 8 }}>
+              No members found.{" "}
+              <button onClick={onAddNew}
+                style={{ ...btn("soul", { padding: "4px 12px", fontSize: 12 }), marginLeft: 8 }}>
                 <UserPlus size={11} />Add as New Member
               </button>
             </div>
           ) : results.map(r => (
             <button key={r.id} onClick={() => onSelect(r)}
-              style={{ display: "flex", alignItems: "center", gap: 12, width: "100%",
+              style={{
+                display: "flex", alignItems: "center", gap: 12, width: "100%",
                 padding: "11px 14px", border: "none", borderBottom: `1px solid ${C.border}`,
-                background: C.surface, cursor: "pointer", textAlign: "left", transition: "background .1s" }}
+                background: C.surface, cursor: "pointer", textAlign: "left", transition: "background .1s",
+              }}
               onMouseOver={e => e.currentTarget.style.background = C.greenXLight}
               onMouseOut={e => e.currentTarget.style.background = C.surface}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.soulLight,
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%", background: C.soulLight,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, color: C.soul, fontSize: 14, fontFamily: F.head, flexShrink: 0 }}>
+                fontWeight: 700, color: C.soul, fontSize: 14, fontFamily: F.head, flexShrink: 0,
+              }}>
                 {r.full_name?.charAt(0)}
               </div>
               <div style={{ flex: 1 }}>
@@ -1568,93 +1778,99 @@ function CSVImport({ onDone }) {
     reader.readAsText(file);
   };
 
-  // ========================================================
-  const sanitizeMaritalStatus = (status) => {
-    if (!status) return null;
-    const clean = status.toString().trim().toLowerCase();
-    if (clean === 'single') return 'Single';
-    if (clean === 'married') return 'Married';
-    if (clean === 'divorced') return 'Divorced';
-    if (clean === 'widowed') return 'Widowed';
+  const sanitizeMaritalStatus = (s) => {
+    if (!s) return null;
+    const c = s.toString().trim().toLowerCase();
+    if (c === "single")   return "Single";
+    if (c === "married")  return "Married";
+    if (c === "divorced") return "Divorced";
+    if (c === "widowed")  return "Widowed";
     return null;
   };
-
   const sanitizeGender = (g) => {
     if (!g) return null;
-    const clean = g.toString().trim().toLowerCase();
-    if (clean === 'male') return 'Male';
-    if (clean === 'female') return 'Female';
+    const c = g.toString().trim().toLowerCase();
+    if (c === "male")   return "Male";
+    if (c === "female") return "Female";
     return null;
   };
-
   const sanitizeDecision = (d) => {
     if (!d) return null;
-    const clean = d.toString().trim().toLowerCase();
-    if (clean === 'member') return 'Member';
-    if (clean === 'visitor') return 'Visitor';
-    if (clean === 'undecided') return 'Undecided';
+    const c = d.toString().trim().toLowerCase();
+    if (c === "member")    return "Member";
+    if (c === "visitor")   return "Visitor";
+    if (c === "undecided") return "Undecided";
     return null;
   };
-
   const sanitizeLifeStage = (ls) => {
     if (!ls) return null;
-    const clean = ls.toString().trim().toLowerCase();
-    if (clean === 'student') return 'Student';
-    if (clean === 'employee') return 'Employee';
-    if (clean === 'business owner' || clean === 'businessowner') return 'Business Owner';
+    const c = ls.toString().trim().toLowerCase();
+    if (c === "student")  return "Student";
+    if (c === "employee") return "Employee";
+    if (c === "business owner" || c === "businessowner") return "Business Owner";
+    return null;
+  };
+  const cleanDate = (dateStr) => {
+    if (!dateStr) return null;
+    const s = dateStr.toString().trim();
+    const parts = s.split(/[\/\-]/);
+    if (parts.length === 3) {
+      const [a, b, c2] = parts;
+      if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
+      return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    }
     return null;
   };
 
-  const cleanPostgresDate = (dateStr) => {
-    if (!dateStr) return null;
-    const cleanStr = dateStr.toString().trim();
-    if ((cleanStr.includes('/') || cleanStr.includes('-')) && !cleanStr.startsWith('20') && !cleanStr.startsWith('19')) {
-      const parts = cleanStr.split(/[\/\-]/);
-      if (parts.length === 3) {
-        const [day, month, year] = parts;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-    }
-    return cleanStr;
-  };
-  
   const importAll = async () => {
     if (!rows.length) return;
     setLoading(true); setErr("");
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const payload = rows.map(r => ({
-        full_name: r.full_name || r.name || "",
-        phone: r.phone || r.phone_number || "",
-        gender: r.gender || "",
-        email: r.email || "",
-        dob: r.dob || r.date_of_birth || null,
-        marital_status: r.marital_status || "",
-        house_address: r.house_address || r.address || "",
-        nearest_landmark: r.nearest_landmark || r.landmark || "",
-        membership_decision: r.membership_decision || "Visitor",
-        life_stage: r.life_stage || "",
-        heard_from: r.heard_from || "",
-        areas_of_interest: "[]",
-        service_date: r.service_date || today,
-      })).filter(r => r.full_name && r.phone);
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const payload = rows
+        .map(r => ({
+          full_name:           (r.full_name || r.name || "").toString().trim(),
+          phone:               (r.phone || r.phone_number || "").toString().trim(),
+          email:               n(r.email?.toString().trim()),
+          house_address:       n((r.house_address || r.address || "").toString().trim()),
+          nearest_landmark:    n((r.nearest_landmark || r.landmark || "").toString().trim()),
+          heard_from:          n(r.heard_from?.toString().trim()),
+          service_feedback:    n(r.service_feedback?.toString().trim()),
+          gender:              sanitizeGender(r.gender),
+          marital_status:      sanitizeMaritalStatus(r.marital_status),
+          membership_decision: sanitizeDecision(r.membership_decision) || "Visitor",
+          life_stage:          sanitizeLifeStage(r.life_stage),
+          dob:                 cleanDate(r.dob || r.date_of_birth),
+          service_date:        n(r.service_date) || today,
+          areas_of_interest:   "[]",
+        }))
+        .filter(r => r.full_name && r.phone);
 
-      if (!payload.length) { setErr("No valid rows found. Ensure CSV has at least full_name and phone columns."); setLoading(false); return; }
-      await sb("first_timers", { method: "POST", prefer: "resolution=ignore-duplicates", body: JSON.stringify(payload) });
-      setSuccess(`${payload.length} member${payload.length !== 1 ? "s" : ""} imported successfully.`);
+      if (!payload.length) {
+        setErr("No valid rows found. Each row needs at least full_name and phone.");
+        setLoading(false); return;
+      }
+
+      await sb("first_timers", { method: "POST", body: JSON.stringify(payload) });
+      setSuccess(`✅ ${payload.length} records imported successfully.`);
       setRows([]);
+      onDone?.();
     } catch (e) { setErr(e.message); }
     setLoading(false);
   };
 
   return (
-    <div style={{ ...card, marginBottom: 20 }} className="page-enter">
+    <div style={{ ...card, marginBottom: 20 }}>
       <SH title="Bulk CSV Import" icon={Upload} />
       <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
-        Upload a CSV file to import multiple members at once. Required columns: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>, <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: gender, email, house_address, nearest_landmark, marital_status, life_stage, membership_decision, service_date.
+        Upload a CSV file to import multiple members at once. Required columns:{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: gender, email,
+        house_address, nearest_landmark, marital_status, life_stage, membership_decision, service_date.
       </p>
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-      <Alert type="success" msg={success} onClose={() => { setSuccess(""); onDone?.(); }} />
+      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
+      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
         <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
@@ -1674,10 +1890,14 @@ function CSVImport({ onDone }) {
             <thead>
               <tr style={{ background: C.bg }}>
                 {Object.keys(rows[0]).slice(0, 6).map(h => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600,
-                    color: C.textSecondary, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                  <th key={h} style={{
+                    padding: "8px 12px", textAlign: "left", fontWeight: 600,
+                    color: C.textSecondary, borderBottom: `1px solid ${C.border}`,
+                  }}>{h}</th>
                 ))}
-                {Object.keys(rows[0]).length > 6 && <th style={{ padding: "8px 12px", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>…</th>}
+                {Object.keys(rows[0]).length > 6 && (
+                  <th style={{ padding: "8px 12px", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>…</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -1686,7 +1906,9 @@ function CSVImport({ onDone }) {
                   {Object.values(r).slice(0, 6).map((v, j) => (
                     <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
                   ))}
-                  {Object.values(r).length > 6 && <td style={{ padding: "7px 12px", color: C.textMuted }}>…</td>}
+                  {Object.values(r).length > 6 && (
+                    <td style={{ padding: "7px 12px", color: C.textMuted }}>…</td>
+                  )}
                 </tr>
               ))}
               {rows.length > 5 && (
@@ -1706,26 +1928,22 @@ function CSVImport({ onDone }) {
 
 // ── Soul Care: Add / Edit Visit ───────────────────────────────────────────────
 const BLANK_VISIT = {
-  // linked member
   first_timer_id: null,
-  // member core (for new members not yet in system)
   member_name: "", phone: "", email: "", gender: "", house_address: "",
   nearest_landmark: "", marital_status: "", life_stage: "",
-  // visitation details
   visit_type: "", reason_for_care: "", assigned_to: "", urgency: "",
-  // feedback & outcome
   visit_status: "", visit_date: "", visit_time: "",
   meeting_notes: "", material_support: false, material_support_notes: "",
   prayer_requests: "", testimony: "",
-  // next steps
   follow_up_required: false, next_follow_up_date: "",
   escalate_to_pastorate: false, escalation_reason: "",
 };
 
 function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
-  const [step, setStep] = useState(editData ? "form" : "picker"); // picker → form
+  const [step, setStep] = useState(editData ? "form" : "picker");
   const [form, setForm] = useState(() => editData ? { ...BLANK_VISIT, ...editData } : {
-    ...BLANK_VISIT, assigned_to: defaultAssignee,
+    ...BLANK_VISIT,
+    assigned_to: defaultAssignee,
     visit_date: new Date().toISOString().slice(0, 10),
   });
   const [loading, setLoading] = useState(false);
@@ -1746,15 +1964,15 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
   const handleMemberSelect = (member) => {
     setForm(f => ({
       ...f,
-      first_timer_id: member.id,
-      member_name: member.full_name,
-      phone: member.phone,
-      email: member.email || "",
-      gender: member.gender || "",
-      house_address: member.house_address || "",
-      nearest_landmark: member.nearest_landmark || "",
-      marital_status: member.marital_status || "",
-      life_stage: member.life_stage || "",
+      first_timer_id:  member.id,
+      member_name:     member.full_name,
+      phone:           member.phone,
+      email:           member.email || "",
+      gender:          member.gender || "",
+      house_address:   member.house_address || "",
+      nearest_landmark:member.nearest_landmark || "",
+      marital_status:  member.marital_status || "",
+      life_stage:      member.life_stage || "",
     }));
     setIsNewMember(false);
     setStep("form");
@@ -1767,47 +1985,64 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
   };
 
   const submit = async () => {
-    if (!form.member_name.trim() || !form.phone.trim()) { setErr("Member name and phone are required."); return; }
+    if (!form.member_name.trim() || !form.phone.trim()) {
+      setErr("Member name and phone are required."); return;
+    }
     if (!form.visit_type) { setErr("Visit type is required."); return; }
     if (!form.assigned_to.trim()) { setErr("Assigned team member is required."); return; }
     if (!form.visit_status) { setErr("Visit status is required."); return; }
     setLoading(true); setErr("");
     try {
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
       let ftId = form.first_timer_id;
-      // If new member, create first_timer record first
+
       if (isNewMember && !ftId) {
         const today = new Date().toISOString().slice(0, 10);
-        const [created] = await sb("first_timers", {
-          method: "POST", body: JSON.stringify({
-            full_name: form.member_name, phone: form.phone, email: form.email || null,
-            gender: form.gender || null, house_address: form.house_address || null,
-            nearest_landmark: form.nearest_landmark || null,
-            marital_status: form.marital_status || null, life_stage: form.life_stage || null,
-            membership_decision: "Member", service_date: today, areas_of_interest: "[]",
-          })
+        const newMember = await sb("first_timers", {
+          method: "POST",
+          body: JSON.stringify({
+            full_name:           form.member_name.trim(),
+            phone:               form.phone.trim(),
+            email:               n(form.email),
+            gender:              n(form.gender),
+            house_address:       n(form.house_address),
+            nearest_landmark:    n(form.nearest_landmark),
+            marital_status:      n(form.marital_status),
+            life_stage:          n(form.life_stage),
+            membership_decision: "Member",
+            service_date:        today,
+            areas_of_interest:   "[]",
+          }),
         });
-        ftId = created?.id;
+        ftId = Array.isArray(newMember) ? newMember[0]?.id : newMember?.id;
       }
 
       const payload = {
-        first_timer_id: ftId,
-        member_name: form.member_name, phone: form.phone, email: form.email || null,
-        gender: form.gender || null, house_address: form.house_address || null,
-        nearest_landmark: form.nearest_landmark || null,
-        marital_status: form.marital_status || null, life_stage: form.life_stage || null,
-        visit_type: form.visit_type, reason_for_care: form.reason_for_care || null,
-        assigned_to: form.assigned_to, urgency: form.urgency || null,
-        visit_status: form.visit_status,
-        visit_date: form.visit_date || null, visit_time: form.visit_time || null,
-        meeting_notes: form.meeting_notes || null,
-        material_support: form.material_support,
-        material_support_notes: form.material_support ? (form.material_support_notes || null) : null,
-        prayer_requests: form.prayer_requests || null,
-        testimony: form.testimony || null,
-        follow_up_required: form.follow_up_required,
-        next_follow_up_date: form.follow_up_required ? (form.next_follow_up_date || null) : null,
-        escalate_to_pastorate: form.escalate_to_pastorate,
-        escalation_reason: form.escalate_to_pastorate ? (form.escalation_reason || null) : null,
+        first_timer_id:        ftId || null,
+        member_name:           form.member_name.trim(),
+        phone:                 form.phone.trim(),
+        email:                 n(form.email),
+        gender:                n(form.gender),
+        house_address:         n(form.house_address),
+        nearest_landmark:      n(form.nearest_landmark),
+        marital_status:        n(form.marital_status),
+        life_stage:            n(form.life_stage),
+        visit_type:            n(form.visit_type),
+        reason_for_care:       n(form.reason_for_care),
+        assigned_to:           form.assigned_to.trim(),
+        urgency:               n(form.urgency),
+        visit_status:          n(form.visit_status),
+        visit_date:            n(form.visit_date),
+        visit_time:            n(form.visit_time),
+        meeting_notes:         n(form.meeting_notes),
+        material_support:      !!form.material_support,
+        material_support_notes:form.material_support ? n(form.material_support_notes) : null,
+        prayer_requests:       n(form.prayer_requests),
+        testimony:             n(form.testimony),
+        follow_up_required:    !!form.follow_up_required,
+        next_follow_up_date:   form.follow_up_required ? n(form.next_follow_up_date) : null,
+        escalate_to_pastorate: !!form.escalate_to_pastorate,
+        escalation_reason:     form.escalate_to_pastorate ? n(form.escalation_reason) : null,
       };
 
       if (editData?.id) {
@@ -1816,7 +2051,9 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         await sb("soul_care_visits", { method: "POST", body: JSON.stringify(payload) });
       }
       onSuccess();
-    } catch (e) { setErr(e.message); }
+    } catch (e) {
+      setErr(e.message);
+    }
     setLoading(false);
   };
 
@@ -1825,7 +2062,9 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
       <div style={card} className="page-enter">
         <PageHeader title="New Visitation Record"
           subtitle="Start by finding the member in the system, or add them as new"
-          action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+          action={onCancel && (
+            <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>
+          )} />
         <MemberPicker onSelect={handleMemberSelect} onAddNew={handleAddNew} />
       </div>
     );
@@ -1837,18 +2076,25 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
   return (
     <div style={card} className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between", alignItems: "center",
+        marginBottom: 20, flexWrap: "wrap", gap: 10,
+      }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 20, fontFamily: F.head, fontWeight: 800 }}>
             {editData ? "Edit Visit" : "New Visitation Record"}
           </h2>
           {form.member_name && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-              <span style={badge(C.soul, C.soulLight, { fontSize: 12 })}><Heart size={10} />{form.member_name}</span>
+              <span style={badge(C.soul, C.soulLight, { fontSize: 12 })}>
+                <Heart size={10} />{form.member_name}
+              </span>
               {!editData && (
                 <button onClick={() => setStep("picker")}
-                  style={{ fontSize: 11, color: C.textMuted, background: "none", border: "none",
-                    cursor: "pointer", textDecoration: "underline" }}>change member</button>
+                  style={{
+                    fontSize: 11, color: C.textMuted, background: "none", border: "none",
+                    cursor: "pointer", textDecoration: "underline",
+                  }}>change member</button>
               )}
             </div>
           )}
@@ -1857,16 +2103,19 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
       </div>
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {/* A. Member Core Info */}
+      {/* A. Member Information */}
       <div style={{ marginBottom: 24 }}>
         <SH title="A. Member Information" icon={Users} />
-        <div style={{ padding: "12px 14px", background: C.greenXLight, borderRadius: 8, marginBottom: 16,
-          fontSize: 13, color: C.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{
+          padding: "12px 14px", background: C.greenXLight, borderRadius: 8, marginBottom: 16,
+          fontSize: 13, color: C.textSecondary, display: "flex", alignItems: "center", gap: 6,
+        }}>
           <Info size={13} color={C.green} />
           {form.first_timer_id
             ? "Member details auto-populated from First-Timers registry."
-            : isNewMember ? "This member will be added to the First-Timers registry automatically on save."
-            : "Enter member details manually."}
+            : isNewMember
+              ? "This member will be added to the First-Timers registry automatically on save."
+              : "Enter member details manually."}
         </div>
         <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
           <FieldInput label="Full Name" id="mn" required value={form.member_name} onChange={set("member_name")}
@@ -1891,7 +2140,10 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
             options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }]} />
           <FieldInput label="Life Stage" id="mls" type="select" value={form.life_stage} onChange={set("life_stage")}
             disabled={!!form.first_timer_id}
-            options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
+            options={[
+              { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
+              { value: "Business Owner", label: "Business Owner" },
+            ]} />
         </div>
       </div>
 
@@ -1907,11 +2159,15 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
               { value: "Welfare Check", label: "Welfare Check" },
             ]} />
           <FieldInput label="Urgency Level" id="ul" type="select" value={form.urgency} onChange={set("urgency")}
-            options={[{ value: "High", label: "High" }, { value: "Medium", label: "Medium" }, { value: "Low", label: "Low" }]} />
+            options={[
+              { value: "High", label: "High" }, { value: "Medium", label: "Medium" }, { value: "Low", label: "Low" },
+            ]} />
         </div>
         {form.urgency && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16,
-            padding: "7px 12px", borderRadius: 8, background: `${uc}12`, fontSize: 12, color: uc, fontWeight: 600 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16,
+            padding: "7px 12px", borderRadius: 8, background: `${uc}12`, fontSize: 12, color: uc, fontWeight: 600,
+          }}>
             <Zap size={12} />Urgency: <strong>{form.urgency}</strong>
           </div>
         )}
@@ -1938,7 +2194,9 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         <FieldInput label="Meeting Notes" id="mn2" type="textarea" value={form.meeting_notes} onChange={set("meeting_notes")}
           placeholder="Detailed spiritual and physical observations from the visit…" />
 
-        <div style={{ background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{
+          background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16,
+        }}>
           <FieldInput label="Material Support Provided" id="msp" type="bool-toggle"
             value={form.material_support} onChange={set("material_support")}
             hint="Toggle if the church provided physical aid (groceries, financial welfare, medical package, etc.)" />
@@ -1968,9 +2226,13 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
             )}
           </div>
           <div>
-            <div style={{ background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10, padding: 14 }}>
-              <div style={{ fontWeight: 700, fontSize: 12, color: C.flag, marginBottom: 10,
-                display: "flex", alignItems: "center", gap: 5, fontFamily: F.head }}>
+            <div style={{
+              background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10, padding: 14,
+            }}>
+              <div style={{
+                fontWeight: 700, fontSize: 12, color: C.flag, marginBottom: 10,
+                display: "flex", alignItems: "center", gap: 5, fontFamily: F.head,
+              }}>
                 <Flag size={12} />Escalation
               </div>
               <FieldInput label="Escalate to Pastorate" id="etp" type="toggle"
@@ -1996,10 +2258,10 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
 
 // ── Soul Care: Visit Queue ────────────────────────────────────────────────────
 const VISIT_STATUS_META = {
-  Scheduled:          { color: C.blue,   bg: C.blueLight  },
-  Completed:          { color: C.green,  bg: C.greenLight  },
-  Rescheduled:        { color: C.amber,  bg: C.amberLight  },
-  "Member Unavailable":{ color: C.danger, bg: C.dangerLight },
+  Scheduled:             { color: C.blue,   bg: C.blueLight   },
+  Completed:             { color: C.green,  bg: C.greenLight  },
+  Rescheduled:           { color: C.amber,  bg: C.amberLight  },
+  "Member Unavailable":  { color: C.danger, bg: C.dangerLight },
 };
 const URGENCY_META = {
   High:   { color: C.danger, bg: C.dangerLight },
@@ -2024,7 +2286,6 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  // Metrics
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const completedMonth = data.filter(r => r.visit_status === "Completed" && r.visit_date >= monthStart).length;
@@ -2032,7 +2293,7 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
   const escalated = data.filter(r => r.escalate_to_pastorate).length;
 
   const filtered = data.filter(r => {
-    const matchFilter = filter === "all" || r.visit_status === filter || r.urgency === filter || r.assigned_to === filter;
+    const matchFilter = filter === "all" || r.visit_status === filter || r.urgency === filter;
     const matchSearch = !search ||
       r.member_name?.toLowerCase().includes(search.toLowerCase()) ||
       r.assigned_to?.toLowerCase().includes(search.toLowerCase());
@@ -2040,37 +2301,36 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
   });
 
   const statusTabs = [
-    { k: "all", label: "All", count: data.length },
-    { k: "Scheduled", label: "Scheduled", count: data.filter(r => r.visit_status === "Scheduled").length, col: C.blue },
-    { k: "Completed", label: "Completed", count: data.filter(r => r.visit_status === "Completed").length, col: C.green },
-    { k: "Rescheduled", label: "Rescheduled", count: data.filter(r => r.visit_status === "Rescheduled").length, col: C.amber },
-    { k: "High", label: "High Urgency", count: highPriority, col: C.danger },
+    { k: "all",       label: "All",          count: data.length,                                         },
+    { k: "Scheduled", label: "Scheduled",     count: data.filter(r => r.visit_status === "Scheduled").length,  col: C.blue  },
+    { k: "Completed", label: "Completed",     count: data.filter(r => r.visit_status === "Completed").length,  col: C.green },
+    { k: "Rescheduled",label: "Rescheduled",  count: data.filter(r => r.visit_status === "Rescheduled").length,col: C.amber },
+    { k: "High",      label: "High Urgency",  count: highPriority,                                        col: C.danger },
   ];
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Visit Queue"
-        subtitle="Track Soul Care team visitations"
+      <PageHeader title="Visit Queue" subtitle="Track Soul Care team visitations"
         action={<button style={btn("soul")} onClick={onAdd}><UserPlus size={14} />Add Visit</button>} />
 
-      {/* Metric cards */}
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Visits" value={data.length} icon={MapPin} accent={C.soul} />
-        <StatCard label="Completed This Month" value={completedMonth} icon={CheckCircle} accent={C.green} />
-        <StatCard label="High Priority / Open" value={highPriority} icon={AlertCircle} accent={C.danger} />
-        <StatCard label="Escalated to Pastorate" value={escalated} icon={Flag} accent={C.flag} />
+        <StatCard label="Total Visits"          value={data.length}      icon={MapPin}      accent={C.soul}   />
+        <StatCard label="Completed This Month"   value={completedMonth}   icon={CheckCircle} accent={C.green}  />
+        <StatCard label="High Priority / Open"   value={highPriority}     icon={AlertCircle} accent={C.danger} />
+        <StatCard label="Escalated to Pastorate" value={escalated}        icon={Flag}        accent={C.flag}   />
       </div>
 
-      {/* Filter tabs */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
         {statusTabs.map(t => (
           <button key={t.k} onClick={() => setFilter(t.k)}
-            style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
               cursor: "pointer", fontFamily: F.body, transition: "all .15s",
               background: filter === t.k ? (t.col || C.soul) : C.bg,
               color: filter === t.k ? "#fff" : C.textSecondary,
-              border: `1.5px solid ${filter === t.k ? (t.col || C.soul) : C.border}` }}>
+              border: `1.5px solid ${filter === t.k ? (t.col || C.soul) : C.border}`,
+            }}>
             {t.label} ({t.count})
           </button>
         ))}
@@ -2090,13 +2350,17 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
             const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
             const um = URGENCY_META[r.urgency] || {};
             return (
-              <div key={r.id} style={{ ...card, padding: "12px 16px",
-                borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : r.urgency === "High" ? C.danger : sm.color}` }}>
+              <div key={r.id} style={{
+                ...card, padding: "12px 16px",
+                borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : r.urgency === "High" ? C.danger : sm.color}`,
+              }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                    <div style={{
+                      width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
                       background: C.soulLight, display: "flex", alignItems: "center",
-                      justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head }}>
+                      justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
+                    }}>
                       {r.member_name?.charAt(0)}
                     </div>
                     <div style={{ minWidth: 0 }}>
@@ -2143,7 +2407,7 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
   );
 }
 
-// ── Soul Care: My Visits (filtered by current user) ───────────────────────────
+// ── Soul Care: My Visits ──────────────────────────────────────────────────────
 function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2181,9 +2445,11 @@ function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.visit_type}</div>
-                    {r.visit_date && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                      <Calendar size={10} />{r.visit_date}
-                    </div>}
+                    {r.visit_date && (
+                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                        <Calendar size={10} />{r.visit_date}
+                      </div>
+                    )}
                     {r.follow_up_required && r.next_follow_up_date && (
                       <div style={{ fontSize: 11, color: C.amber, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                         <Bell size={10} />Follow-up: {r.next_follow_up_date}
@@ -2256,28 +2522,30 @@ function VisitationTab() {
           </div>
         } />
 
-      {/* Metric cards */}
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Assigned Visits"     value={data.length}       icon={MapPin}      accent={C.soul}    />
-        <StatCard label="Completed This Month"       value={completedMonth}    icon={CheckCircle} accent={C.green}   />
-        <StatCard label="High Priority / Open"       value={highPriority}      icon={AlertCircle} accent={C.danger}  />
-        <StatCard label="Escalated to Pastorate"     value={escalated}         icon={Flag}        accent={C.flag}    />
+        <StatCard label="Total Assigned Visits"  value={data.length}    icon={MapPin}      accent={C.soul}   />
+        <StatCard label="Completed This Month"    value={completedMonth} icon={CheckCircle} accent={C.green}  />
+        <StatCard label="High Priority / Open"    value={highPriority}   icon={AlertCircle} accent={C.danger} />
+        <StatCard label="Escalated to Pastorate"  value={escalated}      icon={Flag}        accent={C.flag}   />
       </div>
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {/* Status filter */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
         {["", "Scheduled", "Completed", "Rescheduled", "Member Unavailable"].map(s => {
           const sm = VISIT_STATUS_META[s] || {};
           return (
             <button key={s} onClick={() => setStatusFilter(s)}
-              style={{ padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+              style={{
+                padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
                 cursor: "pointer", fontFamily: F.body, transition: "all .15s",
                 background: statusFilter === s ? (sm.color || C.soul) : C.bg,
                 color: statusFilter === s ? "#fff" : C.textSecondary,
-                border: `1.5px solid ${statusFilter === s ? (sm.color || C.soul) : C.border}` }}>
-              {s || "All"} {s ? `(${data.filter(r => r.visit_status === s).length})` : `(${data.length})`}
+                border: `1.5px solid ${statusFilter === s ? (sm.color || C.soul) : C.border}`,
+              }}>
+              {s || "All"} {s
+                ? `(${data.filter(r => r.visit_status === s).length})`
+                : `(${data.length})`}
             </button>
           );
         })}
@@ -2290,16 +2558,21 @@ function VisitationTab() {
             const um = URGENCY_META[r.urgency] || {};
             const isOpen = expanded === r.id;
             return (
-              <div key={r.id} style={{ ...card, padding: 0, overflow: "hidden",
-                borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : sm.color}` }}>
-                {/* Row */}
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap",
-                  gap: 10, padding: "12px 16px", cursor: "pointer" }}
+              <div key={r.id} style={{
+                ...card, padding: 0, overflow: "hidden",
+                borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : sm.color}`,
+              }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between", flexWrap: "wrap",
+                  gap: 10, padding: "12px 16px", cursor: "pointer",
+                }}
                   onClick={() => setExpanded(isOpen ? null : r.id)}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                       background: C.soulLight, display: "flex", alignItems: "center",
-                      justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head }}>
+                      justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
+                    }}>
                       {r.member_name?.charAt(0)}
                     </div>
                     <div>
@@ -2322,22 +2595,16 @@ function VisitationTab() {
                       style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
                   </div>
                 </div>
-                {/* Expanded details */}
                 {isOpen && (
                   <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}`, marginTop: -4 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 14 }}
-                      className="g2">
-                      {r.reason_for_care && <DetailBlock icon={Info} label="Reason for Care" value={r.reason_for_care} />}
-                      {r.meeting_notes && <DetailBlock icon={FileText} label="Meeting Notes" value={r.meeting_notes} />}
-                      {r.prayer_requests && <DetailBlock icon={Heart} label="Prayer Requests" value={r.prayer_requests} color={C.soul} />}
-                      {r.testimony && <DetailBlock icon={Star} label="Testimony" value={r.testimony} color={C.goldDark} />}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 14 }} className="g2">
+                      {r.reason_for_care        && <DetailBlock icon={Info}     label="Reason for Care"   value={r.reason_for_care} />}
+                      {r.meeting_notes          && <DetailBlock icon={FileText} label="Meeting Notes"     value={r.meeting_notes} />}
+                      {r.prayer_requests        && <DetailBlock icon={Heart}    label="Prayer Requests"   value={r.prayer_requests}        color={C.soul} />}
+                      {r.testimony              && <DetailBlock icon={Star}     label="Testimony"         value={r.testimony}              color={C.goldDark} />}
                       {r.material_support && r.material_support_notes && <DetailBlock icon={Shield} label="Material Support" value={r.material_support_notes} />}
-                      {r.follow_up_required && r.next_follow_up_date && (
-                        <DetailBlock icon={Calendar} label="Next Follow-Up" value={r.next_follow_up_date} color={C.amber} />
-                      )}
-                      {r.escalate_to_pastorate && r.escalation_reason && (
-                        <DetailBlock icon={Flag} label="Escalation Reason" value={r.escalation_reason} color={C.flag} />
-                      )}
+                      {r.follow_up_required && r.next_follow_up_date && <DetailBlock icon={Calendar} label="Next Follow-Up" value={r.next_follow_up_date} color={C.amber} />}
+                      {r.escalate_to_pastorate && r.escalation_reason && <DetailBlock icon={Flag} label="Escalation Reason" value={r.escalation_reason} color={C.flag} />}
                     </div>
                   </div>
                 )}
@@ -2347,7 +2614,9 @@ function VisitationTab() {
           {filtered.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
               <MapPin size={28} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontFamily: F.head }}>No visitation records{dateFrom || dateTo ? " in this date range" : ""}</div>
+              <div style={{ fontWeight: 700, fontFamily: F.head }}>
+                No visitation records{dateFrom || dateTo ? " in this date range" : ""}
+              </div>
             </div>
           )}
         </div>
@@ -2359,8 +2628,11 @@ function VisitationTab() {
 function DetailBlock({ icon: Icon, label, value, color }) {
   return (
     <div style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: color || C.textMuted,
-        marginBottom: 4, display: "flex", alignItems: "center", gap: 4, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: color || C.textMuted,
+        marginBottom: 4, display: "flex", alignItems: "center", gap: 4,
+        fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
+      }}>
         {Icon && <Icon size={11} />}{label}
       </div>
       <div style={{ fontSize: 13, color: C.textPrimary, lineHeight: 1.6 }}>{value}</div>
@@ -2381,7 +2653,10 @@ function AdminOverview({ setActive }) {
           sb("app_users?select=id"),
           sb("soul_care_visits?select=id").catch(() => []),
         ]);
-        setCounts({ ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length, users: (us||[]).length, visits: (vis||[]).length });
+        setCounts({
+          ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length,
+          users: (us||[]).length, visits: (vis||[]).length,
+        });
       } catch {}
     })();
   }, []);
@@ -2390,32 +2665,38 @@ function AdminOverview({ setActive }) {
     <div className="page-enter">
       <PageHeader title="Admin Overview" subtitle="System-wide summary" />
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
-        <StatCard label="First-Timers"   value={counts.ft}      icon={Users}      accent={C.green}   />
-        <StatCard label="Calls Logged"   value={counts.fb}      icon={Phone}      accent={C.greenMid}/>
-        <StatCard label="Flagged"        value={counts.flagged}  icon={Flag}       accent={C.flag}    />
-        <StatCard label="System Users"   value={counts.users}   icon={Shield}     accent={C.goldDark}/>
+        <StatCard label="First-Timers"  value={counts.ft}      icon={Users}   accent={C.green}   />
+        <StatCard label="Calls Logged"  value={counts.fb}      icon={Phone}   accent={C.greenMid}/>
+        <StatCard label="Flagged"       value={counts.flagged}  icon={Flag}    accent={C.flag}    />
+        <StatCard label="System Users"  value={counts.users}   icon={Shield}  accent={C.goldDark}/>
       </div>
-      <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head,
-        textTransform: "uppercase", letterSpacing: ".07em" }}>Quick Actions</div>
+      <div style={{
+        marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted,
+        fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
+      }}>Quick Actions</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12 }}>
         {[
-          { id: "admin_users",    label: "Manage Users",      icon: Users,   desc: "View, edit and deactivate staff accounts" },
-          { id: "admin_adduser",  label: "Add New User",      icon: UserPlus,desc: "Create a new staff account and assign a role" },
-          { id: "firsttimers",   label: "First-Timers",       icon: Users,   desc: "Browse and edit all visitor records" },
-          { id: "report",        label: "Full Report",        icon: BarChart2,desc: "View the Pastoral retention dashboard" },
-          { id: "visitation_tab",label: "Visitations",        icon: MapPin,  desc: "Soul Care team visitation records" },
-          { id: "flagged",       label: "Flagged Records",    icon: Flag,    desc: "Review escalated cases" },
+          { id: "admin_users",    label: "Manage Users",   icon: Users,    desc: "View, edit and deactivate staff accounts"        },
+          { id: "admin_adduser",  label: "Add New User",   icon: UserPlus, desc: "Create a new staff account and assign a role"    },
+          { id: "firsttimers",   label: "First-Timers",   icon: Users,    desc: "Browse and edit all visitor records"             },
+          { id: "report",        label: "Full Report",    icon: BarChart2,desc: "View the Pastoral retention dashboard"           },
+          { id: "visitation_tab",label: "Visitations",    icon: MapPin,   desc: "Soul Care team visitation records"               },
+          { id: "flagged",       label: "Flagged Records",icon: Flag,     desc: "Review escalated cases"                         },
         ].map(item => {
           const Icon = item.icon;
           return (
             <button key={item.id} onClick={() => setActive(item.id)}
-              style={{ ...card, textAlign: "left", cursor: "pointer", padding: "1rem",
+              style={{
+                ...card, textAlign: "left", cursor: "pointer", padding: "1rem",
                 transition: "all .15s", display: "flex", gap: 12, alignItems: "flex-start",
-                border: `1px solid ${C.border}` }}
+                border: `1px solid ${C.border}`,
+              }}
               onMouseOver={e => { e.currentTarget.style.borderColor = C.green; e.currentTarget.style.boxShadow = SHADOW.md; }}
               onMouseOut={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = SHADOW.xs; }}>
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: C.greenLight,
-                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, background: C.greenLight,
+                display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              }}>
                 <Icon size={16} color={C.green} />
               </div>
               <div>
@@ -2427,10 +2708,11 @@ function AdminOverview({ setActive }) {
         })}
       </div>
 
-      {/* CSV Import section for admin */}
       <div style={{ marginTop: 28 }}>
-        <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head,
-          textTransform: "uppercase", letterSpacing: ".07em" }}>Bulk Data Import</div>
+        <div style={{
+          marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted,
+          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
+        }}>Bulk Data Import</div>
         <CSVImport />
       </div>
     </div>
@@ -2464,20 +2746,24 @@ function AdminUsers({ onEdit }) {
     <div className="page-enter">
       <PageHeader title="System Users" subtitle={`${users.length} accounts`}
         action={<button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>} />
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <Alert type="error"   msg={err} onClose={() => setErr("")} />
       <Alert type="success" msg={msg} onClose={() => setMsg("")} />
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
           {users.map(u => {
             const rm = ROLE_META[u.role] || ROLE_META.dofficer;
             return (
-              <div key={u.id} style={{ ...card, display: "flex", justifyContent: "space-between",
+              <div key={u.id} style={{
+                ...card, display: "flex", justifyContent: "space-between",
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
-                opacity: u.is_active ? 1 : .55 }}>
+                opacity: u.is_active ? 1 : .55,
+              }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.greenLight,
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "50%", background: C.greenLight,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, color: C.green, fontSize: 15, fontFamily: F.head, flexShrink: 0 }}>
+                    fontWeight: 800, color: C.green, fontSize: 15, fontFamily: F.head, flexShrink: 0,
+                  }}>
                     {(u.display_name || u.username || "?").charAt(0).toUpperCase()}
                   </div>
                   <div>
@@ -2491,7 +2777,8 @@ function AdminUsers({ onEdit }) {
                   <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(u)}>
                     <Edit3 size={12} />Edit
                   </button>
-                  <button style={btn(u.is_active ? "danger" : "ghost", { padding: "6px 12px", fontSize: 12 })}
+                  <button
+                    style={btn(u.is_active ? "danger" : "ghost", { padding: "6px 12px", fontSize: 12 })}
                     onClick={() => toggleActive(u)}>
                     {u.is_active ? "Deactivate" : "Reactivate"}
                   </button>
@@ -2509,11 +2796,11 @@ function AdminUsers({ onEdit }) {
 // ── Admin: Add / Edit User ────────────────────────────────────────────────────
 function AdminAddUser({ editUser, onSuccess, onCancel }) {
   const [form, setForm] = useState({
-    username: editUser?.username || "",
-    password: "",
+    username:     editUser?.username     || "",
+    password:     "",
     display_name: editUser?.display_name || "",
-    role: editUser?.role || "expteam",
-    is_active: editUser?.is_active ?? true,
+    role:         editUser?.role         || "expteam",
+    is_active:    editUser?.is_active    ?? true,
   });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -2534,9 +2821,10 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
     setLoading(true); setErr("");
     try {
       const payload = {
-        username: form.username.trim().toLowerCase(),
+        username:     form.username.trim().toLowerCase(),
         display_name: form.display_name.trim() || form.username.trim(),
-        role: form.role, is_active: form.is_active,
+        role:         form.role,
+        is_active:    form.is_active,
         ...(form.password.trim() ? { password_hash: form.password.trim() } : {}),
       };
       if (editUser?.id) {
@@ -2552,7 +2840,9 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
   return (
     <div style={card} className="page-enter">
       <PageHeader title={editUser ? "Edit User" : "Add New User"}
-        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+        action={onCancel && (
+          <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>
+        )} />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
         <FieldInput label="Username" id="un" required value={form.username} onChange={set("username")}
@@ -2564,14 +2854,16 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         type="password" required={!editUser} value={form.password} onChange={set("password")} placeholder="••••••••" />
       <FieldInput label="Role" id="rl" type="select" required value={form.role} onChange={set("role")}
         options={[
-          { value: "dofficer", label: "Data Officer" },
+          { value: "dofficer", label: "Data Officer"    },
           { value: "expteam",  label: "Experience Team" },
-          { value: "pasteam",  label: "Pastoral Team" },
-          { value: "soulcare", label: "Soul Care" },
-          { value: "admin",    label: "Admin" },
+          { value: "pasteam",  label: "Pastoral Team"   },
+          { value: "soulcare", label: "Soul Care"       },
+          { value: "admin",    label: "Admin"           },
         ]} />
-      <div style={{ background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
-        fontSize: 13, color: C.textSecondary, lineHeight: 1.8 }}>
+      <div style={{
+        background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
+        fontSize: 13, color: C.textSecondary, lineHeight: 1.8,
+      }}>
         <strong style={{ color: C.green }}>Role permissions:</strong><br />
         <strong>Data Officer</strong> — Add/edit first-timer records, generate QR code<br />
         <strong>Experience Team</strong> — Call queue, log feedback, flag for pastoral<br />
@@ -2589,11 +2881,11 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
 
 // ── Login ─────────────────────────────────────────────────────────────────────
 const FALLBACK_ACCOUNTS = [
-  { username: "admin",     password: "admin1",     role: "admin",    display_name: "Administrator"   },
-  { username: "dofficer1", password: "dofficer1",  role: "dofficer", display_name: "Data Officer"    },
-  { username: "expteam1",  password: "expteam1",   role: "expteam",  display_name: "Experience Team" },
-  { username: "pasteam1",  password: "pasteam1",   role: "pasteam",  display_name: "Pastoral Team"   },
-  { username: "soulcare1", password: "soulcare1",  role: "soulcare", display_name: "Soul Care Team"  },
+  { username: "admin",     password: "admin1",    role: "admin",    display_name: "Administrator"   },
+  { username: "dofficer1", password: "dofficer1", role: "dofficer", display_name: "Data Officer"    },
+  { username: "expteam1",  password: "expteam1",  role: "expteam",  display_name: "Experience Team" },
+  { username: "pasteam1",  password: "pasteam1",  role: "pasteam",  display_name: "Pastoral Team"   },
+  { username: "soulcare1", password: "soulcare1", role: "soulcare", display_name: "Soul Care Team"  },
 ];
 
 function Login({ onLogin }) {
@@ -2610,11 +2902,13 @@ function Login({ onLogin }) {
       if (rows && rows.length > 0) {
         const user = rows[0];
         if (user.password_hash === p.trim()) {
-          onLogin(user.role, user.display_name || user.username); setLoading(false); return;
+          onLogin(user.role, user.display_name || user.username);
+          setLoading(false); return;
         }
-        setErr("Incorrect password."); setLoading(false); return;
+        setErr("Incorrect password.");
+        setLoading(false); return;
       }
-    } catch { /* fall through */ }
+    } catch { /* fall through to fallback */ }
     const match = FALLBACK_ACCOUNTS.find(a => a.username === u.trim() && a.password === p.trim());
     if (match) { onLogin(match.role, match.display_name); setLoading(false); return; }
     setErr("Invalid username or password.");
@@ -2622,20 +2916,24 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+    <div style={{
+      minHeight: "100vh", background: C.bg, fontFamily: F.body,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem",
+    }}>
       <div style={{ ...card, width: "100%", maxWidth: 380 }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={68} /></div>
-          <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 22 }}>The Envoys</h2>
+          <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 22 }}>
+            The Envoys
+          </h2>
           <p style={{ margin: "6px 0 0", fontSize: 13, color: C.textMuted }}>Membership Retention Dashboard</p>
         </div>
         {CREDS_MISSING && <CredsBanner />}
         <Alert type="error" msg={err} onClose={() => setErr("")} />
         <FieldInput label="Username" id="lu" value={u}
-          onChange={e => { setU(e.target.value); }} placeholder="e.g. expteam1" />
+          onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
         <FieldInput label="Password" id="lp" type="password" value={p}
-          onChange={e => { setP(e.target.value); }} placeholder="••••••••" />
+          onChange={e => setP(e.target.value)} placeholder="••••••••" />
         <div style={{ marginBottom: 16 }} onKeyDown={e => e.key === "Enter" && submit()} />
         <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
           onClick={submit} disabled={loading}>
@@ -2648,16 +2946,16 @@ function Login({ onLogin }) {
 
 // ── App Shell ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [session,          setSession]          = useState(null);
-  const [active,           setActive]           = useState(null);
-  const [editTarget,       setEditTarget]       = useState(null);
-  const [feedbackTarget,   setFeedbackTarget]   = useState(null);
-  const [editUser,         setEditUser]         = useState(null);
-  const [editVisit,        setEditVisit]        = useState(null);
-  const [showPublic,       setShowPublic]       = useState(false);
-  const [mobileOpen,       setMobileOpen]       = useState(false);
-  const [flagCount,        setFlagCount]        = useState(0);
-  const [addVisitMode,     setAddVisitMode]     = useState(false);
+  const [session,        setSession]        = useState(null);
+  const [active,         setActive]         = useState(null);
+  const [editTarget,     setEditTarget]     = useState(null);
+  const [feedbackTarget, setFeedbackTarget] = useState(null);
+  const [editUser,       setEditUser]       = useState(null);
+  const [editVisit,      setEditVisit]      = useState(null);
+  const [showPublic,     setShowPublic]     = useState(false);
+  const [mobileOpen,     setMobileOpen]     = useState(false);
+  const [flagCount,      setFlagCount]      = useState(0);
+  const [addVisitMode,   setAddVisitMode]   = useState(false);
 
   useEffect(() => {
     const p = window.location.pathname;
@@ -2675,9 +2973,9 @@ export default function App() {
     })();
   }, [session]);
 
-  const login = (role, user) => { setSession({ role, user }); setActive(NAV[role][0].id); };
+  const login  = (role, user) => { setSession({ role, user }); setActive(NAV[role][0].id); };
   const logout = () => { setSession(null); setActive(null); };
-  const navTo = (v) => {
+  const navTo  = (v) => {
     setActive(v); setEditTarget(null); setFeedbackTarget(null);
     setEditUser(null); setEditVisit(null); setAddVisitMode(false);
     setMobileOpen(false);
@@ -2690,47 +2988,55 @@ export default function App() {
   const pageTitle = NAV[role]?.find(n => n.id === active)?.label || "Dashboard";
 
   const renderContent = () => {
-    // Admin
     if (active === "admin_overview") return <AdminOverview setActive={navTo} />;
     if (active === "admin_adduser") {
-      if (editUser) return <AdminAddUser editUser={editUser}
-        onCancel={() => { setEditUser(null); navTo("admin_users"); }}
-        onSuccess={() => { setEditUser(null); navTo("admin_users"); }} />;
+      if (editUser) return (
+        <AdminAddUser editUser={editUser}
+          onCancel={() => { setEditUser(null); navTo("admin_users"); }}
+          onSuccess={() => { setEditUser(null); navTo("admin_users"); }} />
+      );
       return <AdminAddUser onSuccess={() => navTo("admin_users")} onCancel={() => navTo("admin_overview")} />;
     }
     if (active === "admin_users") {
-      if (editUser) return <AdminAddUser editUser={editUser}
-        onCancel={() => setEditUser(null)} onSuccess={() => { setEditUser(null); navTo("admin_users"); }} />;
+      if (editUser) return (
+        <AdminAddUser editUser={editUser}
+          onCancel={() => setEditUser(null)}
+          onSuccess={() => { setEditUser(null); navTo("admin_users"); }} />
+      );
       return <AdminUsers onEdit={u => setEditUser(u)} />;
     }
 
-    // Shared
-    if (active === "addmember") return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
-    if (active === "qrcode")    return <QRCodePage />;
-    if (active === "allfeedback") return <AllFeedback />;
-    if (active === "report")      return <Report />;
-    if (active === "flagged")     return <FlaggedRecords />;
-    if (active === "visitation_tab") return <VisitationTab />;
+    if (active === "addmember")     return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
+    if (active === "qrcode")        return <QRCodePage />;
+    if (active === "allfeedback")   return <AllFeedback />;
+    if (active === "report")        return <Report />;
+    if (active === "flagged")       return <FlaggedRecords />;
+    if (active === "visitation_tab")return <VisitationTab />;
 
     if (active === "firsttimers") {
-      if (editTarget) return <FirstTimerForm editData={editTarget}
-        onCancel={() => setEditTarget(null)}
-        onSuccess={() => { setEditTarget(null); navTo("firsttimers"); }} />;
+      if (editTarget) return (
+        <FirstTimerForm editData={editTarget}
+          onCancel={() => setEditTarget(null)}
+          onSuccess={() => { setEditTarget(null); navTo("firsttimers"); }} />
+      );
       return <FirstTimersList onEdit={r => setEditTarget(r)} />;
     }
 
     if (active === "callqueue") {
-      if (feedbackTarget) return <LogFeedback person={feedbackTarget} callerName={user}
-        onBack={() => setFeedbackTarget(null)} />;
+      if (feedbackTarget) return (
+        <LogFeedback person={feedbackTarget} callerName={user}
+          onBack={() => setFeedbackTarget(null)} />
+      );
       return <CallQueue onLogFeedback={r => setFeedbackTarget(r)} />;
     }
     if (active === "callbacks") {
-      if (feedbackTarget) return <LogFeedback person={feedbackTarget} callerName={user}
-        onBack={() => setFeedbackTarget(null)} />;
+      if (feedbackTarget) return (
+        <LogFeedback person={feedbackTarget} callerName={user}
+          onBack={() => setFeedbackTarget(null)} />
+      );
       return <CallBackQueue onLogFeedback={r => setFeedbackTarget(r)} />;
     }
 
-    // Soul Care
     if (active === "sc_queue" || active === "sc_mine") {
       if (addVisitMode) return (
         <SoulCareForm defaultAssignee={user}
