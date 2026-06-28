@@ -1016,7 +1016,8 @@ function PublicForm() {
             Welcome to <span style={{ color: C.green }}>The Envoys</span>
           </h1>
           <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-            Fill in your details so we can stay connected with you
+            Fill in your details so we can stay connected with you. <br />
+            We respect your privacy and will never share your information without consent.
           </p>
         </div>
         <FirstTimerForm onSuccess={() => setDone(true)} />
