@@ -1,10 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// THE ENVOYS — Membership Retention Dashboard  v5.2
+// THE ENVOYS — Membership Retention Dashboard  v5.3
 // Cabinet Grotesk (headings) · Satoshi (body) · Forest Green + Gold palette
-// Changes v5.2:
-//   • "Your Name (Caller)" in LogFeedback is now a dropdown of Experience Team users
-//   • "Assigned To" in SoulCareForm is now a dropdown of Soul Care users
-//   • useRoleUsers() hook fetches active users by role from app_users
+// Changes v5.3:
+//   • "My Calls" tab for Experience Team — each member sees their own logged calls
+//   • Date filter added to All Feedback (Pastoral Team + Admin)
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -53,7 +52,6 @@ const SUPABASE_URL      = "https://bhtbypqzukugnenyqvlg.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJodGJ5cHF6dWt1Z25lbnlxdmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTE4NjYsImV4cCI6MjA5Nzg2Nzg2Nn0.eAsuBENwgtbj_RsNpOPdNrYZkULEuJv7pnwclIM_ito";
 const CREDS_MISSING = !SUPABASE_URL || SUPABASE_URL.includes("your-project-id") || SUPABASE_ANON_KEY === "your-anon-key";
 
-// Storage bucket name — create this in Supabase Dashboard → Storage
 const PHOTO_BUCKET = "visit-photos";
 
 async function sb(path, opts = {}) {
@@ -137,8 +135,6 @@ function clearSession() {
 }
 
 // ── Role-Users hook ───────────────────────────────────────────────────────────
-// Fetches active users with the given role and returns them as select options.
-// Falls back to an empty array (with a console warning) if the fetch fails.
 function useRoleUsers(role) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -252,7 +248,7 @@ const NAV_ICONS = {
   admin_overview: Home, admin_users: Users, admin_adduser: UserPlus,
   firsttimers: Users, addmember: UserPlus, report: BarChart2,
   allfeedback: MessageSquare, flagged: Flag, qrcode: QrCode,
-  callqueue: Phone, callbacks: RefreshCw,
+  callqueue: Phone, callbacks: RefreshCw, mycalls: Phone,
   sc_queue: Heart, sc_add: UserPlus, sc_mine: Clipboard,
   visitation_tab: MapPin,
 };
@@ -275,6 +271,7 @@ const NAV = {
     { id: "qrcode",        label: "QR Code"       },
   ],
   expteam: [
+    { id: "mycalls",       label: "My Calls"      },
     { id: "callqueue",     label: "Call Queue"    },
     { id: "callbacks",     label: "Call Backs"    },
     { id: "allfeedback",   label: "All Feedback"  },
@@ -1341,9 +1338,170 @@ function CallBackQueue({ onLogFeedback }) {
   );
 }
 
+// ── My Calls (Experience Team) ────────────────────────────────────────────────
+// Shows only the call feedback rows logged by the currently signed-in user.
+function MyCallsView({ currentUser, onLogFeedback }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        // Fetch all feedback rows for this caller
+        const fbRows = await sb(
+          `call_feedback?caller_name=eq.${encodeURIComponent(currentUser)}&select=*,first_timers(full_name,phone,gender,membership_decision,service_date)&order=created_at.desc&limit=300`
+        );
+        setRows(fbRows || []);
+      } catch (e) { setErr(e.message); }
+      setLoading(false);
+    })();
+  }, [currentUser]);
+
+  const reached   = rows.filter(r => normaliseStatus(r.call_status) === "Reached");
+  const callback  = rows.filter(r => normaliseStatus(r.call_status) === "Call Back");
+  const incorrect = rows.filter(r => normaliseStatus(r.call_status) === "Incorrect Contact");
+  const flagged   = rows.filter(r => r.flagged_for_pastoral);
+
+  const views = { all: rows, reached, callback, incorrect, flagged };
+  const filtered = views[filter] || rows;
+
+  const tabs = [
+    { k: "all",       label: "All",       count: rows.length,      col: C.textMuted },
+    { k: "reached",   label: "Reached",   count: reached.length,   col: C.green     },
+    { k: "callback",  label: "Call Back", count: callback.length,  col: C.amber     },
+    { k: "incorrect", label: "Incorrect", count: incorrect.length, col: C.danger    },
+    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="My Calls"
+        subtitle={`${rows.length} call${rows.length !== 1 ? "s" : ""} logged by you`}
+      />
+
+      {/* Summary stats */}
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Logged"  value={rows.length}      icon={Phone}        accent={C.green}   />
+        <StatCard label="Reached"       value={reached.length}   icon={CheckCircle}  accent={C.green}   />
+        <StatCard label="Call Backs"    value={callback.length}  icon={RefreshCw}    accent={C.amber}   />
+        <StatCard label="Flagged"       value={flagged.length}   icon={Flag}         accent={C.flag}
+          sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+              cursor: "pointer", fontFamily: F.body, transition: "all .15s",
+              background: filter === t.k ? t.col : C.bg,
+              color: filter === t.k ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+            }}>
+            {t.label} ({t.count})
+          </button>
+        ))}
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map(r => {
+            const ft = r.first_timers || {};
+            const sm = statusMeta(r.call_status);
+            return (
+              <div key={r.id} style={{
+                ...card, padding: "12px 16px",
+                borderLeft: r.flagged_for_pastoral
+                  ? `3px solid ${C.flag}`
+                  : `3px solid ${sm.color}`,
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                      background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
+                    }}>
+                      {ft.full_name?.charAt(0) || "?"}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{ft.full_name || "—"}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>
+                        {ft.phone} · {ft.service_date}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", flexShrink: 0 }}>
+                    {r.flagged_for_pastoral && (
+                      <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>
+                    )}
+                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{sm.label}</span>
+                    {ft.full_name && (
+                      <button
+                        style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
+                        onClick={() => onLogFeedback({ ...ft, id: r.first_timer_id })}>
+                        <Phone size={12} />Update
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {r.experience_rating && (
+                    <span style={badge(C.textSecondary, C.bg, { fontSize: 11 })}>Rating: {r.experience_rating}</span>
+                  )}
+                  {r.returning && (
+                    <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>Returning: {r.returning}</span>
+                  )}
+                  {r.follow_up_date && (
+                    <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}><Calendar size={10} />{r.follow_up_date}</span>
+                  )}
+                </div>
+
+                {r.notes && (
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>{r.notes}</p>
+                )}
+                {r.flag_reason && (
+                  <p style={{
+                    margin: "6px 0 0", fontSize: 13, color: C.flag, lineHeight: 1.55,
+                    background: C.flagLight, padding: "6px 10px", borderRadius: 6,
+                  }}>
+                    🚩 {r.flag_reason}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+          {!loading && filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Phone size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>
+                {rows.length === 0
+                  ? "You haven't logged any calls yet."
+                  : "No calls in this category."}
+              </div>
+              {rows.length === 0 && (
+                <p style={{ fontSize: 13, marginTop: 6 }}>
+                  Head to <strong>Call Queue</strong> to start logging calls.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Log Feedback ──────────────────────────────────────────────────────────────
-// "Your Name (Caller)" is now a dropdown of active Experience Team members.
-// Falls back to a free-text input if no expteam users exist in the database.
 function LogFeedback({ person, onBack, callerName = "" }) {
   const BLANK_FB = {
     call_status: "", experience_rating: "", returning_likelihood: "",
@@ -1358,7 +1516,6 @@ function LogFeedback({ person, onBack, callerName = "" }) {
   const [err, setErr] = useState("");
   const [isEdit, setIsEdit] = useState(false);
 
-  // Fetch Experience Team users for the caller dropdown
   const { options: callerOptions, loading: callerLoading } = useRoleUsers("expteam");
 
   useEffect(() => {
@@ -1445,7 +1602,6 @@ function LogFeedback({ person, onBack, callerName = "" }) {
     </div>
   );
 
-  // Determine whether to show a dropdown or fall back to text input
   const showCallerDropdown = !callerLoading && callerOptions.length > 0;
 
   return (
@@ -1473,7 +1629,6 @@ function LogFeedback({ person, onBack, callerName = "" }) {
       {CREDS_MISSING && <CredsBanner />}
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {/* ── Caller Name: dropdown of expteam users (fallback: text input) ── */}
       {callerLoading ? (
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
@@ -1580,18 +1735,22 @@ function LogFeedback({ person, onBack, callerName = "" }) {
 }
 
 // ── All Feedback ──────────────────────────────────────────────────────────────
+// Now includes date range filter (filters on first_timers.service_date via JS,
+// since call_feedback.created_at is the call date — we filter by created_at).
 function AllFeedback() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const data = await sb("call_feedback?select=*,first_timers(full_name,phone,gender,membership_decision,service_date)&order=created_at.desc&limit=300");
+        const data = await sb("call_feedback?select=*,first_timers(full_name,phone,gender,membership_decision,service_date)&order=created_at.desc&limit=500");
         setRows(data || []);
       } catch (e) { setErr(e.message); }
       setLoading(false);
@@ -1600,20 +1759,34 @@ function AllFeedback() {
 
   const filtered = rows.filter(r => {
     const norm = normaliseStatus(r.call_status);
-    const matchFilter = !filter || norm === filter;
+    if (filter && norm !== filter) return false;
+
     const ft = r.first_timers || {};
-    const matchSearch = !search ||
-      ft.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      r.caller_name?.toLowerCase().includes(search.toLowerCase());
-    return matchFilter && matchSearch;
+    if (search) {
+      const q = search.toLowerCase();
+      const matchName = ft.full_name?.toLowerCase().includes(q);
+      const matchCaller = r.caller_name?.toLowerCase().includes(q);
+      if (!matchName && !matchCaller) return false;
+    }
+
+    // Date range filter on call_feedback.created_at (date the call was logged)
+    if (dateFrom || dateTo) {
+      const callDate = r.created_at ? r.created_at.slice(0, 10) : "";
+      if (dateFrom && callDate < dateFrom) return false;
+      if (dateTo   && callDate > dateTo)   return false;
+    }
+
+    return true;
   });
+
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title={`All Feedback (${rows.length})`}
         action={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative" }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
               <input value={search} onChange={e => setSearch(e.target.value)}
@@ -1628,6 +1801,44 @@ function AllFeedback() {
             </select>
           </div>
         } />
+
+      {/* ── Date range filter row ── */}
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 20, padding: "12px 16px",
+        background: C.greenXLight, borderRadius: 10, border: `1px solid ${C.greenBorder}`,
+      }}>
+        <Calendar size={14} color={C.green} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4 }}>
+          Filter by call date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
+              <X size={12} />Clear dates
+            </button>
+          )}
+        </div>
+        {(dateFrom || dateTo) && (
+          <span style={{
+            fontSize: 12, color: C.green, fontWeight: 600,
+            background: C.greenLight, padding: "3px 10px", borderRadius: 10, whiteSpace: "nowrap",
+          }}>
+            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1646,6 +1857,11 @@ function AllFeedback() {
                     {r.caller_name && (
                       <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 8 }}>
                         · Called by <strong>{r.caller_name}</strong>
+                      </span>
+                    )}
+                    {r.created_at && (
+                      <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 8 }}>
+                        · Logged {r.created_at.slice(0, 10)}
                       </span>
                     )}
                   </div>
@@ -1682,7 +1898,9 @@ function AllFeedback() {
             );
           })}
           {filtered.length === 0 && (
-            <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>No feedback yet.</p>
+            <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>
+              {rows.length === 0 ? "No feedback yet." : "No results match your filters."}
+            </p>
           )}
         </div>
       )}
@@ -1933,7 +2151,6 @@ function Report() {
 // SOUL CARE MODULE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ── Member Picker ─────────────────────────────────────────────────────────────
 function MemberPicker({ onSelect, onAddNew }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -2217,7 +2434,6 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
   const [err, setErr] = useState("");
   const [isNewMember, setIsNewMember] = useState(false);
 
-  // Fetch Soul Care users for the Assigned To dropdown
   const { options: soulCareOptions, loading: scLoading } = useRoleUsers("soulcare");
 
   const settersRef = useRef({});
@@ -2343,8 +2559,6 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
 
   const urgencyColors = { High: C.danger, Medium: C.amber, Low: C.green };
   const uc = urgencyColors[form.urgency] || C.textMuted;
-
-  // Determine whether to show the soul care dropdown or fall back to text
   const showAssignedDropdown = !scLoading && soulCareOptions.length > 0;
 
   return (
@@ -2448,7 +2662,6 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         <FieldInput label="Reason for Care" id="rfc" type="textarea" value={form.reason_for_care} onChange={set("reason_for_care")}
           placeholder="Describe the purpose or context of this visit…" />
 
-        {/* ── Assigned To: dropdown of soulcare users (fallback: text input) ── */}
         {scLoading ? (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
@@ -2502,7 +2715,6 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         <FieldInput label="Meeting Notes" id="mn2" type="textarea" value={form.meeting_notes} onChange={set("meeting_notes")}
           placeholder="Detailed spiritual and physical observations from the visit…" />
 
-        {/* ── Visit Photo ──────────────────────────────────────────── */}
         <div style={{
           background: C.soulLight, border: `1px solid ${C.soul}22`,
           borderRadius: 10, padding: 16, marginBottom: 16,
@@ -3252,8 +3464,8 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
       }}>
         <strong style={{ color: C.green }}>Role permissions:</strong><br />
         <strong>Data Officer</strong> — Add/edit first-timer records, generate QR code<br />
-        <strong>Experience Team</strong> — Call queue, log feedback, flag for pastoral<br />
-        <strong>Pastoral Team</strong> — Report, all feedback, flagged records, visitation view<br />
+        <strong>Experience Team</strong> — My Calls, call queue, log feedback, flag for pastoral<br />
+        <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records, visitation view<br />
         <strong>Soul Care</strong> — Visitation queue, log and edit visit records<br />
         <strong>Admin</strong> — All of the above + user management + bulk import
       </div>
@@ -3420,6 +3632,15 @@ export default function App() {
           onSuccess={() => { setEditTarget(null); navTo("firsttimers"); }} />
       );
       return <FirstTimersList onEdit={r => setEditTarget(r)} />;
+    }
+
+    // ── Experience Team: My Calls ──────────────────────────────────────────
+    if (active === "mycalls") {
+      if (feedbackTarget) return (
+        <LogFeedback person={feedbackTarget} callerName={user}
+          onBack={() => setFeedbackTarget(null)} />
+      );
+      return <MyCallsView currentUser={user} onLogFeedback={r => setFeedbackTarget(r)} />;
     }
 
     if (active === "callqueue") {
