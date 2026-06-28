@@ -1,6 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// THE ENVOYS — Membership Retention Dashboard  v5
+// THE ENVOYS — Membership Retention Dashboard  v5.1
 // Cabinet Grotesk (headings) · Satoshi (body) · Forest Green + Gold palette
+// Changes v5.1:
+//   • Session persistence via localStorage (survives browser refresh)
+//   • Soul Care photo upload — stored in Supabase Storage bucket "visit-photos"
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -8,7 +11,7 @@ import {
   Flag, QrCode, LogOut, Menu, X, Heart, MapPin, Calendar, ChevronRight,
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
   Star, TrendingUp, Activity, Shield, Eye, Edit3, UserCheck, Layers,
-  FileText, Bell, Filter, Download, ChevronDown, Info, Zap,
+  FileText, Bell, Filter, Download, ChevronDown, Info, Zap, Camera, Image as ImageIcon,
 } from "lucide-react";
 
 // ── Global CSS ────────────────────────────────────────────────────────────────
@@ -49,6 +52,9 @@ const SUPABASE_URL      = "https://bhtbypqzukugnenyqvlg.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJodGJ5cHF6dWt1Z25lbnlxdmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTE4NjYsImV4cCI6MjA5Nzg2Nzg2Nn0.eAsuBENwgtbj_RsNpOPdNrYZkULEuJv7pnwclIM_ito";
 const CREDS_MISSING = !SUPABASE_URL || SUPABASE_URL.includes("your-project-id") || SUPABASE_ANON_KEY === "your-anon-key";
 
+// Storage bucket name — create this in Supabase Dashboard → Storage
+const PHOTO_BUCKET = "visit-photos";
+
 async function sb(path, opts = {}) {
   if (CREDS_MISSING) throw new Error("CREDS_MISSING");
   let res;
@@ -72,6 +78,68 @@ async function sb(path, opts = {}) {
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+// ── Supabase Storage helper ───────────────────────────────────────────────────
+// Uploads a file to the visit-photos bucket and returns its public URL.
+//
+// Path: public/<timestamp>-<random>.jpg
+//   • "public/" folder  → satisfies: lower((storage.foldername(name))[1]) = 'public'
+//   • ".jpg" extension  → satisfies: storage.extension(name) = 'jpg'
+//   (binary content is unchanged — all image types render fine regardless of extension)
+//
+async function uploadVisitPhoto(file) {
+  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+  const objectPath = `public/${uniqueName}`;           // matches RLS foldername check
+  const uploadUrl  = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${objectPath}`;
+
+  let res;
+  try {
+    res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        apikey:         SUPABASE_ANON_KEY,
+        Authorization:  `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": file.type || "image/jpeg",
+        "x-upsert":     "true",
+      },
+      body: file,
+    });
+  } catch (netErr) {
+    throw new Error(`Network error during photo upload: ${netErr.message}`);
+  }
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const b = await res.json();
+      detail = b.message || b.error || JSON.stringify(b);
+    } catch { detail = `HTTP ${res.status}`; }
+    throw new Error(`Upload failed (${res.status}): ${detail}`);
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${objectPath}`;
+}
+
+// ── Session persistence helpers ───────────────────────────────────────────────
+const SESSION_KEY = "envoys_session_v1";
+
+function saveSession(role, user) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user })); } catch {}
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (s && s.role && s.user) return s;
+    return null;
+  } catch { return null; }
+}
+
+function clearSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch {}
 }
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -372,6 +440,133 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
     <input id={id} type={type} value={value} onChange={onChange}
       required={required} placeholder={placeholder} disabled={disabled}
       style={base} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+  );
+}
+
+// ── Photo Upload Widget ───────────────────────────────────────────────────────
+function PhotoUpload({ value, onChange, existingUrl }) {
+  const fileRef = useRef();
+  const [preview, setPreview] = useState(existingUrl || null);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setErr("Please select an image file."); return; }
+    if (file.size > 10 * 1024 * 1024) { setErr("Image must be under 10 MB."); return; }
+    setErr("");
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setPreview(localUrl);
+    setUploading(true);
+    try {
+      const remoteUrl = await uploadVisitPhoto(file);
+      onChange(remoteUrl);
+    } catch (e) {
+      setErr(`Upload failed: ${e.message}`);
+      setPreview(existingUrl || null);
+      onChange(existingUrl || "");
+    }
+    setUploading(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  const clear = () => {
+    setPreview(null);
+    onChange("");
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5, fontFamily: F.body }}>
+        Visit Photo <span style={{ fontWeight: 400, color: C.textMuted }}>(optional)</span>
+      </div>
+
+      {preview ? (
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <img src={preview} alt="Visit photo"
+            style={{
+              width: "100%", maxWidth: 320, height: 200, objectFit: "cover",
+              borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block",
+            }} />
+          {uploading && (
+            <div style={{
+              position: "absolute", inset: 0, background: "rgba(27,58,45,.65)",
+              borderRadius: 10, display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: 8,
+            }}>
+              <div style={{
+                width: 28, height: 28, border: "3px solid rgba(255,255,255,.3)",
+                borderTopColor: "#fff", borderRadius: "50%",
+                animation: "spin 0.8s linear infinite",
+              }} />
+              <span style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>Uploading…</span>
+            </div>
+          )}
+          {!uploading && (
+            <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+              <button type="button" style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
+                onClick={() => fileRef.current?.click()}>
+                <Camera size={12} />Change Photo
+              </button>
+              <button type="button" style={btn("danger", { padding: "6px 12px", fontSize: 12 })}
+                onClick={clear}>
+                Remove
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div
+          onDrop={handleDrop}
+          onDragOver={e => e.preventDefault()}
+          onClick={() => fileRef.current?.click()}
+          style={{
+            border: `2px dashed ${C.greenBorder}`, borderRadius: 10,
+            background: C.greenXLight, padding: "28px 20px",
+            textAlign: "center", cursor: "pointer", transition: "border-color .15s, background .15s",
+          }}
+          onMouseOver={e => {
+            e.currentTarget.style.borderColor = C.green;
+            e.currentTarget.style.background = C.greenLight;
+          }}
+          onMouseOut={e => {
+            e.currentTarget.style.borderColor = C.greenBorder;
+            e.currentTarget.style.background = C.greenXLight;
+          }}>
+          <Camera size={28} color={C.green} style={{ marginBottom: 8, opacity: .7 }} />
+          <div style={{ fontWeight: 600, fontSize: 13, color: C.textSecondary, marginBottom: 3 }}>
+            Upload a visit photo
+          </div>
+          <div style={{ fontSize: 12, color: C.textMuted }}>
+            Click to browse or drag & drop · JPG, PNG, HEIC · Max 10 MB
+          </div>
+        </div>
+      )}
+
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }}
+        onChange={e => handleFile(e.target.files[0])} />
+
+      {err && (
+        <div style={{ fontSize: 12, color: C.danger, marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
+          <AlertCircle size={12} />{err}
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 5 }}>
+        💡 Photos uploaded{" "}
+        <code style={{ background: C.bg, padding: "1px 4px", borderRadius: 3 }}>your device</code>{" "}
+        are stored securely.
+      </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
   );
 }
 
@@ -1937,6 +2132,7 @@ const BLANK_VISIT = {
   prayer_requests: "", testimony: "",
   follow_up_required: false, next_follow_up_date: "",
   escalate_to_pastorate: false, escalation_reason: "",
+  visit_photo_url: "",   // ← NEW
 };
 
 function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
@@ -2043,6 +2239,7 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         next_follow_up_date:   form.follow_up_required ? n(form.next_follow_up_date) : null,
         escalate_to_pastorate: !!form.escalate_to_pastorate,
         escalation_reason:     form.escalate_to_pastorate ? n(form.escalation_reason) : null,
+        visit_photo_url:       n(form.visit_photo_url),   // ← NEW
       };
 
       if (editData?.id) {
@@ -2193,6 +2390,25 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         <FieldInput label="Time Conducted" id="vtime" type="time" value={form.visit_time} onChange={set("visit_time")} />
         <FieldInput label="Meeting Notes" id="mn2" type="textarea" value={form.meeting_notes} onChange={set("meeting_notes")}
           placeholder="Detailed spiritual and physical observations from the visit…" />
+
+        {/* ── Visit Photo ──────────────────────────────────────────── */}
+        <div style={{
+          background: C.soulLight, border: `1px solid ${C.soul}22`,
+          borderRadius: 10, padding: 16, marginBottom: 16,
+        }}>
+          <div style={{
+            fontWeight: 700, fontSize: 12, color: C.soul, marginBottom: 12,
+            display: "flex", alignItems: "center", gap: 5, fontFamily: F.head,
+            textTransform: "uppercase", letterSpacing: ".06em",
+          }}>
+            <Camera size={12} />Visit Photo
+          </div>
+          <PhotoUpload
+            value={form.visit_photo_url}
+            onChange={set("visit_photo_url")}
+            existingUrl={editData?.visit_photo_url || ""}
+          />
+        </div>
 
         <div style={{
           background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16,
@@ -2356,13 +2572,22 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                      background: C.soulLight, display: "flex", alignItems: "center",
-                      justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
-                    }}>
-                      {r.member_name?.charAt(0)}
-                    </div>
+                    {/* Photo thumbnail or avatar */}
+                    {r.visit_photo_url ? (
+                      <img src={r.visit_photo_url} alt="Visit"
+                        style={{
+                          width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                          objectFit: "cover", border: `2px solid ${C.soul}40`,
+                        }} />
+                    ) : (
+                      <div style={{
+                        width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+                        background: C.soulLight, display: "flex", alignItems: "center",
+                        justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
+                      }}>
+                        {r.member_name?.charAt(0)}
+                      </div>
+                    )}
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.visit_type}</div>
@@ -2381,6 +2606,7 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
                     {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}><Zap size={9} />{r.urgency}</span>}
                     {r.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={9} />Escalated</span>}
                     {r.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
+                    {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
                     <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(r)}>
                       <Edit3 size={12} />Edit
@@ -2442,22 +2668,40 @@ function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
             return (
               <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${sm.color}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.visit_type}</div>
-                    {r.visit_date && (
-                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                        <Calendar size={10} />{r.visit_date}
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    {r.visit_photo_url ? (
+                      <img src={r.visit_photo_url} alt="Visit"
+                        style={{
+                          width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                          objectFit: "cover", border: `2px solid ${C.soul}40`,
+                        }} />
+                    ) : (
+                      <div style={{
+                        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                        background: C.soulLight, display: "flex", alignItems: "center",
+                        justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
+                      }}>
+                        {r.member_name?.charAt(0)}
                       </div>
                     )}
-                    {r.follow_up_required && r.next_follow_up_date && (
-                      <div style={{ fontSize: 11, color: C.amber, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                        <Bell size={10} />Follow-up: {r.next_follow_up_date}
-                      </div>
-                    )}
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.visit_type}</div>
+                      {r.visit_date && (
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Calendar size={10} />{r.visit_date}
+                        </div>
+                      )}
+                      {r.follow_up_required && r.next_follow_up_date && (
+                        <div style={{ fontSize: 11, color: C.amber, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                          <Bell size={10} />Follow-up: {r.next_follow_up_date}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
                     {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}><Zap size={9} />{r.urgency}</span>}
+                    {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
                     <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(r)}>
                       <Edit3 size={12} />Edit
@@ -2568,13 +2812,21 @@ function VisitationTab() {
                 }}
                   onClick={() => setExpanded(isOpen ? null : r.id)}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                      background: C.soulLight, display: "flex", alignItems: "center",
-                      justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
-                    }}>
-                      {r.member_name?.charAt(0)}
-                    </div>
+                    {r.visit_photo_url ? (
+                      <img src={r.visit_photo_url} alt="Visit"
+                        style={{
+                          width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                          objectFit: "cover", border: `2px solid ${C.soul}40`,
+                        }} />
+                    ) : (
+                      <div style={{
+                        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                        background: C.soulLight, display: "flex", alignItems: "center",
+                        justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
+                      }}>
+                        {r.member_name?.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>
@@ -2590,6 +2842,7 @@ function VisitationTab() {
                     {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{r.urgency}</span>}
                     {r.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={9} />Escalated</span>}
                     {r.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
+                    {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
                     <ChevronDown size={14} color={C.textMuted}
                       style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
@@ -2597,6 +2850,30 @@ function VisitationTab() {
                 </div>
                 {isOpen && (
                   <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}`, marginTop: -4 }}>
+                    {/* Visit photo expanded view */}
+                    {r.visit_photo_url && (
+                      <div style={{ marginTop: 14, marginBottom: 14 }}>
+                        <div style={{
+                          fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 8,
+                          display: "flex", alignItems: "center", gap: 4,
+                          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
+                        }}>
+                          <Camera size={11} />Visit Photo
+                        </div>
+                        <img src={r.visit_photo_url} alt="Visit photo"
+                          style={{
+                            width: "100%", maxWidth: 360, height: 220, objectFit: "cover",
+                            borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => window.open(r.visit_photo_url, "_blank")}
+                          title="Click to open full image"
+                        />
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+                          Click image to open full size
+                        </div>
+                      </div>
+                    )}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 14 }} className="g2">
                       {r.reason_for_care        && <DetailBlock icon={Info}     label="Reason for Care"   value={r.reason_for_care} />}
                       {r.meeting_notes          && <DetailBlock icon={FileText} label="Meeting Notes"     value={r.meeting_notes} />}
@@ -2946,8 +3223,12 @@ function Login({ onLogin }) {
 
 // ── App Shell ─────────────────────────────────────────────────────────────────
 export default function App() {
-  const [session,        setSession]        = useState(null);
-  const [active,         setActive]         = useState(null);
+  // ── Session: restore from localStorage on first render ────────────────────
+  const [session, setSession] = useState(() => loadSession());
+  const [active, setActive] = useState(() => {
+    const s = loadSession();
+    return s ? (NAV[s.role]?.[0]?.id ?? null) : null;
+  });
   const [editTarget,     setEditTarget]     = useState(null);
   const [feedbackTarget, setFeedbackTarget] = useState(null);
   const [editUser,       setEditUser]       = useState(null);
@@ -2973,9 +3254,20 @@ export default function App() {
     })();
   }, [session]);
 
-  const login  = (role, user) => { setSession({ role, user }); setActive(NAV[role][0].id); };
-  const logout = () => { setSession(null); setActive(null); };
-  const navTo  = (v) => {
+  const login = (role, user) => {
+    const s = { role, user };
+    setSession(s);
+    setActive(NAV[role][0].id);
+    saveSession(role, user);   // ← persist to localStorage
+  };
+
+  const logout = () => {
+    clearSession();            // ← clear localStorage
+    setSession(null);
+    setActive(null);
+  };
+
+  const navTo = (v) => {
     setActive(v); setEditTarget(null); setFeedbackTarget(null);
     setEditUser(null); setEditVisit(null); setAddVisitMode(false);
     setMobileOpen(false);
