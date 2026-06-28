@@ -1,9 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// THE ENVOYS — Membership Retention Dashboard  v5.1
+// THE ENVOYS — Membership Retention Dashboard  v5.2
 // Cabinet Grotesk (headings) · Satoshi (body) · Forest Green + Gold palette
-// Changes v5.1:
-//   • Session persistence via localStorage (survives browser refresh)
-//   • Soul Care photo upload — stored in Supabase Storage bucket "visit-photos"
+// Changes v5.2:
+//   • "Your Name (Caller)" in LogFeedback is now a dropdown of Experience Team users
+//   • "Assigned To" in SoulCareForm is now a dropdown of Soul Care users
+//   • useRoleUsers() hook fetches active users by role from app_users
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -81,16 +82,9 @@ async function sb(path, opts = {}) {
 }
 
 // ── Supabase Storage helper ───────────────────────────────────────────────────
-// Uploads a file to the visit-photos bucket and returns its public URL.
-//
-// Path: public/<timestamp>-<random>.jpg
-//   • "public/" folder  → satisfies: lower((storage.foldername(name))[1]) = 'public'
-//   • ".jpg" extension  → satisfies: storage.extension(name) = 'jpg'
-//   (binary content is unchanged — all image types render fine regardless of extension)
-//
 async function uploadVisitPhoto(file) {
   const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-  const objectPath = `public/${uniqueName}`;           // matches RLS foldername check
+  const objectPath = `public/${uniqueName}`;
   const uploadUrl  = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${objectPath}`;
 
   let res;
@@ -140,6 +134,42 @@ function loadSession() {
 
 function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch {}
+}
+
+// ── Role-Users hook ───────────────────────────────────────────────────────────
+// Fetches active users with the given role and returns them as select options.
+// Falls back to an empty array (with a console warning) if the fetch fails.
+function useRoleUsers(role) {
+  const [options, setOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!role) { setLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const rows = await sb(
+          `app_users?role=eq.${role}&is_active=eq.true&select=display_name,username&order=display_name.asc`
+        );
+        if (!cancelled) {
+          setOptions(
+            (rows || []).map(u => ({
+              value: u.display_name || u.username,
+              label: u.display_name || u.username,
+            }))
+          );
+        }
+      } catch (e) {
+        console.warn(`useRoleUsers(${role}) fetch failed:`, e.message);
+        if (!cancelled) setOptions([]);
+      }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [role]);
+
+  return { options, loading };
 }
 
 // ── Palette ───────────────────────────────────────────────────────────────────
@@ -455,7 +485,6 @@ function PhotoUpload({ value, onChange, existingUrl }) {
     if (!file.type.startsWith("image/")) { setErr("Please select an image file."); return; }
     if (file.size > 10 * 1024 * 1024) { setErr("Image must be under 10 MB."); return; }
     setErr("");
-    // Show local preview immediately
     const localUrl = URL.createObjectURL(file);
     setPreview(localUrl);
     setUploading(true);
@@ -560,7 +589,7 @@ function PhotoUpload({ value, onChange, existingUrl }) {
       )}
 
       <div style={{ fontSize: 11, color: C.textMuted, marginTop: 5 }}>
-        💡 Photos uploaded{" "}
+        💡 Photos uploaded from{" "}
         <code style={{ background: C.bg, padding: "1px 4px", borderRadius: 3 }}>your device</code>{" "}
         are stored securely.
       </div>
@@ -1313,6 +1342,8 @@ function CallBackQueue({ onLogFeedback }) {
 }
 
 // ── Log Feedback ──────────────────────────────────────────────────────────────
+// "Your Name (Caller)" is now a dropdown of active Experience Team members.
+// Falls back to a free-text input if no expteam users exist in the database.
 function LogFeedback({ person, onBack, callerName = "" }) {
   const BLANK_FB = {
     call_status: "", experience_rating: "", returning_likelihood: "",
@@ -1326,6 +1357,9 @@ function LogFeedback({ person, onBack, callerName = "" }) {
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
   const [isEdit, setIsEdit] = useState(false);
+
+  // Fetch Experience Team users for the caller dropdown
+  const { options: callerOptions, loading: callerLoading } = useRoleUsers("expteam");
 
   useEffect(() => {
     (async () => {
@@ -1363,7 +1397,7 @@ function LogFeedback({ person, onBack, callerName = "" }) {
 
   const submit = async () => {
     if (!form.call_status) { setErr("Call status is required."); return; }
-    if (!form.caller_name.trim()) { setErr("Please enter your name as the caller."); return; }
+    if (!form.caller_name.trim()) { setErr("Please select your name as the caller."); return; }
     if (form.flagged_for_pastoral && !form.flag_reason.trim()) {
       setErr("Please describe the reason for flagging."); return;
     }
@@ -1411,6 +1445,9 @@ function LogFeedback({ person, onBack, callerName = "" }) {
     </div>
   );
 
+  // Determine whether to show a dropdown or fall back to text input
+  const showCallerDropdown = !callerLoading && callerOptions.length > 0;
+
   return (
     <div style={card} className="page-enter">
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
@@ -1436,9 +1473,43 @@ function LogFeedback({ person, onBack, callerName = "" }) {
       {CREDS_MISSING && <CredsBanner />}
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      <FieldInput label="Your Name (Caller)" id="cn" required
-        value={form.caller_name} onChange={lset("caller_name")} placeholder="e.g. Tunde Adeyemi"
-        hint="Identifies who made the call for activity tracking" />
+      {/* ── Caller Name: dropdown of expteam users (fallback: text input) ── */}
+      {callerLoading ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+            Your Name (Caller) <span style={{ color: C.danger }}>*</span>
+          </div>
+          <div style={{
+            ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
+            Loading team members…
+          </div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      ) : showCallerDropdown ? (
+        <FieldInput
+          label="Your Name (Caller)"
+          id="cn"
+          type="select"
+          required
+          value={form.caller_name}
+          onChange={lset("caller_name")}
+          options={callerOptions}
+          hint="Select your name from the Experience Team list"
+        />
+      ) : (
+        <FieldInput
+          label="Your Name (Caller)"
+          id="cn"
+          required
+          value={form.caller_name}
+          onChange={lset("caller_name")}
+          placeholder="e.g. Tunde Adeyemi"
+          hint="Identifies who made the call for activity tracking"
+        />
+      )}
+
       <FieldInput label="Call Status" id="cs" type="select" required
         value={form.call_status} onChange={lset("call_status")} options={CALL_STATUS_OPTIONS} />
 
@@ -2132,7 +2203,7 @@ const BLANK_VISIT = {
   prayer_requests: "", testimony: "",
   follow_up_required: false, next_follow_up_date: "",
   escalate_to_pastorate: false, escalation_reason: "",
-  visit_photo_url: "",   // ← NEW
+  visit_photo_url: "",
 };
 
 function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
@@ -2145,6 +2216,9 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [isNewMember, setIsNewMember] = useState(false);
+
+  // Fetch Soul Care users for the Assigned To dropdown
+  const { options: soulCareOptions, loading: scLoading } = useRoleUsers("soulcare");
 
   const settersRef = useRef({});
   const set = useCallback((key) => {
@@ -2239,7 +2313,7 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         next_follow_up_date:   form.follow_up_required ? n(form.next_follow_up_date) : null,
         escalate_to_pastorate: !!form.escalate_to_pastorate,
         escalation_reason:     form.escalate_to_pastorate ? n(form.escalation_reason) : null,
-        visit_photo_url:       n(form.visit_photo_url),   // ← NEW
+        visit_photo_url:       n(form.visit_photo_url),
       };
 
       if (editData?.id) {
@@ -2269,6 +2343,9 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
 
   const urgencyColors = { High: C.danger, Medium: C.amber, Low: C.green };
   const uc = urgencyColors[form.urgency] || C.textMuted;
+
+  // Determine whether to show the soul care dropdown or fall back to text
+  const showAssignedDropdown = !scLoading && soulCareOptions.length > 0;
 
   return (
     <div style={card} className="page-enter">
@@ -2370,8 +2447,42 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
         )}
         <FieldInput label="Reason for Care" id="rfc" type="textarea" value={form.reason_for_care} onChange={set("reason_for_care")}
           placeholder="Describe the purpose or context of this visit…" />
-        <FieldInput label="Assigned To" id="at" required value={form.assigned_to} onChange={set("assigned_to")}
-          placeholder="Name of Soul Care team member responsible" />
+
+        {/* ── Assigned To: dropdown of soulcare users (fallback: text input) ── */}
+        {scLoading ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+              Assigned To <span style={{ color: C.danger }}>*</span>
+            </div>
+            <div style={{
+              ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
+              Loading Soul Care team…
+            </div>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        ) : showAssignedDropdown ? (
+          <FieldInput
+            label="Assigned To"
+            id="at"
+            type="select"
+            required
+            value={form.assigned_to}
+            onChange={set("assigned_to")}
+            options={soulCareOptions}
+            hint="Select the Soul Care team member responsible for this visit"
+          />
+        ) : (
+          <FieldInput
+            label="Assigned To"
+            id="at"
+            required
+            value={form.assigned_to}
+            onChange={set("assigned_to")}
+            placeholder="Name of Soul Care team member responsible"
+          />
+        )}
       </div>
 
       {/* C. Feedback & Outcome */}
@@ -2572,7 +2683,6 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    {/* Photo thumbnail or avatar */}
                     {r.visit_photo_url ? (
                       <img src={r.visit_photo_url} alt="Visit"
                         style={{
@@ -2850,7 +2960,6 @@ function VisitationTab() {
                 </div>
                 {isOpen && (
                   <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}`, marginTop: -4 }}>
-                    {/* Visit photo expanded view */}
                     {r.visit_photo_url && (
                       <div style={{ marginTop: 14, marginBottom: 14 }}>
                         <div style={{
@@ -3223,7 +3332,6 @@ function Login({ onLogin }) {
 
 // ── App Shell ─────────────────────────────────────────────────────────────────
 export default function App() {
-  // ── Session: restore from localStorage on first render ────────────────────
   const [session, setSession] = useState(() => loadSession());
   const [active, setActive] = useState(() => {
     const s = loadSession();
@@ -3258,11 +3366,11 @@ export default function App() {
     const s = { role, user };
     setSession(s);
     setActive(NAV[role][0].id);
-    saveSession(role, user);   // ← persist to localStorage
+    saveSession(role, user);
   };
 
   const logout = () => {
-    clearSession();            // ← clear localStorage
+    clearSession();
     setSession(null);
     setActive(null);
   };
