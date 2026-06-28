@@ -1,9 +1,9 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// THE ENVOYS — Membership Retention Dashboard  v5.3
+// THE ENVOYS — Membership Retention Dashboard  v5.4
 // Cabinet Grotesk (headings) · Satoshi (body) · Forest Green + Gold palette
-// Changes v5.3:
-//   • "My Calls" tab for Experience Team — each member sees their own logged calls
-//   • Date filter added to All Feedback (Pastoral Team + Admin)
+// Changes v5.4:
+//   • Research Team module — service-feedback viewer with date filter + CSV download
+//   • New "research" role added across ROLE_META, NAV, AdminAddUser
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -200,6 +200,9 @@ const C = {
   flagLight:    "#FEF2F2",
   soul:         "#5B21B6",
   soulLight:    "#F5F3FF",
+  research:     "#0E7490",
+  researchLight:"#ECFEFF",
+  researchBorder:"#A5F3FC",
 };
 
 const F = {
@@ -237,11 +240,12 @@ function statusMeta(raw) {
 }
 
 const ROLE_META = {
-  admin:    { label: "Admin",           color: C.goldDark,  bg: C.goldLight  },
-  dofficer: { label: "Data Officer",    color: C.green,     bg: C.greenLight },
-  expteam:  { label: "Experience Team", color: C.green,     bg: C.greenLight },
-  pasteam:  { label: "Pastoral Team",   color: C.goldDark,  bg: C.goldLight  },
-  soulcare: { label: "Soul Care",       color: C.soul,      bg: C.soulLight  },
+  admin:    { label: "Admin",           color: C.goldDark,   bg: C.goldLight    },
+  dofficer: { label: "Data Officer",    color: C.green,      bg: C.greenLight   },
+  expteam:  { label: "Experience Team", color: C.green,      bg: C.greenLight   },
+  pasteam:  { label: "Pastoral Team",   color: C.goldDark,   bg: C.goldLight    },
+  soulcare: { label: "Soul Care",       color: C.soul,       bg: C.soulLight    },
+  research: { label: "Research Team",   color: C.research,   bg: C.researchLight},
 };
 
 const NAV_ICONS = {
@@ -251,6 +255,7 @@ const NAV_ICONS = {
   callqueue: Phone, callbacks: RefreshCw, mycalls: Phone,
   sc_queue: Heart, sc_add: UserPlus, sc_mine: Clipboard,
   visitation_tab: MapPin,
+  research_feedback: FileText,
 };
 
 const NAV = {
@@ -263,6 +268,7 @@ const NAV = {
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
+    { id: "research_feedback", label: "Research"  },
     { id: "qrcode",        label: "QR Code"       },
   ],
   dofficer: [
@@ -287,6 +293,9 @@ const NAV = {
     { id: "sc_queue",      label: "Visit Queue"   },
     { id: "sc_add",        label: "Add Visit"     },
     { id: "sc_mine",       label: "My Visits"     },
+  ],
+  research: [
+    { id: "research_feedback", label: "Service Feedback" },
   ],
 };
 
@@ -1016,8 +1025,7 @@ function PublicForm() {
             Welcome to <span style={{ color: C.green }}>The Envoys</span>
           </h1>
           <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-            Fill in your details so we can stay connected with you. <br />
-            We respect your privacy and will never share your information without consent.
+            Fill in your details so we can stay connected with you
           </p>
         </div>
         <FirstTimerForm onSuccess={() => setDone(true)} />
@@ -3239,6 +3247,357 @@ function DetailBlock({ icon: Icon, label, value, color }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// RESEARCH TEAM MODULE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Research: Service Feedback Viewer ────────────────────────────────────────
+function ResearchFeedback() {
+  const [rows, setRows]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [err, setErr]             = useState("");
+  const [search, setSearch]       = useState("");
+  const [dateFrom, setDateFrom]   = useState("");
+  const [dateTo, setDateTo]       = useState("");
+  // Which rows are selected for download (by id)
+  const [selected, setSelected]   = useState(new Set());
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const data = await sb(
+          "first_timers?select=id,full_name,service_feedback,service_date&order=service_date.desc&limit=1000"
+        );
+        // Only include records that actually have service feedback
+        setRows((data || []).filter(r => r.service_feedback && r.service_feedback.trim() !== ""));
+      } catch (e) { setErr(e.message); }
+      setLoading(false);
+    })();
+  }, []);
+
+  // ── Filtering ──────────────────────────────────────────────────────────────
+  const filtered = rows.filter(r => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !r.full_name?.toLowerCase().includes(q) &&
+        !r.service_feedback?.toLowerCase().includes(q)
+      ) return false;
+    }
+    if (dateFrom && r.service_date < dateFrom) return false;
+    if (dateTo   && r.service_date > dateTo)   return false;
+    return true;
+  });
+
+  // ── Selection helpers ──────────────────────────────────────────────────────
+  const allFilteredIds  = filtered.map(r => r.id);
+  const allSelected     = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected    = allFilteredIds.some(id => selected.has(id));
+
+  const toggleRow = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(prev => {
+        const next = new Set(prev);
+        allFilteredIds.forEach(id => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelected(prev => {
+        const next = new Set(prev);
+        allFilteredIds.forEach(id => next.add(id));
+        return next;
+      });
+    }
+  };
+
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
+
+  // ── CSV download ───────────────────────────────────────────────────────────
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (toExport.length === 0) return;
+
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n")
+        ? `"${str}"`
+        : str;
+    };
+
+    const header = ["Name", "Service Date", "Service Feedback"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name),
+        escape(r.service_date),
+        escape(r.service_feedback),
+      ].join(",")),
+    ];
+
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateLabel = dateFrom || dateTo
+      ? `_${dateFrom || "start"}_to_${dateTo || "end"}`
+      : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href     = url;
+    a.download = `envoys_service_feedback${dateLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+
+      <PageHeader
+        title="Service Feedback"
+        subtitle="First-timer service feedback responses collected at registration"
+        action={
+          <button
+            style={{
+              ...btn("primary"),
+              background: selectedCount > 0 ? C.research : C.border,
+              color: selectedCount > 0 ? "#fff" : C.textMuted,
+              cursor: selectedCount > 0 ? "pointer" : "not-allowed",
+              border: "none",
+            }}
+            onClick={downloadCSV}
+            disabled={selectedCount === 0}>
+            <Download size={14} />
+            Download Feedback{selectedCount > 0 ? ` (${selectedCount})` : ""}
+          </button>
+        }
+      />
+
+      {/* ── Summary stats ── */}
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Responses"   value={rows.length}     icon={FileText}   accent={C.research} />
+        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}     accent={C.green}    />
+        <StatCard label="Selected"          value={selectedCount}   icon={Download}   accent={selectedCount > 0 ? C.research : C.textMuted}
+          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+      </div>
+
+      {/* ── Filters row ── */}
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.researchLight, borderRadius: 10, border: `1px solid ${C.researchBorder}`,
+      }}>
+        <Calendar size={14} color={C.research} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by service date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
+              <X size={12} />Clear
+            </button>
+          )}
+        </div>
+        <div style={{ position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search name or feedback…"
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {/* ── Download hint when something is selected ── */}
+      {selectedCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 16px", marginBottom: 12,
+          background: `${C.research}12`, borderRadius: 8,
+          border: `1px solid ${C.research}30`,
+          fontSize: 13, color: C.research, fontWeight: 600,
+          flexWrap: "wrap", gap: 10,
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CheckCircle size={14} />
+            {selectedCount} response{selectedCount !== 1 ? "s" : ""} selected
+          </span>
+          <button style={{ ...btn("primary", { padding: "6px 14px", fontSize: 12 }), background: C.research }}
+            onClick={downloadCSV}>
+            <Download size={13} />Download CSV
+          </button>
+        </div>
+      )}
+
+      {/* ── Table ── */}
+      {loading ? (
+        <p style={{ color: C.textMuted }}>Loading…</p>
+      ) : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0
+              ? "No service feedback responses yet."
+              : "No responses match your filters."}
+          </div>
+          {rows.length > 0 && (
+            <button style={{ ...btn("ghost", { marginTop: 12 }) }} onClick={clearDates}>
+              Clear date filter
+            </button>
+          )}
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          {/* Table header */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "40px 1fr 120px 1fr",
+            padding: "10px 16px",
+            background: C.bg,
+            borderBottom: `1px solid ${C.border}`,
+            gap: 12,
+            alignItems: "center",
+          }}>
+            {/* Select-all checkbox */}
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div
+                onClick={toggleAll}
+                title={allSelected ? "Deselect all" : "Select all visible"}
+                style={{
+                  width: 18, height: 18, borderRadius: 4, cursor: "pointer", flexShrink: 0,
+                  border: `2px solid ${someSelected ? C.research : C.border}`,
+                  background: allSelected ? C.research : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .15s",
+                }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && (
+                  <div style={{ width: 8, height: 2, background: C.research, borderRadius: 1 }} />
+                )}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
+              Respondent
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
+              Service Date
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
+              Feedback
+            </div>
+          </div>
+
+          {/* Table rows */}
+          {filtered.map((r, i) => {
+            const isChecked = selected.has(r.id);
+            return (
+              <div
+                key={r.id}
+                onClick={() => toggleRow(r.id)}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "40px 1fr 120px 1fr",
+                  padding: "12px 16px",
+                  gap: 12,
+                  alignItems: "flex-start",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  background: isChecked ? `${C.research}08` : C.surface,
+                  cursor: "pointer",
+                  transition: "background .12s",
+                }}
+                onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.research}08` : C.surface; }}>
+
+                {/* Checkbox */}
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    border: `2px solid ${isChecked ? C.research : C.border}`,
+                    background: isChecked ? C.research : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all .15s",
+                  }}>
+                    {isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%", background: C.researchLight,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, color: C.research, fontSize: 13, fontFamily: F.head,
+                    marginBottom: 4, border: `1.5px solid ${C.researchBorder}`,
+                  }}>
+                    {r.full_name?.charAt(0) || "?"}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>
+                    {r.full_name}
+                  </div>
+                </div>
+
+                {/* Date */}
+                <div style={{ fontSize: 13, color: C.textSecondary, paddingTop: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <Calendar size={11} color={C.textMuted} />
+                    {r.service_date}
+                  </div>
+                </div>
+
+                {/* Feedback */}
+                <div style={{
+                  fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4,
+                  wordBreak: "break-word",
+                }}>
+                  {r.service_feedback}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Footer count */}
+      {!loading && filtered.length > 0 && (
+        <div style={{
+          marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8,
+        }}>
+          <span>
+            Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> response{rows.length !== 1 ? "s" : ""}
+            {(dateFrom || dateTo) && " in date range"}
+          </span>
+          {selectedCount === 0 && filtered.length > 0 && (
+            <span style={{ color: C.research, fontWeight: 600 }}>
+              ☝ Click rows to select, then download as CSV
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Admin: Overview ───────────────────────────────────────────────────────────
 function AdminOverview({ setActive }) {
   const [counts, setCounts] = useState({ ft: 0, fb: 0, flagged: 0, users: 0, visits: 0 });
@@ -3453,11 +3812,12 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         type="password" required={!editUser} value={form.password} onChange={set("password")} placeholder="••••••••" />
       <FieldInput label="Role" id="rl" type="select" required value={form.role} onChange={set("role")}
         options={[
-          { value: "dofficer", label: "Data Officer"    },
-          { value: "expteam",  label: "Experience Team" },
-          { value: "pasteam",  label: "Pastoral Team"   },
-          { value: "soulcare", label: "Soul Care"       },
-          { value: "admin",    label: "Admin"           },
+          { value: "dofficer",  label: "Data Officer"    },
+          { value: "expteam",   label: "Experience Team" },
+          { value: "pasteam",   label: "Pastoral Team"   },
+          { value: "soulcare",  label: "Soul Care"       },
+          { value: "research",  label: "Research Team"   },
+          { value: "admin",     label: "Admin"           },
         ]} />
       <div style={{
         background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
@@ -3468,6 +3828,7 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong>Experience Team</strong> — My Calls, call queue, log feedback, flag for pastoral<br />
         <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records, visitation view<br />
         <strong>Soul Care</strong> — Visitation queue, log and edit visit records<br />
+        <strong>Research Team</strong> — View and download service feedback responses (CSV export)<br />
         <strong>Admin</strong> — All of the above + user management + bulk import
       </div>
       <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
@@ -3480,11 +3841,12 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
 
 // ── Login ─────────────────────────────────────────────────────────────────────
 const FALLBACK_ACCOUNTS = [
-  { username: "admin",     password: "admin1",    role: "admin",    display_name: "Administrator"   },
-  { username: "dofficer1", password: "dofficer1", role: "dofficer", display_name: "Data Officer"    },
-  { username: "expteam1",  password: "expteam1",  role: "expteam",  display_name: "Experience Team" },
-  { username: "pasteam1",  password: "pasteam1",  role: "pasteam",  display_name: "Pastoral Team"   },
-  { username: "soulcare1", password: "soulcare1", role: "soulcare", display_name: "Soul Care Team"  },
+  { username: "admin",      password: "admin1",     role: "admin",    display_name: "Administrator"   },
+  { username: "dofficer1",  password: "dofficer1",  role: "dofficer", display_name: "Data Officer"    },
+  { username: "expteam1",   password: "expteam1",   role: "expteam",  display_name: "Experience Team" },
+  { username: "pasteam1",   password: "pasteam1",   role: "pasteam",  display_name: "Pastoral Team"   },
+  { username: "soulcare1",  password: "soulcare1",  role: "soulcare", display_name: "Soul Care Team"  },
+  { username: "research1",  password: "research1",  role: "research", display_name: "Research Team"   },
 ];
 
 function Login({ onLogin }) {
@@ -3625,6 +3987,7 @@ export default function App() {
     if (active === "report")        return <Report />;
     if (active === "flagged")       return <FlaggedRecords />;
     if (active === "visitation_tab")return <VisitationTab />;
+    if (active === "research_feedback") return <ResearchFeedback />;
 
     if (active === "firsttimers") {
       if (editTarget) return (
@@ -3703,7 +4066,7 @@ export default function App() {
       <MobileHeader onMenu={() => setMobileOpen(true)} title={pageTitle} />
       <Sidebar role={role} active={active} setActive={navTo} user={user}
         onLogout={logout} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)}
-        flagCount={flagCount} />
+        flagCount={flagCount} /> 
       <div className="main-content" style={{ marginLeft: 224, padding: "2rem", minHeight: "100vh" }}>
         <div style={{ maxWidth: 940 }}>
           {renderContent()}
