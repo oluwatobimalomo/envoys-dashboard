@@ -14,7 +14,11 @@ import {
   FileText, Bell, Filter, Download, ChevronDown, Info, Zap, Camera, Image as ImageIcon,
 } from "lucide-react";
 
-// ── Global CSS ────────────────────────────────────────────────────────────────
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: GLOBAL STYLES & CSS INJECTION                                     ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 (function injectGlobals() {
   if (document.getElementById("envoys-globals")) return;
   const s = document.createElement("style");
@@ -47,7 +51,16 @@ import {
   document.head.appendChild(s);
 })();
 
-// ── Supabase credentials ──────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: GLOBAL STYLES & CSS INJECTION                                 ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: SUPABASE CONFIG & API HELPERS                                     ║
+// ║  Includes: credentials, sb() fetch wrapper, uploadVisitPhoto()             ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 const SUPABASE_URL      = "https://bhtbypqzukugnenyqvlg.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJodGJ5cHF6dWt1Z25lbnlxdmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTE4NjYsImV4cCI6MjA5Nzg2Nzg2Nn0.eAsuBENwgtbj_RsNpOPdNrYZkULEuJv7pnwclIM_ito";
 const CREDS_MISSING = !SUPABASE_URL || SUPABASE_URL.includes("your-project-id") || SUPABASE_ANON_KEY === "your-anon-key";
@@ -79,7 +92,6 @@ async function sb(path, opts = {}) {
   return res.json();
 }
 
-// ── Supabase Storage helper ───────────────────────────────────────────────────
 async function uploadVisitPhoto(file) {
   const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
   const objectPath = `public/${uniqueName}`;
@@ -113,7 +125,16 @@ async function uploadVisitPhoto(file) {
   return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${objectPath}`;
 }
 
-// ── Session persistence helpers ───────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: SUPABASE CONFIG & API HELPERS                                 ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: SESSION PERSISTENCE                                               ║
+// ║  Includes: saveSession(), loadSession(), clearSession()                    ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 const SESSION_KEY = "envoys_session_v1";
 
 function saveSession(role, user) {
@@ -134,7 +155,16 @@ function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch {}
 }
 
-// ── Role-Users hook ───────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: SESSION PERSISTENCE                                           ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: SHARED HOOKS                                                      ║
+// ║  Includes: useRoleUsers()                                                  ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 function useRoleUsers(role) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,7 +198,16 @@ function useRoleUsers(role) {
   return { options, loading };
 }
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: SHARED HOOKS                                                  ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: DESIGN TOKENS — PALETTE, FONTS, SHADOWS, STYLE HELPERS           ║
+// ║  Includes: C (colours), F (fonts), SHADOW, btn(), card, badge(), dot()    ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 const C = {
   green:        "#1A7A3C",
   greenDark:    "#0F5228",
@@ -216,17 +255,16 @@ const SHADOW = {
   md: "0 4px 12px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05)",
 };
 
-// ── Nav config ────────────────────────────────────────────────────────────────
 const STATUS_META = {
   "Reached":           { label: "Reached",          color: C.green,  bg: C.greenLight  },
   "Call Back":         { label: "Call Back",         color: C.amber,  bg: C.amberLight  },
   "Incorrect Contact": { label: "Incorrect Contact", color: C.danger, bg: C.dangerLight },
 };
 const CALL_STATUS_OPTIONS = [
-  { value: "Reached",            label: "Reached — spoke with person"   },
-  { value: "Not Reached",        label: "Not Reached — no answer"       },
-  { value: "Callback Requested", label: "Callback Requested by visitor" },
-  { value: "Wrong Number",       label: "Wrong Number"                  },
+  { value: "Reached",            label: "Reached: spoke with the VIP"   },
+  { value: "Not Reached",        label: "Not Reached: did not answer"       },
+  { value: "Callback Requested", label: "Callback Requested by VIP" },
+  { value: "Wrong Number",       label: "Wrong Number/Invalid"                  },
 ];
 function normaliseStatus(raw) {
   if (!raw) return null;
@@ -246,6 +284,7 @@ const ROLE_META = {
   pasteam:  { label: "Pastoral Team",   color: C.goldDark,   bg: C.goldLight    },
   soulcare: { label: "Soul Care",       color: C.soul,       bg: C.soulLight    },
   research: { label: "Research Team",   color: C.research,   bg: C.researchLight},
+  experienceadmin: { label: "Exp. Admin", color: C.blue, bg: C.blueLight },
 };
 
 const NAV_ICONS = {
@@ -256,6 +295,8 @@ const NAV_ICONS = {
   sc_queue: Heart, sc_add: UserPlus, sc_mine: Clipboard,
   visitation_tab: MapPin,
   research_feedback: FileText,
+  assign_calls: UserCheck,
+  completed_pipelines: FileText,
 };
 
 const NAV = {
@@ -297,9 +338,15 @@ const NAV = {
   research: [
     { id: "research_feedback", label: "Service Feedback" },
   ],
+  experienceadmin: [
+  { id: "assign_calls",        label: "Assign Calls"        },
+  { id: "completed_pipelines", label: "Completed Pipelines" },
+  { id: "callqueue",           label: "Call Queue"          },
+  { id: "allfeedback",         label: "All Feedback"        },
+  { id: "flagged",             label: "Flagged"             },
+],
 };
 
-// ── Shared style helpers ──────────────────────────────────────────────────────
 const inputBase = {
   width: "100%", padding: "9px 13px", borderRadius: 8,
   border: `1.5px solid ${C.border}`, fontSize: 14, color: C.textPrimary,
@@ -343,7 +390,6 @@ const dot = (color) => ({
   background: color, flexShrink: 0, display: "inline-block",
 });
 
-// ── Utility ───────────────────────────────────────────────────────────────────
 function parseAreas(raw) {
   if (Array.isArray(raw)) return raw;
   if (!raw) return [];
@@ -351,7 +397,17 @@ function parseAreas(raw) {
   catch { return []; }
 }
 
-// ── FieldInput ────────────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: DESIGN TOKENS — PALETTE, FONTS, SHADOWS, STYLE HELPERS       ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: SHARED UI PRIMITIVES                                              ║
+// ║  Includes: FieldInput, PhotoUpload, Logo, Alert, CredsBanner,             ║
+// ║            PageHeader, StatCard, SH (Section Heading)                     ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 function FieldInput({ label, id, type = "text", required, value, onChange,
   placeholder, options, hint, disabled }) {
   const [focused, setFocused] = useState(false);
@@ -479,7 +535,6 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   );
 }
 
-// ── Photo Upload Widget ───────────────────────────────────────────────────────
 function PhotoUpload({ value, onChange, existingUrl }) {
   const fileRef = useRef();
   const [preview, setPreview] = useState(existingUrl || null);
@@ -605,7 +660,6 @@ function PhotoUpload({ value, onChange, existingUrl }) {
   );
 }
 
-// ── Shared UI ─────────────────────────────────────────────────────────────────
 function Logo({ size = 48 }) {
   const [failed, setFailed] = useState(false);
   if (failed) return (
@@ -668,7 +722,6 @@ function PageHeader({ title, subtitle, action }) {
   );
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) {
   return (
     <div onClick={onClick}
@@ -696,7 +749,30 @@ function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) 
   );
 }
 
-// ── Sidebar ───────────────────────────────────────────────────────────────────
+function SH({ title, icon: Icon }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700,
+      letterSpacing: ".08em", color: C.textMuted, textTransform: "uppercase",
+      marginBottom: 16, paddingBottom: 8, borderBottom: `1.5px solid ${C.greenLight}`,
+      fontFamily: F.head,
+    }}>
+      {Icon && <Icon size={13} strokeWidth={2} />}
+      {title}
+    </div>
+  );
+}
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: SHARED UI PRIMITIVES                                          ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                             ║
+// ║  Includes: Sidebar, MobileHeader                                           ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose, flagCount = 0 }) {
   const ri = ROLE_META[role] || ROLE_META.expteam;
   return (
@@ -834,7 +910,17 @@ function MobileHeader({ onMenu, title }) {
   );
 }
 
-// ── Areas of Interest ─────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                         ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: DATA OFFICER — FIRST-TIMERS REGISTRY                             ║
+// ║  Includes: AREAS constant, BLANK_FT, FirstTimerForm, FirstTimersList,     ║
+// ║            PublicForm (self-registration), QRCodePage, CSVImport          ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 const AREAS = [
   { value: "billionpreneur", label: "Billionpreneur Hub" },
   { value: "ceos",           label: "CEOs Hub" },
@@ -853,22 +939,6 @@ const BLANK_FT = {
   service_date: new Date().toISOString().slice(0, 10),
 };
 
-// ── Section Heading ───────────────────────────────────────────────────────────
-function SH({ title, icon: Icon }) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700,
-      letterSpacing: ".08em", color: C.textMuted, textTransform: "uppercase",
-      marginBottom: 16, paddingBottom: 8, borderBottom: `1.5px solid ${C.greenLight}`,
-      fontFamily: F.head,
-    }}>
-      {Icon && <Icon size={13} strokeWidth={2} />}
-      {title}
-    </div>
-  );
-}
-
-// ── First-Timer Form ──────────────────────────────────────────────────────────
 function FirstTimerForm({ onSuccess, editData, onCancel }) {
   const [form, setForm] = useState(() =>
     editData
@@ -992,7 +1062,6 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
   );
 }
 
-// ── Public self-registration ──────────────────────────────────────────────────
 function PublicForm() {
   const [done, setDone] = useState(false);
   if (done) return (
@@ -1034,7 +1103,6 @@ function PublicForm() {
   );
 }
 
-// ── QR Code ───────────────────────────────────────────────────────────────────
 function QRCodePage() {
   const liveUrl = window.location.origin + "/register";
   const [custom, setCustom] = useState(liveUrl);
@@ -1086,7 +1154,6 @@ function QRCodePage() {
   );
 }
 
-// ── First-Timers List ─────────────────────────────────────────────────────────
 function FirstTimersList({ onEdit }) {
   const [data, setData] = useState([]);
   const [search, setSearch] = useState("");
@@ -1169,45 +1236,698 @@ function FirstTimersList({ onEdit }) {
   );
 }
 
-// ── Call Queue ────────────────────────────────────────────────────────────────
-function CallQueue({ onLogFeedback }) {
+function CSVImport({ onDone }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [success, setSuccess] = useState("");
+  const fileRef = useRef();
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      return obj;
+    });
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const parsed = parseCSV(ev.target.result);
+      setRows(parsed); setErr(""); setSuccess("");
+    };
+    reader.readAsText(file);
+  };
+
+  const sanitizeMaritalStatus = (s) => {
+    if (!s) return null;
+    const c = s.toString().trim().toLowerCase();
+    if (c === "single")   return "Single";
+    if (c === "married")  return "Married";
+    if (c === "divorced") return "Divorced";
+    if (c === "widowed")  return "Widowed";
+    return null;
+  };
+  const sanitizeGender = (g) => {
+    if (!g) return null;
+    const c = g.toString().trim().toLowerCase();
+    if (c === "male")   return "Male";
+    if (c === "female") return "Female";
+    return null;
+  };
+  const sanitizeDecision = (d) => {
+    if (!d) return null;
+    const c = d.toString().trim().toLowerCase();
+    if (c === "member")    return "Member";
+    if (c === "visitor")   return "Visitor";
+    if (c === "undecided") return "Undecided";
+    return null;
+  };
+  const sanitizeLifeStage = (ls) => {
+    if (!ls) return null;
+    const c = ls.toString().trim().toLowerCase();
+    if (c === "student")  return "Student";
+    if (c === "employee") return "Employee";
+    if (c === "business owner" || c === "businessowner") return "Business Owner";
+    return null;
+  };
+  const cleanDate = (dateStr) => {
+    if (!dateStr) return null;
+    const s = dateStr.toString().trim();
+    const parts = s.split(/[\/\-]/);
+    if (parts.length === 3) {
+      const [a, b, c2] = parts;
+      if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
+      return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    }
+    return null;
+  };
+
+  const importAll = async () => {
+    if (!rows.length) return;
+    setLoading(true); setErr("");
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const payload = rows
+        .map(r => ({
+          full_name:           (r.full_name || r.name || "").toString().trim(),
+          phone:               (r.phone || r.phone_number || "").toString().trim(),
+          email:               n(r.email?.toString().trim()),
+          house_address:       n((r.house_address || r.address || "").toString().trim()),
+          nearest_landmark:    n((r.nearest_landmark || r.landmark || "").toString().trim()),
+          heard_from:          n(r.heard_from?.toString().trim()),
+          service_feedback:    n(r.service_feedback?.toString().trim()),
+          gender:              sanitizeGender(r.gender),
+          marital_status:      sanitizeMaritalStatus(r.marital_status),
+          membership_decision: sanitizeDecision(r.membership_decision) || "Visitor",
+          life_stage:          sanitizeLifeStage(r.life_stage),
+          dob:                 cleanDate(r.dob || r.date_of_birth),
+          service_date:        n(r.service_date) || today,
+          areas_of_interest:   "[]",
+        }))
+        .filter(r => r.full_name && r.phone);
+
+      if (!payload.length) {
+        setErr("No valid rows found. Each row needs at least full_name and phone.");
+        setLoading(false); return;
+      }
+
+      await sb("first_timers", { method: "POST", body: JSON.stringify(payload) });
+      setSuccess(` ${payload.length} records imported successfully.`);
+      setRows([]);
+      onDone?.();
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ ...card, marginBottom: 20 }}>
+      <SH title="Bulk CSV Import" icon={Upload} />
+      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
+        Upload a CSV file to import multiple members at once. Required columns:{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: gender, email,
+        house_address, nearest_landmark, marital_status, life_stage, membership_decision, service_date.
+      </p>
+      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
+      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
+        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
+        <button style={btn("outline")} onClick={() => fileRef.current.click()}>
+          <Upload size={14} />Choose CSV File
+        </button>
+        {rows.length > 0 && (
+          <button style={btn("primary")} onClick={importAll} disabled={loading}>
+            {loading ? "Importing…" : `Import ${rows.length} rows`}
+          </button>
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
+            <thead>
+              <tr style={{ background: C.bg }}>
+                {Object.keys(rows[0]).slice(0, 6).map(h => (
+                  <th key={h} style={{
+                    padding: "8px 12px", textAlign: "left", fontWeight: 600,
+                    color: C.textSecondary, borderBottom: `1px solid ${C.border}`,
+                  }}>{h}</th>
+                ))}
+                {Object.keys(rows[0]).length > 6 && (
+                  <th style={{ padding: "8px 12px", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>…</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 5).map((r, i) => (
+                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  {Object.values(r).slice(0, 6).map((v, j) => (
+                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
+                  ))}
+                  {Object.values(r).length > 6 && (
+                    <td style={{ padding: "7px 12px", color: C.textMuted }}>…</td>
+                  )}
+                </tr>
+              ))}
+              {rows.length > 5 && (
+                <tr>
+                  <td colSpan={7} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
+                    …and {rows.length - 5} more rows
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v7.1)                        ║
+// ║                                                                             ║
+// ║  CHANGES FROM v7.0:                                                         ║
+// ║  1. LogFeedback: "Your Name (Caller)" no longer shows a dropdown for       ║
+// ║     expteam users — it is locked to the signed-in user's display name.      ║
+// ║  2. MyCallsView / PipelineOverviewForm: an "Edit Overview" button is        ║
+// ║     shown after an overview has been submitted, letting callers re-open      ║
+// ║     and amend the form. PipelineOverviewForm now pre-populates from         ║
+// ║     person.overview when an existing record is present.                     ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONNECT_CENTERS = [
+  "Agege", "Aboru/Iyana Ipaja", "Akute", "Ayobo", "Berger",
+  "Command/Ikeja", "Egbeda", "Iju-Ishaga", "Magboro", "Mile 12",
+  "Ogba", "Ojoo", "OPIC Estates", "Redemption City",
+];
+
+const NATURAL_GROUPS = ["Interphaze", "Solid Rock", "Royal Diade"];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS — pipeline utilities
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Given an array of call_feedback rows for one first-timer, return weeks present */
+function weeksLogged(fbRows) {
+  const weeks = new Set();
+  (fbRows || []).forEach(r => { if (r.week_number) weeks.add(r.week_number); });
+  return weeks;
+}
+
+/** How many of the 3 pipeline weeks have at least one log? */
+function pipelineProgress(fbRows) {
+  return weeksLogged(fbRows).size; // 0–3
+}
+
+/** What is the next week to log? null if pipeline complete */
+function nextWeek(fbRows) {
+  const done = weeksLogged(fbRows);
+  for (let w = 1; w <= 3; w++) { if (!done.has(w)) return w; }
+  return null;
+}
+
+/** Is the 3-week pipeline complete? */
+function pipelineComplete(fbRows) {
+  return nextWeek(fbRows) === null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PipelineBar — compact 3-week progress indicator
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PipelineBar({ fbRows, compact = false }) {
+  const done = weeksLogged(fbRows);
+  const complete = pipelineComplete(fbRows);
+
+  const weekColor = (w) => {
+    if (!done.has(w)) return { bg: C.border, text: C.textMuted };
+    const row = (fbRows || []).find(r => r.week_number === w);
+    const norm = normaliseStatus(row?.call_status);
+    if (norm === "Reached")           return { bg: C.green,  text: "#fff" };
+    if (norm === "Call Back")         return { bg: C.amber,  text: "#fff" };
+    if (norm === "Incorrect Contact") return { bg: C.danger, text: "#fff" };
+    return { bg: C.greenMid, text: "#fff" };
+  };
+
+  if (compact) {
+    return (
+      <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
+        {[1, 2, 3].map(w => {
+          const c = weekColor(w);
+          return (
+            <div key={w} style={{
+              width: 20, height: 20, borderRadius: 4,
+              background: c.bg, color: c.text,
+              fontSize: 9, fontWeight: 700, fontFamily: F.head,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              border: `1.5px solid ${done.has(w) ? "transparent" : C.border}`,
+            }}>W{w}</div>
+          );
+        })}
+        {complete && <span style={{ fontSize: 10, color: C.green, fontWeight: 700, marginLeft: 3 }}>✓</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+      {[1, 2, 3].map(w => {
+        const c = weekColor(w);
+        const row = done.has(w) ? (fbRows || []).find(r => r.week_number === w) : null;
+        return (
+          <div key={w}
+            title={row ? `Week ${w}: ${row.call_status} — ${row.caller_name || "—"}` : `Week ${w}: not logged`}
+            style={{
+              padding: "4px 10px", borderRadius: 6,
+              background: c.bg, color: c.text,
+              fontSize: 11, fontWeight: 700, fontFamily: F.head,
+              border: `1.5px solid ${done.has(w) ? "transparent" : C.border}`,
+              cursor: row ? "help" : "default",
+            }}>
+            Week {w}
+            {row && (
+              <span style={{ marginLeft: 4, fontWeight: 400, fontSize: 10 }}>
+                · {normaliseStatus(row.call_status)}
+                {row.church_attendance ? ` · ${row.church_attendance === "Present" ? " In church" : " Absent"}` : ""}
+              </span>
+            )}
+          </div>
+        );
+      })}
+      {complete
+        ? <span style={{ ...badge(C.green, C.greenLight, { fontSize: 11 }), marginLeft: 2 }}><CheckCircle size={10} />Pipeline complete</span>
+        : <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 2 }}>Next: Week {nextWeek(fbRows)}</span>
+      }
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// useCallData — shared data loader
+// Returns first_timers enriched with .fbRows[], .assignment, .overview
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useCallData() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [filter, setFilter] = useState("pending");
+  const [tick, setTick] = useState(0);
+  const reload = useCallback(() => setTick(t => t + 1), []);
 
-  const load = useCallback(async () => {
-    setLoading(true); setErr("");
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [ftRows, fbRows, asgRows, ovRows] = await Promise.all([
+          sb("first_timers?order=created_at.desc&limit=500"),
+          sb("call_feedback?select=*&order=created_at.asc"),
+          sb("call_assignments?select=*").catch(() => []),
+          sb("pipeline_overviews?select=*").catch(() => []),
+        ]);
+
+        const fbMap = {};
+        (fbRows || []).forEach(f => {
+          if (!fbMap[f.first_timer_id]) fbMap[f.first_timer_id] = [];
+          fbMap[f.first_timer_id].push(f);
+        });
+
+        const asgMap = {};
+        (asgRows || []).forEach(a => { asgMap[a.first_timer_id] = a; });
+
+        const ovMap = {};
+        (ovRows || []).forEach(o => { ovMap[o.first_timer_id] = o; });
+
+        if (!cancelled) {
+          setData((ftRows || []).map(r => ({
+            ...r,
+            fbRows:     fbMap[r.id] || [],
+            assignment: asgMap[r.id] || null,
+            overview:   ovMap[r.id]  || null,
+          })));
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  return { data, loading, err, reload };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AssignCallsView — only visible to experienceadmin / admin
+// (unchanged from v7.0)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AssignCallsView({ currentUser, onViewCompleted }) {
+  const { data, loading, err, reload } = useCallData();
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers("expteam");
+
+  const [selectedMember, setSelectedMember] = useState("");
+  const [search, setSearch]                 = useState("");
+  const [filter, setFilter]                 = useState("unassigned");
+  const [saving, setSaving]                 = useState(false);
+  const [msg, setMsg]                       = useState("");
+  const [msgType, setMsgType]               = useState("success");
+  const [pendingAssign, setPendingAssign]   = useState({});
+
+  const filtered = data.filter(r => {
+    const matchSearch = !search ||
+      r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.phone?.includes(search);
+    if (filter === "unassigned") return matchSearch && !r.assignment;
+    if (filter === "assigned")   return matchSearch && !!r.assignment;
+    if (filter === "complete")   return matchSearch && pipelineComplete(r.fbRows);
+    if (filter === "incomplete") return matchSearch && !pipelineComplete(r.fbRows);
+    return matchSearch;
+  });
+
+  const assignedCount   = data.filter(r => !!r.assignment).length;
+  const unassignedCount = data.filter(r => !r.assignment).length;
+  const completeCount   = data.filter(r => pipelineComplete(r.fbRows)).length;
+
+  const bulkAssign = async () => {
+    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
+    const targets = data.filter(r => !r.assignment);
+    if (!targets.length) { setMsg("No unassigned contacts to assign."); setMsgType("warn"); return; }
+    setSaving(true); setMsg("");
     try {
-      const rows = await sb("first_timers?order=created_at.desc&limit=300");
-      const fbRows = await sb("call_feedback?select=first_timer_id,call_status,caller_name,created_at&order=created_at.desc");
-      const fbMap = {};
-      (fbRows || []).forEach(f => { if (!fbMap[f.first_timer_id]) fbMap[f.first_timer_id] = f; });
-      setData((rows || []).map(r => ({ ...r, latestFb: fbMap[r.id] || null })));
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
+      const payload = targets.map(r => ({
+        first_timer_id: r.id,
+        assigned_to:    selectedMember,
+        assigned_by:    currentUser,
+      }));
+      for (let i = 0; i < payload.length; i += 50) {
+        await sb("call_assignments", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=representation",
+          body: JSON.stringify(payload.slice(i, i + 50)),
+        });
+      }
+      setMsg(`${targets.length} contact${targets.length !== 1 ? "s" : ""} assigned to ${selectedMember}.`);
+      setMsgType("success");
+      reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
 
-  const pending   = data.filter(r => !r.latestFb);
-  const reached   = data.filter(r => r.latestFb && normaliseStatus(r.latestFb.call_status) === "Reached");
-  const callback  = data.filter(r => r.latestFb && normaliseStatus(r.latestFb.call_status) === "Call Back");
-  const incorrect = data.filter(r => r.latestFb && normaliseStatus(r.latestFb.call_status) === "Incorrect Contact");
-  const views = { pending, reached, callback, incorrect, all: data };
-  const filtered = views[filter] || data;
+  const saveAssignment = async (ftId) => {
+    const member = pendingAssign[ftId];
+    if (!member) return;
+    setSaving(true);
+    try {
+      const existing = data.find(r => r.id === ftId)?.assignment;
+      if (existing) {
+        await sb(`call_assignments?id=eq.${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
+        });
+      } else {
+        await sb("call_assignments", {
+          method: "POST",
+          body: JSON.stringify({ first_timer_id: ftId, assigned_to: member, assigned_by: currentUser }),
+        });
+      }
+      setPendingAssign(p => { const n = { ...p }; delete n[ftId]; return n; });
+      setMsg(`Assigned to ${member}.`);
+      setMsgType("success");
+      reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const removeAssignment = async (ftId, asgId) => {
+    setSaving(true);
+    try {
+      await sb(`call_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
+      setMsg("Assignment removed."); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
 
   const tabs = [
-    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold   },
-    { k: "callback",  label: "Call Back",  count: callback.length,  col: C.amber  },
-    { k: "reached",   label: "Reached",    count: reached.length,   col: C.green  },
-    { k: "incorrect", label: "Incorrect",  count: incorrect.length, col: C.danger },
-    { k: "all",       label: "All",        count: data.length,      col: C.textMuted },
+    { k: "unassigned", label: "Unassigned",        count: unassignedCount, col: C.gold     },
+    { k: "assigned",   label: "Assigned",           count: assignedCount,   col: C.green    },
+    { k: "complete",   label: "Pipeline Complete",  count: completeCount,   col: C.greenMid },
+    { k: "all",        label: "All",                count: data.length,     col: C.textMuted},
   ];
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Call Queue" subtitle="Track and log calls for every first-timer" />
+      <PageHeader
+        title="Assign Calls"
+        subtitle="Allocate first-timer contacts to Experience Team members for follow-up"
+        action={
+          <button style={btn("primary", { background: C.blue })} onClick={onViewCompleted}>
+            <FileText size={14} />Completed Pipelines
+          </button>
+        }
+      />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Contacts"  value={data.length}      icon={Users}       accent={C.green}   />
+        <StatCard label="Assigned"        value={assignedCount}    icon={UserCheck}   accent={C.greenMid}/>
+        <StatCard label="Unassigned"      value={unassignedCount}  icon={AlertCircle} accent={C.gold}
+          sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
+      </div>
+
+      {/* Bulk assign panel */}
+      <div style={{
+        ...card, marginBottom: 20, padding: "1rem 1.25rem",
+        background: C.blueLight, border: `1px solid ${C.blue}22`,
+      }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, color: C.blue, marginBottom: 10,
+          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
+          display: "flex", alignItems: "center", gap: 5,
+        }}>
+          <Zap size={11} />Bulk Assignment
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+              Assign all <strong>{unassignedCount}</strong> unassigned contacts to:
+            </div>
+            {teamLoading ? (
+              <div style={{ ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8 }}>
+                <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />Loading…
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            ) : (
+              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)}
+                style={{ ...inputBase, cursor: "pointer" }}>
+                <option value="">Select team member</option>
+                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            )}
+          </div>
+          <button
+            style={{
+              ...btn("primary", { background: C.blue }),
+              opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1,
+            }}
+            onClick={bulkAssign}
+            disabled={saving || !selectedMember || unassignedCount === 0}>
+            <UserCheck size={14} />
+            {saving ? "Saving…" : `Assign ${unassignedCount} contacts`}
+          </button>
+        </div>
+      </div>
+
+      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+
+      {/* Filter tabs + search */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+              cursor: "pointer", fontFamily: F.body, transition: "all .15s",
+              background: filter === t.k ? (t.col || C.green) : C.bg,
+              color: filter === t.k ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === t.k ? (t.col || C.green) : C.border}`,
+            }}>
+            {t.label} ({t.count})
+          </button>
+        ))}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+            style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+        </div>
+        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map(r => {
+            const complete = pipelineComplete(r.fbRows);
+            const pending  = pendingAssign[r.id];
+            return (
+              <div key={r.id} style={{
+                ...card, padding: "12px 16px",
+                borderLeft: `3px solid ${complete ? C.green : r.assignment ? C.blue : C.gold}`,
+              }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                      background: C.greenLight, display: "flex", alignItems: "center",
+                      justifyContent: "center", fontWeight: 800, color: C.green, fontSize: 14, fontFamily: F.head,
+                    }}>{r.full_name?.charAt(0)}</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
+                      <div style={{ marginTop: 5 }}><PipelineBar fbRows={r.fbRows} compact /></div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                    {complete && (
+                      <span style={badge(C.green, C.greenLight, { fontSize: 11 })}>
+                        <CheckCircle size={10} />Pipeline Complete
+                      </span>
+                    )}
+                    {r.assignment && !pending ? (
+                      <>
+                        <span style={badge(C.blue, C.blueLight, { fontSize: 11 })}>
+                          <UserCheck size={10} />{r.assignment.assigned_to}
+                        </span>
+                        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
+                          onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.assignment.assigned_to }))}>
+                          <Edit3 size={10} />Reassign
+                        </button>
+                        <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
+                          onClick={() => removeAssignment(r.id, r.assignment.id)} disabled={saving}>
+                          <X size={10} />Unassign
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {teamLoading ? (
+                          <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span>
+                        ) : (
+                          <select
+                            value={pending ?? ""}
+                            onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
+                            style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
+                            <option value="">Select caller</option>
+                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        )}
+                        {pending && (
+                          <>
+                            <button style={btn("primary", { padding: "6px 14px", fontSize: 12, background: C.blue })}
+                              onClick={() => saveAssignment(r.id)} disabled={saving}>
+                              {saving ? "…" : "Save"}
+                            </button>
+                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })}
+                              onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[r.id]; return n; })}>
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
+                        {!pending && !r.assignment && (
+                          <span style={badge(C.gold, C.goldLight, { fontSize: 11 })}>Unassigned</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <UserCheck size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No contacts in this category</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CallQueue — role-aware: experienceadmin sees expandable week detail
+// (unchanged from v7.0)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", currentUser = "" }) {
+  const { data, loading, err, reload } = useCallData();
+  const [filter, setFilter]   = useState("pending");
+  const [search, setSearch]   = useState("");
+  const [expanded, setExpanded] = useState(null);
+
+  const isAdmin = currentUserRole === "experienceadmin" || currentUserRole === "admin";
+
+  const categorise = (r) => {
+    if (pipelineComplete(r.fbRows)) return "complete";
+    const latestFb = r.fbRows[r.fbRows.length - 1];
+    if (!latestFb) return "pending";
+    const norm = normaliseStatus(latestFb.call_status);
+    if (norm === "Reached")           return "reached";
+    if (norm === "Call Back")         return "callback";
+    if (norm === "Incorrect Contact") return "incorrect";
+    return "pending";
+  };
+
+  const searched = data.filter(r =>
+    !search ||
+    r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    r.phone?.includes(search)
+  );
+
+  const visible = isAdmin
+    ? searched
+    : searched.filter(r => r.assignment?.assigned_to === currentUser || r.fbRows.some(f => f.caller_name === currentUser));
+
+  const pending   = visible.filter(r => categorise(r) === "pending");
+  const reached   = visible.filter(r => categorise(r) === "reached");
+  const callback  = visible.filter(r => categorise(r) === "callback");
+  const incorrect = visible.filter(r => categorise(r) === "incorrect");
+  const complete  = visible.filter(r => categorise(r) === "complete");
+  const views = { pending, reached, callback, incorrect, complete, all: visible };
+  const filtered = views[filter] || visible;
+
+  const tabs = [
+    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold     },
+    { k: "callback",  label: "Call Back", count: callback.length,  col: C.amber    },
+    { k: "reached",   label: "Reached",   count: reached.length,   col: C.green    },
+    { k: "incorrect", label: "Incorrect", count: incorrect.length, col: C.danger   },
+    { k: "complete",  label: "Complete",  count: complete.length,  col: C.greenMid },
+    { k: "all",       label: "All",       count: visible.length,   col: C.textMuted},
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Call Queue" subtitle="3-week follow-up pipeline for every first-timer"
+        action={
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+              style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          </div>
+        } />
+
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {tabs.map(t => (
           <button key={t.k} onClick={() => setFilter(t.k)}
@@ -1221,46 +1941,170 @@ function CallQueue({ onLogFeedback }) {
             {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
           </button>
         ))}
-        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={load}>
+        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}>
           <RefreshCw size={13} />
         </button>
       </div>
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      <Alert type="error" msg={err} onClose={() => {}} />
+
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
-            const fb = r.latestFb;
-            const sm = fb ? statusMeta(fb.call_status) : { color: C.gold, bg: C.goldLight, label: "Pending" };
+            const latestFb = r.fbRows[r.fbRows.length - 1];
+            const complete = pipelineComplete(r.fbRows);
+            const sm       = latestFb ? statusMeta(latestFb.call_status)
+              : { color: C.gold, bg: C.goldLight, label: "Pending" };
+            const nxt      = nextWeek(r.fbRows);
+            const isOpen   = expanded === r.id;
+
+            const isMyContact = isAdmin ||
+              r.assignment?.assigned_to === currentUser ||
+              r.fbRows.some(f => f.caller_name === currentUser);
+
             return (
               <div key={r.id} style={{
-                ...card, display: "flex", justifyContent: "space-between",
-                alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
-                borderLeft: `3px solid ${sm.color}`,
+                ...card, padding: 0, overflow: "hidden",
+                borderLeft: `3px solid ${complete ? C.greenMid : sm.color}`,
               }}>
-                <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                    background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
-                  }}>
-                    {r.full_name?.charAt(0)}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.membership_decision} · {r.service_date}</div>
-                    {fb?.caller_name && (
-                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
-                        Last called by <strong>{fb.caller_name}</strong>
+                <div style={{
+                  display: "flex", justifyContent: "space-between", flexWrap: "wrap",
+                  gap: 10, padding: "12px 16px",
+                  cursor: isAdmin ? "pointer" : "default",
+                }}
+                  onClick={() => isAdmin && setExpanded(isOpen ? null : r.id)}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                      background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
+                    }}>{r.full_name?.charAt(0)}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>
+                        {r.phone} · {r.membership_decision} · {r.service_date}
                       </div>
+                      {r.assignment && (
+                        <div style={{ fontSize: 11, color: C.blue, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                          <UserCheck size={10} />Assigned to <strong>{r.assignment.assigned_to}</strong>
+                        </div>
+                      )}
+                      <div style={{ marginTop: 6 }}>
+                        <PipelineBar fbRows={r.fbRows} />
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
+                    {complete ? (
+                      <span style={badge(C.greenMid, C.greenLight, { fontSize: 11 })}>
+                        <CheckCircle size={10} />Complete
+                      </span>
+                    ) : isMyContact ? (
+                      <>
+                        <span style={badge(sm.color, sm.bg, { fontSize: 11 })}>
+                          <span style={dot(sm.color)} />{sm.label}
+                        </span>
+                        <button style={btn("primary", { padding: "7px 14px", fontSize: 13 })}
+                          onClick={e => { e.stopPropagation(); onLogFeedback(r); }}>
+                          <Phone size={13} />Log Week {nxt}
+                        </button>
+                      </>
+                    ) : (
+                      <span style={badge(C.textMuted, C.bg, { fontSize: 11 })}>Not assigned to you</span>
+                    )}
+                    {isAdmin && (
+                      <ChevronDown size={14} color={C.textMuted}
+                        style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", alignSelf: "center" }} />
                     )}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-                  <span style={badge(sm.color, sm.bg)}><span style={dot(sm.color)} />{sm.label}</span>
-                  <button style={btn("primary", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogFeedback(r)}>
-                    <Phone size={13} />Log Feedback
-                  </button>
-                </div>
+
+                {/* Expandable week detail — experienceadmin / admin only */}
+                {isAdmin && isOpen && (
+                  <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}` }}>
+                    {r.fbRows.length === 0 ? (
+                      <p style={{ fontSize: 12, color: C.textMuted, marginTop: 12 }}>No call logs yet.</p>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                        {r.fbRows.map(fb => {
+                          const fsm = statusMeta(fb.call_status);
+                          return (
+                            <div key={fb.id} style={{
+                              background: C.bg, borderRadius: 8, padding: "10px 14px",
+                              border: `1px solid ${C.border}`,
+                            }}>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
+                                <span style={badge(fsm.color, fsm.bg, { fontSize: 11, fontFamily: F.head })}>
+                                  Week {fb.week_number || "?"} · {fsm.label}
+                                </span>
+                                {fb.church_attendance && (
+                                  <span style={badge(
+                                    fb.church_attendance === "Present" ? C.green : C.danger,
+                                    fb.church_attendance === "Present" ? C.greenLight : C.dangerLight,
+                                    { fontSize: 11 }
+                                  )}>
+                                    {fb.church_attendance === "Present" ? " In church" : " Absent"}
+                                  </span>
+                                )}
+                                {fb.flagged_for_pastoral && (
+                                  <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>
+                                Called by <strong>{fb.caller_name || "—"}</strong>
+                                {fb.experience_rating && <span style={{ marginLeft: 8 }}>· Rating: {fb.experience_rating}</span>}
+                                {fb.returning && <span style={{ marginLeft: 8 }}>· Returning: {fb.returning}</span>}
+                                {fb.follow_up_date && (
+                                  <span style={{ marginLeft: 8, color: C.amber }}>
+                                    · <Calendar size={10} style={{ verticalAlign: "middle" }} /> {fb.follow_up_date}
+                                  </span>
+                                )}
+                              </div>
+                              {fb.notes && (
+                                <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.5 }}>{fb.notes}</div>
+                              )}
+                              {fb.flagged_for_pastoral && fb.flag_reason && (
+                                <div style={{
+                                  fontSize: 12, color: C.flag, marginTop: 6,
+                                  background: C.flagLight, padding: "5px 8px", borderRadius: 5,
+                                }}>🚩 {fb.flag_reason}</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {r.overview && (
+                      <div style={{
+                        marginTop: 12, background: C.greenXLight, borderRadius: 8, padding: "10px 14px",
+                        border: `1px solid ${C.greenBorder}`,
+                      }}>
+                        <div style={{
+                          fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 6,
+                          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
+                          display: "flex", alignItems: "center", gap: 4,
+                        }}>
+                          <CheckCircle size={11} />VIP Retention Overview
+                        </div>
+                        <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.8 }}>
+                          <strong>Move to Membership:</strong>{" "}
+                          <span style={{ color: r.overview.move_to_membership ? C.green : C.danger, fontWeight: 700 }}>
+                            {r.overview.move_to_membership ? "Yes" : "No"}
+                          </span>
+                          {r.overview.natural_groups?.length > 0 && (
+                            <><br /><strong>Natural Groups:</strong>{" "}{r.overview.natural_groups.join(", ")}</>
+                          )}
+                          {r.overview.connect_center && (
+                            <><br /><strong>Connect Center:</strong>{" "}{r.overview.connect_center}</>
+                          )}
+                          {r.overview.overview_notes && (
+                            <><br /><strong>Notes:</strong>{" "}{r.overview.overview_notes}</>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1276,65 +2120,66 @@ function CallQueue({ onLogFeedback }) {
   );
 }
 
-// ── Call-back Queue ───────────────────────────────────────────────────────────
-function CallBackQueue({ onLogFeedback }) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+// ─────────────────────────────────────────────────────────────────────────────
+// CallBackQueue — with assignment guard
+// (unchanged from v7.0)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const rows = await sb("first_timers?order=created_at.desc&limit=300");
-        const fbRows = await sb("call_feedback?select=first_timer_id,call_status,caller_name,follow_up_date,notes,created_at&order=created_at.desc");
-        const fbMap = {};
-        (fbRows || []).forEach(f => { if (!fbMap[f.first_timer_id]) fbMap[f.first_timer_id] = f; });
-        const cb = (rows || []).map(r => ({ ...r, latestFb: fbMap[r.id] || null }))
-          .filter(r => r.latestFb && normaliseStatus(r.latestFb.call_status) === "Call Back");
-        setData(cb);
-      } catch (e) { setErr(e.message); }
-      setLoading(false);
-    })();
-  }, []);
+function CallBackQueue({ onLogFeedback, currentUser = "" }) {
+  const { data, loading, err, reload } = useCallData();
+
+  const callbacks = data.filter(r => {
+    if (pipelineComplete(r.fbRows)) return false;
+    const latest = r.fbRows[r.fbRows.length - 1];
+    if (!latest) return false;
+    const isCallBack = normaliseStatus(latest.call_status) === "Call Back";
+    const isMine = r.assignment?.assigned_to === currentUser ||
+      r.fbRows.some(f => f.caller_name === currentUser);
+    return isCallBack && isMine;
+  });
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Call Backs" subtitle={`${data.length} people needing a follow-up call`} />
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <PageHeader title="Call Backs" subtitle={`${callbacks.length} contacts requesting a follow-up call`}
+        action={<button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>} />
+      <Alert type="error" msg={err} onClose={() => {}} />
+
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
-          {data.map(r => {
-            const fb = r.latestFb;
+          {callbacks.map(r => {
+            const latest = r.fbRows[r.fbRows.length - 1];
+            const nxt    = nextWeek(r.fbRows);
             return (
               <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${C.amber}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                  <div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
-                    {fb?.follow_up_date && (
+                    {latest?.follow_up_date && (
                       <div style={{ fontSize: 12, color: C.amber, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
-                        <Calendar size={11} />Follow-up: {fb.follow_up_date}
+                        <Calendar size={11} />Follow-up: {latest.follow_up_date}
                       </div>
                     )}
-                    {fb?.notes && (
+                    {latest?.notes && (
                       <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
-                        Note: {fb.notes}
+                        Note: {latest.notes}
                       </div>
                     )}
+                    <div style={{ marginTop: 6 }}><PipelineBar fbRows={r.fbRows} /></div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
                     <span style={badge(C.amber, C.amberLight)}><span style={dot(C.amber)} />Call Back</span>
-                    <button style={btn("primary", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogFeedback(r)}>
-                      <Phone size={13} />Log New Call
+                    <button style={btn("primary", { padding: "7px 14px", fontSize: 13 })}
+                      onClick={() => onLogFeedback(r)}>
+                      <Phone size={13} />Log Week {nxt}
                     </button>
                   </div>
                 </div>
               </div>
             );
           })}
-          {data.length === 0 && (
+          {callbacks.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
               <CheckCircle size={32} color={C.green} style={{ marginBottom: 8 }} />
               <div style={{ fontWeight: 700, fontFamily: F.head }}>No call-backs pending</div>
@@ -1347,42 +2192,40 @@ function CallBackQueue({ onLogFeedback }) {
   );
 }
 
-// ── My Calls (Experience Team) ────────────────────────────────────────────────
-// Shows only the call feedback rows logged by the currently signed-in user.
-function MyCallsView({ currentUser, onLogFeedback }) {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+// ─────────────────────────────────────────────────────────────────────────────
+// MyCallsView — per-week Edit buttons + assignment guard
+//
+// CHANGE (v7.1): When a pipeline overview exists, shows both an
+// "Edit Overview" button (to revise it) and an "Overview Submitted" badge.
+// The "onEditOverview" prop opens PipelineOverviewForm in edit mode.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOverview }) {
+  const { data, loading, err, reload } = useCallData();
   const [filter, setFilter] = useState("all");
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true); setErr("");
-      try {
-        // Fetch all feedback rows for this caller
-        const fbRows = await sb(
-          `call_feedback?caller_name=eq.${encodeURIComponent(currentUser)}&select=*,first_timers(full_name,phone,gender,membership_decision,service_date)&order=created_at.desc&limit=300`
-        );
-        setRows(fbRows || []);
-      } catch (e) { setErr(e.message); }
-      setLoading(false);
-    })();
-  }, [currentUser]);
+  const mine = data.filter(r =>
+    r.assignment?.assigned_to === currentUser ||
+    r.fbRows.some(f => f.caller_name === currentUser)
+  );
 
-  const reached   = rows.filter(r => normaliseStatus(r.call_status) === "Reached");
-  const callback  = rows.filter(r => normaliseStatus(r.call_status) === "Call Back");
-  const incorrect = rows.filter(r => normaliseStatus(r.call_status) === "Incorrect Contact");
-  const flagged   = rows.filter(r => r.flagged_for_pastoral);
+  const reached  = mine.filter(r => r.fbRows.some(f => normaliseStatus(f.call_status) === "Reached"));
+  const callback = mine.filter(r => {
+    const last = r.fbRows[r.fbRows.length - 1];
+    return last && normaliseStatus(last.call_status) === "Call Back";
+  });
+  const complete = mine.filter(r => pipelineComplete(r.fbRows));
+  const flagged  = mine.filter(r => r.fbRows.some(f => f.flagged_for_pastoral));
 
-  const views = { all: rows, reached, callback, incorrect, flagged };
-  const filtered = views[filter] || rows;
+  const views = { all: mine, reached, callback, complete, flagged };
+  const filtered = views[filter] || mine;
 
   const tabs = [
-    { k: "all",       label: "All",       count: rows.length,      col: C.textMuted },
-    { k: "reached",   label: "Reached",   count: reached.length,   col: C.green     },
-    { k: "callback",  label: "Call Back", count: callback.length,  col: C.amber     },
-    { k: "incorrect", label: "Incorrect", count: incorrect.length, col: C.danger    },
-    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
+    { k: "all",      label: "All",       count: mine.length,     col: C.textMuted },
+    { k: "reached",  label: "Reached",   count: reached.length,  col: C.green     },
+    { k: "callback", label: "Call Back", count: callback.length, col: C.amber     },
+    { k: "complete", label: "Complete",  count: complete.length, col: C.greenMid  },
+    { k: "flagged",  label: "Flagged",   count: flagged.length,  col: C.flag      },
   ];
 
   return (
@@ -1390,20 +2233,18 @@ function MyCallsView({ currentUser, onLogFeedback }) {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title="My Calls"
-        subtitle={`${rows.length} call${rows.length !== 1 ? "s" : ""} logged by you`}
+        subtitle={`${mine.length} contact${mine.length !== 1 ? "s" : ""} assigned to you`}
       />
 
-      {/* Summary stats */}
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Logged"  value={rows.length}      icon={Phone}        accent={C.green}   />
-        <StatCard label="Reached"       value={reached.length}   icon={CheckCircle}  accent={C.green}   />
-        <StatCard label="Call Backs"    value={callback.length}  icon={RefreshCw}    accent={C.amber}   />
-        <StatCard label="Flagged"       value={flagged.length}   icon={Flag}         accent={C.flag}
+        <StatCard label="Assigned to Me"    value={mine.length}      icon={Phone}       accent={C.green}   />
+        <StatCard label="Pipeline Complete" value={complete.length}  icon={CheckCircle} accent={C.greenMid}/>
+        <StatCard label="Call Backs"        value={callback.length}  icon={RefreshCw}   accent={C.amber}   />
+        <StatCard label="Flagged"           value={flagged.length}   icon={Flag}        accent={C.flag}
           sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
         {tabs.map(t => (
           <button key={t.k} onClick={() => setFilter(t.k)}
             style={{
@@ -1416,90 +2257,196 @@ function MyCallsView({ currentUser, onLogFeedback }) {
             {t.label} ({t.count})
           </button>
         ))}
+        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}>
+          <RefreshCw size={13} />
+        </button>
       </div>
 
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
-        <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "grid", gap: 10 }}>
           {filtered.map(r => {
-            const ft = r.first_timers || {};
-            const sm = statusMeta(r.call_status);
+            const isComplete  = pipelineComplete(r.fbRows);
+            const nxt         = nextWeek(r.fbRows);
+            const lastFb      = r.fbRows[r.fbRows.length - 1];
+            const sm          = lastFb ? statusMeta(lastFb.call_status)
+              : { color: C.gold, bg: C.goldLight, label: "Pending" };
+            const anyFlagged  = r.fbRows.some(f => f.flagged_for_pastoral);
+            const hasOverview = !!r.overview;
+
             return (
               <div key={r.id} style={{
-                ...card, padding: "12px 16px",
-                borderLeft: r.flagged_for_pastoral
-                  ? `3px solid ${C.flag}`
-                  : `3px solid ${sm.color}`,
+                ...card, padding: "14px 16px",
+                borderLeft: `3px solid ${anyFlagged ? C.flag : isComplete ? C.greenMid : sm.color}`,
               }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
+                {/* Header */}
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
                     <div style={{
                       width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                       background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
                       fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
-                    }}>
-                      {ft.full_name?.charAt(0) || "?"}
-                    </div>
+                    }}>{r.full_name?.charAt(0) || "?"}</div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{ft.full_name || "—"}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>
-                        {ft.phone} · {ft.service_date}
-                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", flexShrink: 0 }}>
-                    {r.flagged_for_pastoral && (
-                      <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>
-                    )}
-                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{sm.label}</span>
-                    {ft.full_name && (
-                      <button
-                        style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
-                        onClick={() => onLogFeedback({ ...ft, id: r.first_timer_id })}>
-                        <Phone size={12} />Update
-                      </button>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                    {anyFlagged && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>}
+                    {isComplete ? (
+                      <>
+                        <span style={badge(C.greenMid, C.greenLight, { fontSize: 11 })}>
+                          <CheckCircle size={10} />Pipeline Complete
+                        </span>
+                        {/* ── v7.1: Edit Overview always available once overview exists ── */}
+                        {hasOverview ? (
+                          <>
+                            <button
+                              style={btn("ghost", { padding: "7px 14px", fontSize: 13 })}
+                              onClick={() => onEditOverview(r)}>
+                              <Edit3 size={13} />Edit Overview
+                            </button>
+                            <span style={badge(C.green, C.greenLight, { fontSize: 11 })}>
+                              <CheckCircle size={10} />Overview Submitted
+                            </span>
+                          </>
+                        ) : (
+                          <button style={btn("gold", { padding: "7px 14px", fontSize: 13 })}
+                            onClick={() => onLogFeedback(r)}>
+                            <FileText size={13} />Submit Overview
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <span style={badge(sm.color, sm.bg, { fontSize: 11 })}>
+                          <span style={dot(sm.color)} />{sm.label}
+                        </span>
+                        <button style={btn("primary", { padding: "7px 14px", fontSize: 13 })}
+                          onClick={() => onLogFeedback(r)}>
+                          <Phone size={13} />Log Week {nxt}
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
 
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {r.experience_rating && (
-                    <span style={badge(C.textSecondary, C.bg, { fontSize: 11 })}>Rating: {r.experience_rating}</span>
-                  )}
-                  {r.returning && (
-                    <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>Returning: {r.returning}</span>
-                  )}
-                  {r.follow_up_date && (
-                    <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}><Calendar size={10} />{r.follow_up_date}</span>
-                  )}
-                </div>
+                {/* Pipeline bar */}
+                <div style={{ marginBottom: 10 }}><PipelineBar fbRows={r.fbRows} /></div>
 
-                {r.notes && (
-                  <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>{r.notes}</p>
+                {/* Per-week call logs with Edit buttons */}
+                {r.fbRows.length > 0 && (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {r.fbRows.map(fb => {
+                      const fsm = statusMeta(fb.call_status);
+                      return (
+                        <div key={fb.id} style={{
+                          background: C.bg, borderRadius: 8, padding: "8px 12px",
+                          border: `1px solid ${C.border}`,
+                        }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4, alignItems: "center" }}>
+                                <span style={badge(fsm.color, fsm.bg, { fontSize: 10, padding: "2px 8px", fontFamily: F.head })}>
+                                  Week {fb.week_number || "?"} · {fsm.label}
+                                </span>
+                                {fb.church_attendance && (
+                                  <span style={badge(
+                                    fb.church_attendance === "Present" ? C.green : C.danger,
+                                    fb.church_attendance === "Present" ? C.greenLight : C.dangerLight,
+                                    { fontSize: 10 }
+                                  )}>
+                                    {fb.church_attendance === "Present" ? " In church" : " Absent"}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textSecondary }}>
+                                Called by <strong>{fb.caller_name || "—"}</strong>
+                                {fb.experience_rating && <span style={{ marginLeft: 8 }}>Rating: {fb.experience_rating}</span>}
+                                {fb.returning && <span style={{ marginLeft: 8, color: C.goldDark }}>Returning: {fb.returning}</span>}
+                                {fb.follow_up_date && (
+                                  <span style={{ marginLeft: 8, color: C.amber }}>
+                                    <Calendar size={10} style={{ verticalAlign: "middle" }} /> {fb.follow_up_date}
+                                  </span>
+                                )}
+                              </div>
+                              {fb.notes && (
+                                <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 3, lineHeight: 1.5 }}>{fb.notes}</div>
+                              )}
+                              {fb.flagged_for_pastoral && fb.flag_reason && (
+                                <div style={{
+                                  fontSize: 12, color: C.flag, marginTop: 4,
+                                  background: C.flagLight, padding: "5px 8px", borderRadius: 5,
+                                }}>🚩 {fb.flag_reason}</div>
+                              )}
+                            </div>
+                            {fb.caller_name === currentUser && (
+                              <button
+                                style={btn("ghost", { padding: "5px 10px", fontSize: 11, flexShrink: 0 })}
+                                onClick={() => onEditWeekFeedback(r, fb.week_number)}>
+                                <Edit3 size={11} />Edit
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
-                {r.flag_reason && (
-                  <p style={{
-                    margin: "6px 0 0", fontSize: 13, color: C.flag, lineHeight: 1.55,
-                    background: C.flagLight, padding: "6px 10px", borderRadius: 6,
+
+                {/* Overview summary card */}
+                {hasOverview && (
+                  <div style={{
+                    marginTop: 10, background: C.greenXLight, borderRadius: 8, padding: "10px 14px",
+                    border: `1px solid ${C.greenBorder}`,
                   }}>
-                    🚩 {r.flag_reason}
-                  </p>
+                    <div style={{
+                      fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 6,
+                      fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
+                      display: "flex", alignItems: "center", gap: 4,
+                    }}>
+                      <CheckCircle size={11} />VIP Retention Overview
+                    </div>
+                    <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.8 }}>
+                      <strong>Move to Membership:</strong>{" "}
+                      <span style={{ color: r.overview.move_to_membership ? C.green : C.danger, fontWeight: 700 }}>
+                        {r.overview.move_to_membership ? "Yes" : "No"}
+                      </span>
+                      {r.overview.natural_groups?.length > 0 && (
+                        <><br /><strong>Natural Groups:</strong>{" "}{r.overview.natural_groups.join(", ")}</>
+                      )}
+                      {r.overview.connect_center && (
+                        <><br /><strong>Connect Center:</strong>{" "}{r.overview.connect_center}</>
+                      )}
+                      {r.overview.overview_notes && (
+                        <><br /><strong>Notes:</strong>{" "}{r.overview.overview_notes}</>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {r.fbRows.length === 0 && (
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>
+                    No call logs yet — start with Week 1.
+                  </div>
                 )}
               </div>
             );
           })}
+
           {!loading && filtered.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
               <Phone size={28} style={{ marginBottom: 8, opacity: .4 }} />
               <div style={{ fontWeight: 600, fontFamily: F.head }}>
-                {rows.length === 0
-                  ? "You haven't logged any calls yet."
-                  : "No calls in this category."}
+                {mine.length === 0
+                  ? "No contacts assigned to you yet."
+                  : "No contacts in this category."}
               </div>
-              {rows.length === 0 && (
+              {mine.length === 0 && (
                 <p style={{ fontSize: 13, marginTop: 6 }}>
-                  Head to <strong>Call Queue</strong> to start logging calls.
+                  Ask your Experience Admin to assign contacts to you.
                 </p>
               )}
             </div>
@@ -1510,43 +2457,62 @@ function MyCallsView({ currentUser, onLogFeedback }) {
   );
 }
 
-// ── Log Feedback ──────────────────────────────────────────────────────────────
-function LogFeedback({ person, onBack, callerName = "" }) {
-  const BLANK_FB = {
+// ─────────────────────────────────────────────────────────────────────────────
+// LogFeedback — v7.1
+//
+// CHANGE: "Your Name (Caller)" is now a locked read-only display that shows the
+// signed-in user's display name (callerName prop). The dropdown is removed for
+// expteam users so callers cannot impersonate another team member.
+// The field is still editable only if callerName is empty (fallback for edge cases).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
+  const fbRows = person.fbRows || [];
+
+  const weekToLog = editWeek !== null ? editWeek : nextWeek(fbRows);
+
+  const [form, setForm] = useState({
     call_status: "", experience_rating: "", returning_likelihood: "",
     notes: "", follow_up_date: "", caller_name: callerName,
     flagged_for_pastoral: false, flag_reason: "",
-  };
-  const [form, setForm] = useState(BLANK_FB);
-  const [existingId, setExistingId] = useState(null);
-  const [loading, setLoading] = useState(false);
+    church_attendance: "",
+  });
+  const [loading, setLoading]   = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState("");
-  const [isEdit, setIsEdit] = useState(false);
-
-  const { options: callerOptions, loading: callerLoading } = useRoleUsers("expteam");
+  const [done, setDone]         = useState(false);
+  const [showOverview, setShowOverview] = useState(false);
+  const [err, setErr]           = useState("");
+  const [existingRow, setExistingRow] = useState(null);
 
   useEffect(() => {
     (async () => {
       setFetching(true);
+      if (weekToLog === null) { setFetching(false); return; }
       try {
-        const rows = await sb(`call_feedback?first_timer_id=eq.${person.id}&order=created_at.desc&limit=1`);
+        const rows = await sb(
+          `call_feedback?first_timer_id=eq.${person.id}&week_number=eq.${weekToLog}&order=created_at.desc&limit=1`
+        );
         if (rows && rows.length > 0) {
           const r = rows[0];
-          setExistingId(r.id);
-          setIsEdit(true);
+          setExistingRow(r);
           setForm({
-            call_status: r.call_status || "", experience_rating: r.experience_rating || "",
-            returning_likelihood: r.returning || "", notes: r.notes || "",
-            follow_up_date: r.follow_up_date || "", caller_name: r.caller_name || callerName,
-            flagged_for_pastoral: r.flagged_for_pastoral || false, flag_reason: r.flag_reason || "",
+            call_status:          r.call_status          || "",
+            experience_rating:    r.experience_rating    || "",
+            returning_likelihood: r.returning            || "",
+            notes:                r.notes                || "",
+            follow_up_date:       r.follow_up_date       || "",
+            // Always keep the signed-in caller's name, not the stored one,
+            // so a corrected name from the session takes precedence.
+            caller_name:          callerName || r.caller_name || "",
+            flagged_for_pastoral: r.flagged_for_pastoral || false,
+            flag_reason:          r.flag_reason          || "",
+            church_attendance:    r.church_attendance    || "",
           });
         }
-      } catch (e) { /* no existing record */ }
+      } catch { /* no existing row */ }
       setFetching(false);
     })();
-  }, [person.id]);
+  }, [person.id, weekToLog]);
 
   const lsRef = useRef({});
   const lset = useCallback((key) => {
@@ -1562,8 +2528,8 @@ function LogFeedback({ person, onBack, callerName = "" }) {
   const isReached = form.call_status === "Reached";
 
   const submit = async () => {
-    if (!form.call_status) { setErr("Call status is required."); return; }
-    if (!form.caller_name.trim()) { setErr("Please select your name as the caller."); return; }
+    if (!form.call_status)        { setErr("Call status is required."); return; }
+    if (!form.caller_name.trim()) { setErr("Caller name is missing — please contact your admin."); return; }
     if (form.flagged_for_pastoral && !form.flag_reason.trim()) {
       setErr("Please describe the reason for flagging."); return;
     }
@@ -1571,24 +2537,63 @@ function LogFeedback({ person, onBack, callerName = "" }) {
     try {
       const payload = {
         first_timer_id:       person.id,
+        week_number:          weekToLog,
         call_status:          form.call_status,
-        experience_rating:    isReached ? (form.experience_rating || null)   : null,
+        experience_rating:    isReached ? (form.experience_rating || null) : null,
         returning:            isReached ? (form.returning_likelihood || null) : null,
         notes:                form.notes          || null,
         follow_up_date:       form.follow_up_date || null,
         caller_name:          form.caller_name.trim(),
         flagged_for_pastoral: !!form.flagged_for_pastoral,
         flag_reason:          form.flagged_for_pastoral ? (form.flag_reason || null) : null,
+        church_attendance:    (weekToLog >= 2) ? (form.church_attendance || null) : null,
       };
-      if (existingId) {
-        await sb(`call_feedback?id=eq.${existingId}`, { method: "PATCH", body: JSON.stringify(payload) });
+      if (existingRow) {
+        await sb(`call_feedback?id=eq.${existingRow.id}`, { method: "PATCH", body: JSON.stringify(payload) });
       } else {
         await sb("call_feedback", { method: "POST", body: JSON.stringify(payload) });
       }
-      setDone(true);
+      if (weekToLog === 3 && !editWeek && !person.overview) {
+        setShowOverview(true);
+      } else {
+        setDone(true);
+      }
     } catch (e) { setErr(e.message); }
     setLoading(false);
   };
+
+  if (showOverview) {
+    return (
+      <PipelineOverviewForm
+        person={person}
+        callerName={form.caller_name || callerName}
+        onBack={onBack}
+        onDone={onBack}
+      />
+    );
+  }
+
+  if (!fetching && weekToLog === null && editWeek === null) {
+    return (
+      <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
+        <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
+        <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>
+          Pipeline complete for {person.full_name}
+        </h3>
+        <p style={{ fontSize: 13, color: C.textMuted }}>All 3 weeks have been logged.</p>
+        <div style={{ margin: "16px 0" }}><PipelineBar fbRows={fbRows} /></div>
+        {!person.overview && (
+          <button style={{ ...btn("gold"), marginTop: 8 }}
+            onClick={() => setShowOverview(true)}>
+            <FileText size={14} />Submit VIP Retention Overview
+          </button>
+        )}
+        <button style={{ ...btn("outline"), marginTop: 8, marginLeft: 8 }} onClick={onBack}>
+          <ArrowLeft size={14} />Back
+        </button>
+      </div>
+    );
+  }
 
   if (fetching) return (
     <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>Loading…</div>
@@ -1598,11 +2603,19 @@ function LogFeedback({ person, onBack, callerName = "" }) {
     <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
       <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
       <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>
-        Feedback {isEdit ? "updated" : "logged"} for {person.full_name}
+        Week {weekToLog} feedback {existingRow ? "updated" : "logged"} for {person.full_name}
       </h3>
       {form.flagged_for_pastoral && (
         <div style={{ ...badge(C.flag, C.flagLight), marginTop: 8, fontSize: 13, display: "inline-flex" }}>
           <Flag size={12} />Flagged for Pastoral Team
+        </div>
+      )}
+      {weekToLog < 3 && (
+        <div style={{
+          marginTop: 16, padding: "12px 16px", background: C.greenXLight,
+          borderRadius: 8, fontSize: 13, color: C.textSecondary,
+        }}>
+          Next step: <strong>Week {weekToLog + 1}</strong> call
         </div>
       )}
       <button style={{ ...btn("outline"), marginTop: 20 }} onClick={onBack}>
@@ -1611,67 +2624,108 @@ function LogFeedback({ person, onBack, callerName = "" }) {
     </div>
   );
 
-  const showCallerDropdown = !callerLoading && callerOptions.length > 0;
-
   return (
     <div style={card} className="page-enter">
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
-            {isEdit ? "Update Feedback" : "Log Feedback"} — {person.full_name}
+            {editWeek ? `Edit Week ${weekToLog}` : `Week ${weekToLog} Call`} — {person.full_name}
           </h2>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
             {person.phone} · visited {person.service_date}
           </p>
         </div>
       </div>
-      {isEdit && (
+
+      {/* Pipeline progress */}
+      <div style={{
+        marginBottom: 16, padding: "10px 14px",
+        background: C.greenXLight, borderRadius: 8, border: `1px solid ${C.greenBorder}`,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, marginBottom: 6, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
+          Pipeline Progress
+        </div>
+        <PipelineBar fbRows={fbRows} />
+      </div>
+
+      {existingRow && (
         <div style={{
           marginBottom: 16, padding: "8px 14px", background: C.goldLight,
           borderRadius: 8, fontSize: 13, color: C.goldDark, fontWeight: 600,
           display: "flex", alignItems: "center", gap: 8,
         }}>
-          <Edit3 size={13} />Editing existing feedback — changes will overwrite the previous entry.
+          <Edit3 size={13} />Editing existing Week {weekToLog} entry — changes will overwrite it.
         </div>
       )}
+
       {CREDS_MISSING && <CredsBanner />}
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {callerLoading ? (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
-            Your Name (Caller) <span style={{ color: C.danger }}>*</span>
-          </div>
-          <div style={{
-            ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
-            Loading team members…
-          </div>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/*
+        ── v7.1 CHANGE: Caller name ──────────────────────────────────────────
+        Show a locked read-only chip with the signed-in user's display name.
+        This prevents expteam users from selecting a different caller name.
+        If callerName is somehow empty (edge case), fall back to a plain text
+        input so the form is still usable.
+      */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+          Your Name (Caller)
         </div>
-      ) : showCallerDropdown ? (
-        <FieldInput
-          label="Your Name (Caller)"
-          id="cn"
-          type="select"
-          required
-          value={form.caller_name}
-          onChange={lset("caller_name")}
-          options={callerOptions}
-          hint="Select your name from the Experience Team list"
-        />
-      ) : (
-        <FieldInput
-          label="Your Name (Caller)"
-          id="cn"
-          required
-          value={form.caller_name}
-          onChange={lset("caller_name")}
-          placeholder="e.g. Tunde Adeyemi"
-          hint="Identifies who made the call for activity tracking"
-        />
+        {callerName ? (
+          <div style={{
+            ...inputBase,
+            background: C.greenXLight,
+            border: `1.5px solid ${C.greenBorder}`,
+            color: C.green,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "default",
+            userSelect: "none",
+          }}>
+            <UserCheck size={14} color={C.green} />
+            {callerName}
+            <span style={{
+              marginLeft: "auto", fontSize: 11, fontWeight: 400,
+              color: C.textMuted, fontStyle: "italic",
+            }}>
+              Logged as you
+            </span>
+          </div>
+        ) : (
+          /* Fallback: plain text input if session name is unavailable */
+          <FieldInput label="" id="cn" required
+            value={form.caller_name} onChange={lset("caller_name")}
+            placeholder="Enter your name"
+            hint="Your name could not be loaded from the session — type it manually" />
+        )}
+      </div>
+
+      {/* Church attendance — Week 2 & 3 only */}
+      {weekToLog >= 2 && (
+        <div style={{
+          marginBottom: 16, padding: "12px 14px",
+          background: C.greenXLight, borderRadius: 8, border: `1px solid ${C.greenBorder}`,
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 8,
+            fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
+            display: "flex", alignItems: "center", gap: 4,
+          }}>
+            <Calendar size={11} />Church Attendance — Week {weekToLog}
+          </div>
+          <FieldInput label="Was this person in church on Sunday?" id="ca" type="select"
+            value={form.church_attendance} onChange={lset("church_attendance")}
+            options={[
+              { value: "Present", label: "Present" },
+              { value: "Absent",  label: "Absent"  },
+              { value: "Unknown", label: "Unknown"  },
+            ]} />
+        </div>
       )}
 
       <FieldInput label="Call Status" id="cs" type="select" required
@@ -1701,8 +2755,8 @@ function LogFeedback({ person, onBack, callerName = "" }) {
           <FieldInput label="Returning?" id="rl" type="select"
             value={form.returning_likelihood} onChange={lset("returning_likelihood")}
             options={[
-              { value: "Yes", label: "Yes — will return" }, { value: "Maybe", label: "Maybe" },
-              { value: "No", label: "No" }, { value: "Undecided", label: "Undecided" },
+              { value: "Yes", label: "Yes: will return next week" }, { value: "Maybe", label: "Maybe: on special services" },
+              { value: "No", label: "No: came to visit" }, { value: "Undecided", label: "Undecided" },
             ]} />
         </>
       )}
@@ -1715,9 +2769,10 @@ function LogFeedback({ person, onBack, callerName = "" }) {
         value={form.notes} onChange={lset("notes")}
         placeholder={isReached ? "Key points from the conversation…" : "Reason / any context for the team…"} />
 
+      {/* Pastoral flag */}
       <div style={{
-        background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10,
-        padding: "16px", marginBottom: 16,
+        background: C.flagLight, border: `1px solid #FECACA`,
+        borderRadius: 10, padding: "16px", marginBottom: 16,
       }}>
         <div style={{
           fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.flag, marginBottom: 10,
@@ -1737,15 +2792,635 @@ function LogFeedback({ person, onBack, callerName = "" }) {
 
       <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
         onClick={submit} disabled={loading}>
-        {loading ? "Saving…" : isEdit ? "Update Feedback" : "Save Feedback"}
+        {loading
+          ? "Saving…"
+          : existingRow
+            ? `Update Week ${weekToLog} Feedback`
+            : `Save Week ${weekToLog} Feedback`}
       </button>
     </div>
   );
 }
 
-// ── All Feedback ──────────────────────────────────────────────────────────────
-// Now includes date range filter (filters on first_timers.service_date via JS,
-// since call_feedback.created_at is the call date — we filter by created_at).
+// ─────────────────────────────────────────────────────────────────────────────
+// PipelineOverviewForm — v7.1
+//
+// CHANGE: Now supports both creating a new overview AND editing an existing one.
+// When person.overview is present the form pre-populates all fields.
+// The "Edit" flow is opened via the "Edit Overview" button in MyCallsView.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
+  const existingOverview = person.overview || null;
+
+  const [form, setForm] = useState({
+    move_to_membership: existingOverview ? existingOverview.move_to_membership : null,
+    natural_groups:     existingOverview?.natural_groups  || [],
+    connect_center:     existingOverview?.connect_center  || "",
+    overview_notes:     existingOverview?.overview_notes  || "",
+    submitted_by:       existingOverview?.submitted_by    || callerName,
+  });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [err, setErr]         = useState("");
+
+  const isEditing = !!existingOverview;
+
+  const settersRef = useRef({});
+  const set = useCallback((key) => {
+    if (!settersRef.current[key]) {
+      settersRef.current[key] = (valOrEvt) => {
+        const val = valOrEvt && valOrEvt.target !== undefined ? valOrEvt.target.value : valOrEvt;
+        setForm(f => ({ ...f, [key]: val }));
+      };
+    }
+    return settersRef.current[key];
+  }, []);
+
+  const submit = async () => {
+    if (form.move_to_membership === null) {
+      setErr("Please indicate whether to move this person to Membership."); return;
+    }
+    setLoading(true); setErr("");
+    try {
+      const payload = {
+        first_timer_id:     person.id,
+        submitted_by:       form.submitted_by || callerName,
+        move_to_membership: !!form.move_to_membership,
+        natural_groups:     form.natural_groups.length > 0 ? form.natural_groups : null,
+        connect_center:     form.connect_center || null,
+        overview_notes:     form.overview_notes || null,
+      };
+
+      if (isEditing) {
+        // We already know the record's id from person.overview
+        await sb(`pipeline_overviews?id=eq.${existingOverview.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+      } else {
+        // Check for an orphan record just in case, then insert
+        const existing = await sb(
+          `pipeline_overviews?first_timer_id=eq.${person.id}&select=id&limit=1`
+        ).catch(() => []);
+
+        if (existing && existing.length > 0) {
+          await sb(`pipeline_overviews?id=eq.${existing[0].id}`, {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+          });
+        } else {
+          await sb("pipeline_overviews", { method: "POST", body: JSON.stringify(payload) });
+        }
+      }
+
+      // Sync membership decision in first_timers when recommended
+      if (form.move_to_membership) {
+        await sb(`first_timers?id=eq.${person.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ membership_decision: "Member" }),
+        }).catch(() => {});
+      }
+
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
+      <CheckCircle size={56} color={C.green} style={{ marginBottom: 16 }} />
+      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px", fontSize: 20 }}>
+        {isEditing ? "Overview Updated!" : "VIP Retention Overview Submitted!"}
+      </h3>
+      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
+        {person.full_name}'s retention overview has been {isEditing ? "updated" : "recorded"}.
+        {form.move_to_membership && " Their membership decision has been updated to Member."}
+      </p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 16 }}>
+        <button style={btn("outline")} onClick={onDone}>
+          <ArrowLeft size={14} />Back to My Calls
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={card} className="page-enter">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
+            {isEditing ? "Edit" : "VIP"} Retention Overview — {person.full_name}
+          </h2>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
+            {isEditing
+              ? "Update your assessment. Changes will overwrite the existing overview."
+              : "Submit your 3-week assessment to help the team decide on membership."}
+          </p>
+        </div>
+      </div>
+
+      {/* Edit mode banner */}
+      {isEditing && (
+        <div style={{
+          marginBottom: 16, padding: "8px 14px", background: C.goldLight,
+          borderRadius: 8, fontSize: 13, color: C.goldDark, fontWeight: 600,
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <Edit3 size={13} />You are editing an existing overview — your changes will overwrite the saved version.
+        </div>
+      )}
+
+      {/* Pipeline complete banner */}
+      {!isEditing && (
+        <div style={{
+          marginBottom: 20, padding: "12px 16px", background: C.greenLight,
+          borderRadius: 8, border: `1px solid ${C.greenBorder}`,
+          fontSize: 13, color: C.green, fontWeight: 600,
+          display: "flex", alignItems: "center", gap: 8,
+        }}>
+          <CheckCircle size={16} />All 3 weeks have been logged. Submit your final overview below.
+        </div>
+      )}
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {/* Membership decision */}
+      <div style={{ marginBottom: 24 }}>
+        <SH title="Membership Recommendation" icon={UserCheck} />
+        <div style={{ marginBottom: 12, fontSize: 13, color: C.textSecondary }}>
+          Based on your 3-week engagement, do you recommend moving{" "}
+          <strong>{person.full_name}</strong> to full membership?
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {[
+            { val: true,  label: `Yes — Move ${person.full_name?.split(" ")[0]} to Membership`, col: C.green,  bg: C.greenLight  },
+            { val: false, label: "No — Not ready for membership yet",                            col: C.danger, bg: C.dangerLight },
+          ].map(opt => (
+            <button key={String(opt.val)} type="button"
+              onClick={() => setForm(f => ({ ...f, move_to_membership: opt.val }))}
+              style={{
+                flex: 1, minWidth: 200,
+                padding: "12px 16px", borderRadius: 10, cursor: "pointer",
+                border: `2px solid ${form.move_to_membership === opt.val ? opt.col : C.border}`,
+                background: form.move_to_membership === opt.val ? opt.bg : C.surface,
+                color: form.move_to_membership === opt.val ? opt.col : C.textSecondary,
+                fontWeight: form.move_to_membership === opt.val ? 700 : 400,
+                fontFamily: F.body, fontSize: 13, textAlign: "left", transition: "all .15s",
+              }}>
+              {form.move_to_membership === opt.val ? "✓ " : ""}{opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Natural Groups */}
+      <div style={{ marginBottom: 24 }}>
+        <SH title="Natural Groups Eligibility" icon={Users} />
+        <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 10 }}>
+          Select any Natural Groups this person is eligible for (optional).
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {NATURAL_GROUPS.map(g => {
+            const on = form.natural_groups.includes(g);
+            return (
+              <button key={g} type="button"
+                onClick={() => setForm(f => ({
+                  ...f,
+                  natural_groups: on
+                    ? f.natural_groups.filter(x => x !== g)
+                    : [...f.natural_groups, g],
+                }))}
+                style={{
+                  padding: "8px 18px", borderRadius: 20, fontSize: 13, cursor: "pointer",
+                  border: `2px solid ${on ? C.green : C.border}`,
+                  background: on ? C.greenLight : C.surface,
+                  color: on ? C.green : C.textSecondary,
+                  fontWeight: on ? 700 : 400, fontFamily: F.body, transition: "all .15s",
+                }}>
+                {on ? "✓ " : ""}{g}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Connect Center */}
+      <div style={{ marginBottom: 24 }}>
+        <SH title="Recommended Connect Center" icon={MapPin} />
+        <FieldInput label="Connect Center" id="cc" type="select"
+          value={form.connect_center} onChange={set("connect_center")}
+          options={CONNECT_CENTERS.map(c => ({ value: c, label: c }))}
+          hint="Select the Connect Center closest to where this person lives" />
+      </div>
+
+      {/* Notes */}
+      <div style={{ marginBottom: 24 }}>
+        <SH title="Overview Notes" icon={FileText} />
+        <FieldInput label="Additional notes (optional)" id="on" type="textarea"
+          value={form.overview_notes} onChange={set("overview_notes")}
+          placeholder="Any observations or context to share with the pastoral team…" />
+      </div>
+
+      {/* Submitted by — locked to session name, same as LogFeedback */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+          Submitted by
+        </div>
+        {callerName ? (
+          <div style={{
+            ...inputBase,
+            background: C.greenXLight,
+            border: `1.5px solid ${C.greenBorder}`,
+            color: C.green,
+            fontWeight: 700,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "default",
+            userSelect: "none",
+          }}>
+            <UserCheck size={14} color={C.green} />
+            {callerName}
+            <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 400, color: C.textMuted, fontStyle: "italic" }}>
+              Logged as you
+            </span>
+          </div>
+        ) : (
+          <FieldInput label="" id="sb" required
+            value={form.submitted_by} onChange={set("submitted_by")}
+            placeholder="Your name" />
+        )}
+      </div>
+
+      <button style={{ ...btn("gold"), width: "100%", padding: 13, fontSize: 15 }}
+        onClick={submit} disabled={loading}>
+        {loading
+          ? "Saving…"
+          : isEditing
+            ? "Save Changes to Overview"
+            : "Submit VIP Retention Overview"}
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CompletedPipelines — experienceadmin view
+// (unchanged from v7.0)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CompletedPipelines({ onBack }) {
+  const [rows, setRows]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [search, setSearch]     = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const data = await sb(
+          "pipeline_overviews?select=*,first_timers(full_name,phone,service_date)&order=submitted_at.desc&limit=500"
+        );
+        setRows(data || []);
+      } catch (e) { setErr(e.message); }
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = rows.filter(r => {
+    const ft = r.first_timers || {};
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !ft.full_name?.toLowerCase().includes(q) &&
+        !r.submitted_by?.toLowerCase().includes(q)
+      ) return false;
+    }
+    const submittedDate = r.submitted_at ? r.submitted_at.slice(0, 10) : "";
+    if (dateFrom && submittedDate < dateFrom) return false;
+    if (dateTo   && submittedDate > dateTo)   return false;
+    return true;
+  });
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected   = allFilteredIds.some(id => selected.has(id));
+
+  const toggleRow = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(prev => { const n = new Set(prev); allFilteredIds.forEach(id => n.delete(id)); return n; });
+    } else {
+      setSelected(prev => { const n = new Set(prev); allFilteredIds.forEach(id => n.add(id)); return n; });
+    }
+  };
+
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (toExport.length === 0) return;
+
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+
+    const header = ["VIP Name", "Phone", "Service Date", "Move to Membership", "Natural Groups", "Connect Center", "Submitted By", "Submitted At"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => {
+        const ft = r.first_timers || {};
+        return [
+          escape(ft.full_name),
+          escape(ft.phone),
+          escape(ft.service_date),
+          escape(r.move_to_membership ? "Yes" : "No"),
+          escape(Array.isArray(r.natural_groups) ? r.natural_groups.join("; ") : (r.natural_groups || "")),
+          escape(r.connect_center),
+          escape(r.submitted_by),
+          escape(r.submitted_at ? r.submitted_at.slice(0, 10) : ""),
+        ].join(",");
+      }),
+    ];
+
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateLabel = dateFrom || dateTo
+      ? `_${dateFrom || "start"}_to_${dateTo || "end"}`
+      : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href     = url;
+    a.download = `envoys_completed_pipelines${dateLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Completed Pipelines"
+        subtitle="Overview submissions after each 3-week follow-up cycle"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button style={btn("ghost")} onClick={onBack}><ArrowLeft size={14} />Back</button>
+            <button
+              style={{
+                ...btn("primary"),
+                background: selectedCount > 0 ? C.blue : C.border,
+                color: selectedCount > 0 ? "#fff" : C.textMuted,
+                cursor: selectedCount > 0 ? "pointer" : "not-allowed",
+                border: "none",
+              }}
+              onClick={downloadCSV}
+              disabled={selectedCount === 0}>
+              <Download size={14} />
+              Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            </button>
+          </div>
+        }
+      />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Overviews"   value={rows.length}     icon={FileText}    accent={C.blue}    />
+        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}      accent={C.green}   />
+        <StatCard label="Selected"          value={selectedCount}   icon={Download}    accent={selectedCount > 0 ? C.blue : C.textMuted}
+          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+      </div>
+
+      {/* Date filter bar */}
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.blueLight, borderRadius: 10, border: `1px solid ${C.blue}22`,
+      }}>
+        <Calendar size={14} color={C.blue} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by submission date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
+              <X size={12} />Clear
+            </button>
+          )}
+        </div>
+        <div style={{ position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search name or caller…"
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {selectedCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 16px", marginBottom: 12,
+          background: `${C.blue}10`, borderRadius: 8, border: `1px solid ${C.blue}30`,
+          fontSize: 13, color: C.blue, fontWeight: 600, flexWrap: "wrap", gap: 10,
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CheckCircle size={14} />{selectedCount} record{selectedCount !== 1 ? "s" : ""} selected
+          </span>
+          <button style={{ ...btn("primary", { padding: "6px 14px", fontSize: 12 }), background: C.blue }}
+            onClick={downloadCSV}>
+            <Download size={13} />Download CSV
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ color: C.textMuted }}>Loading…</p>
+      ) : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0 ? "No pipeline overviews submitted yet." : "No results match your filters."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          {/* Table header */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "40px 1fr 130px 120px 1fr 1fr",
+            padding: "10px 16px", background: C.bg,
+            borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"}
+                style={{
+                  width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                  border: `2px solid ${someSelected ? C.blue : C.border}`,
+                  background: allSelected ? C.blue : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .15s",
+                }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && (
+                  <div style={{ width: 8, height: 2, background: C.blue, borderRadius: 1 }} />
+                )}
+              </div>
+            </div>
+            {["VIP Name", "Membership", "Connect Center", "Natural Groups", "Submitted By"].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
+                {h}
+              </div>
+            ))}
+          </div>
+
+          {/* Table rows */}
+          {filtered.map((r, i) => {
+            const ft        = r.first_timers || {};
+            const isChecked = selected.has(r.id);
+            const groups    = Array.isArray(r.natural_groups)
+              ? r.natural_groups
+              : (r.natural_groups ? [r.natural_groups] : []);
+
+            return (
+              <div key={r.id} onClick={() => toggleRow(r.id)}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "40px 1fr 130px 120px 1fr 1fr",
+                  padding: "12px 16px", gap: 10,
+                  alignItems: "flex-start",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  background: isChecked ? `${C.blue}08` : C.surface,
+                  cursor: "pointer", transition: "background .12s",
+                }}
+                onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.blue}08` : C.surface; }}>
+
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 4,
+                    border: `2px solid ${isChecked ? C.blue : C.border}`,
+                    background: isChecked ? C.blue : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all .15s",
+                  }}>
+                    {isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: "50%", background: C.blueLight,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, color: C.blue, fontSize: 12, fontFamily: F.head,
+                    marginBottom: 4, border: `1.5px solid ${C.blue}30`,
+                  }}>
+                    {ft.full_name?.charAt(0) || "?"}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>
+                    {ft.full_name}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>{ft.phone} · {ft.service_date}</div>
+                </div>
+
+                {/* Membership */}
+                <div style={{ paddingTop: 6 }}>
+                  <span style={badge(
+                    r.move_to_membership ? C.green : C.danger,
+                    r.move_to_membership ? C.greenLight : C.dangerLight,
+                    { fontSize: 11 }
+                  )}>
+                    {r.move_to_membership ? "✓ Yes" : "✗ No"}
+                  </span>
+                </div>
+
+                {/* Connect Center */}
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>
+                  {r.connect_center || <span style={{ color: C.textMuted }}>—</span>}
+                </div>
+
+                {/* Natural Groups */}
+                <div style={{ paddingTop: 6 }}>
+                  {groups.length > 0
+                    ? groups.map(g => (
+                        <span key={g} style={{
+                          ...badge(C.green, C.greenLight, { fontSize: 10, marginRight: 4, marginBottom: 4 }),
+                          display: "inline-flex",
+                        }}>{g}</span>
+                      ))
+                    : <span style={{ fontSize: 12, color: C.textMuted }}>—</span>
+                  }
+                </div>
+
+                {/* Submitted by + date */}
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>
+                  {r.submitted_by || "—"}
+                  {r.submitted_at && (
+                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 3 }}>
+                      <Calendar size={10} />{r.submitted_at.slice(0, 10)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{
+          marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right",
+          display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8,
+        }}>
+          <span>
+            Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> overview{rows.length !== 1 ? "s" : ""}
+          </span>
+          {selectedCount === 0 && filtered.length > 0 && (
+            <span style={{ color: C.blue, fontWeight: 600 }}>
+              ☝ Click rows to select, then download as CSV
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v7.1)                    ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT                          ║
+// ║  Includes: AllFeedback, FlaggedRecords, Report                            ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 function AllFeedback() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1778,7 +3453,6 @@ function AllFeedback() {
       if (!matchName && !matchCaller) return false;
     }
 
-    // Date range filter on call_feedback.created_at (date the call was logged)
     if (dateFrom || dateTo) {
       const callDate = r.created_at ? r.created_at.slice(0, 10) : "";
       if (dateFrom && callDate < dateFrom) return false;
@@ -1811,7 +3485,6 @@ function AllFeedback() {
           </div>
         } />
 
-      {/* ── Date range filter row ── */}
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 20, padding: "12px 16px",
@@ -1917,7 +3590,6 @@ function AllFeedback() {
   );
 }
 
-// ── Flagged Records ───────────────────────────────────────────────────────────
 function FlaggedRecords() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1989,7 +3661,6 @@ function FlaggedRecords() {
   );
 }
 
-// ── Pastoral Report ───────────────────────────────────────────────────────────
 function Report() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2156,9 +3827,16 @@ function Report() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SOUL CARE MODULE
-// ═══════════════════════════════════════════════════════════════════════════════
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT                      ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: SOUL CARE — VISITATION MANAGEMENT                                ║
+// ║  Includes: MemberPicker, SoulCareForm, SoulCareQueue,                     ║
+// ║            MySoulCareVisits, VisitationTab, DetailBlock                   ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 function MemberPicker({ onSelect, onAddNew }) {
   const [query, setQuery] = useState("");
@@ -2239,186 +3917,6 @@ function MemberPicker({ onSelect, onAddNew }) {
   );
 }
 
-// ── CSV Bulk Import ───────────────────────────────────────────────────────────
-function CSVImport({ onDone }) {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [success, setSuccess] = useState("");
-  const fileRef = useRef();
-
-  const parseCSV = (text) => {
-    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
-      return obj;
-    });
-  };
-
-  const onFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const parsed = parseCSV(ev.target.result);
-      setRows(parsed); setErr(""); setSuccess("");
-    };
-    reader.readAsText(file);
-  };
-
-  const sanitizeMaritalStatus = (s) => {
-    if (!s) return null;
-    const c = s.toString().trim().toLowerCase();
-    if (c === "single")   return "Single";
-    if (c === "married")  return "Married";
-    if (c === "divorced") return "Divorced";
-    if (c === "widowed")  return "Widowed";
-    return null;
-  };
-  const sanitizeGender = (g) => {
-    if (!g) return null;
-    const c = g.toString().trim().toLowerCase();
-    if (c === "male")   return "Male";
-    if (c === "female") return "Female";
-    return null;
-  };
-  const sanitizeDecision = (d) => {
-    if (!d) return null;
-    const c = d.toString().trim().toLowerCase();
-    if (c === "member")    return "Member";
-    if (c === "visitor")   return "Visitor";
-    if (c === "undecided") return "Undecided";
-    return null;
-  };
-  const sanitizeLifeStage = (ls) => {
-    if (!ls) return null;
-    const c = ls.toString().trim().toLowerCase();
-    if (c === "student")  return "Student";
-    if (c === "employee") return "Employee";
-    if (c === "business owner" || c === "businessowner") return "Business Owner";
-    return null;
-  };
-  const cleanDate = (dateStr) => {
-    if (!dateStr) return null;
-    const s = dateStr.toString().trim();
-    const parts = s.split(/[\/\-]/);
-    if (parts.length === 3) {
-      const [a, b, c2] = parts;
-      if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
-      return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-    }
-    return null;
-  };
-
-  const importAll = async () => {
-    if (!rows.length) return;
-    setLoading(true); setErr("");
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
-      const payload = rows
-        .map(r => ({
-          full_name:           (r.full_name || r.name || "").toString().trim(),
-          phone:               (r.phone || r.phone_number || "").toString().trim(),
-          email:               n(r.email?.toString().trim()),
-          house_address:       n((r.house_address || r.address || "").toString().trim()),
-          nearest_landmark:    n((r.nearest_landmark || r.landmark || "").toString().trim()),
-          heard_from:          n(r.heard_from?.toString().trim()),
-          service_feedback:    n(r.service_feedback?.toString().trim()),
-          gender:              sanitizeGender(r.gender),
-          marital_status:      sanitizeMaritalStatus(r.marital_status),
-          membership_decision: sanitizeDecision(r.membership_decision) || "Visitor",
-          life_stage:          sanitizeLifeStage(r.life_stage),
-          dob:                 cleanDate(r.dob || r.date_of_birth),
-          service_date:        n(r.service_date) || today,
-          areas_of_interest:   "[]",
-        }))
-        .filter(r => r.full_name && r.phone);
-
-      if (!payload.length) {
-        setErr("No valid rows found. Each row needs at least full_name and phone.");
-        setLoading(false); return;
-      }
-
-      await sb("first_timers", { method: "POST", body: JSON.stringify(payload) });
-      setSuccess(`✅ ${payload.length} records imported successfully.`);
-      setRows([]);
-      onDone?.();
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ ...card, marginBottom: 20 }}>
-      <SH title="Bulk CSV Import" icon={Upload} />
-      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
-        Upload a CSV file to import multiple members at once. Required columns:{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: gender, email,
-        house_address, nearest_landmark, marital_status, life_stage, membership_decision, service_date.
-      </p>
-      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
-      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 16 }}>
-        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
-        <button style={btn("outline")} onClick={() => fileRef.current.click()}>
-          <Upload size={14} />Choose CSV File
-        </button>
-        {rows.length > 0 && (
-          <button style={btn("primary")} onClick={importAll} disabled={loading}>
-            {loading ? "Importing…" : `Import ${rows.length} rows`}
-          </button>
-        )}
-      </div>
-
-      {rows.length > 0 && (
-        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
-            <thead>
-              <tr style={{ background: C.bg }}>
-                {Object.keys(rows[0]).slice(0, 6).map(h => (
-                  <th key={h} style={{
-                    padding: "8px 12px", textAlign: "left", fontWeight: 600,
-                    color: C.textSecondary, borderBottom: `1px solid ${C.border}`,
-                  }}>{h}</th>
-                ))}
-                {Object.keys(rows[0]).length > 6 && (
-                  <th style={{ padding: "8px 12px", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>…</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.slice(0, 5).map((r, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {Object.values(r).slice(0, 6).map((v, j) => (
-                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
-                  ))}
-                  {Object.values(r).length > 6 && (
-                    <td style={{ padding: "7px 12px", color: C.textMuted }}>…</td>
-                  )}
-                </tr>
-              ))}
-              {rows.length > 5 && (
-                <tr>
-                  <td colSpan={7} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
-                    …and {rows.length - 5} more rows
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Soul Care: Add / Edit Visit ───────────────────────────────────────────────
 const BLANK_VISIT = {
   first_timer_id: null,
   member_name: "", phone: "", email: "", gender: "", house_address: "",
@@ -2804,7 +4302,6 @@ function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
   );
 }
 
-// ── Soul Care: Visit Queue ────────────────────────────────────────────────────
 const VISIT_STATUS_META = {
   Scheduled:             { color: C.blue,   bg: C.blueLight   },
   Completed:             { color: C.green,  bg: C.greenLight  },
@@ -2964,7 +4461,6 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
   );
 }
 
-// ── Soul Care: My Visits ──────────────────────────────────────────────────────
 function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3054,7 +4550,6 @@ function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
   );
 }
 
-// ── Visitation Tab (Pastoral & Admin) ─────────────────────────────────────────
 function VisitationTab() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3247,11 +4742,16 @@ function DetailBlock({ icon: Icon, label, value, color }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// RESEARCH TEAM MODULE
-// ═══════════════════════════════════════════════════════════════════════════════
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: SOUL CARE — VISITATION MANAGEMENT                            ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
 
-// ── Research: Service Feedback Viewer ────────────────────────────────────────
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                          ║
+// ║  Includes: ResearchFeedback                                                ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 function ResearchFeedback() {
   const [rows, setRows]           = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -3259,7 +4759,6 @@ function ResearchFeedback() {
   const [search, setSearch]       = useState("");
   const [dateFrom, setDateFrom]   = useState("");
   const [dateTo, setDateTo]       = useState("");
-  // Which rows are selected for download (by id)
   const [selected, setSelected]   = useState(new Set());
 
   useEffect(() => {
@@ -3269,14 +4768,12 @@ function ResearchFeedback() {
         const data = await sb(
           "first_timers?select=id,full_name,service_feedback,service_date&order=service_date.desc&limit=1000"
         );
-        // Only include records that actually have service feedback
         setRows((data || []).filter(r => r.service_feedback && r.service_feedback.trim() !== ""));
       } catch (e) { setErr(e.message); }
       setLoading(false);
     })();
   }, []);
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
   const filtered = rows.filter(r => {
     if (search) {
       const q = search.toLowerCase();
@@ -3290,7 +4787,6 @@ function ResearchFeedback() {
     return true;
   });
 
-  // ── Selection helpers ──────────────────────────────────────────────────────
   const allFilteredIds  = filtered.map(r => r.id);
   const allSelected     = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
   const someSelected    = allFilteredIds.some(id => selected.has(id));
@@ -3321,7 +4817,6 @@ function ResearchFeedback() {
 
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
-  // ── CSV download ───────────────────────────────────────────────────────────
   const downloadCSV = () => {
     const toExport = filtered.filter(r => selected.has(r.id));
     if (toExport.length === 0) return;
@@ -3364,7 +4859,7 @@ function ResearchFeedback() {
 
       <PageHeader
         title="Service Feedback"
-        subtitle="First-timer service feedback responses collected at registration"
+        subtitle="Envoys VIPs' service feedback"
         action={
           <button
             style={{
@@ -3382,7 +4877,6 @@ function ResearchFeedback() {
         }
       />
 
-      {/* ── Summary stats ── */}
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
         <StatCard label="Total Responses"   value={rows.length}     icon={FileText}   accent={C.research} />
         <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}     accent={C.green}    />
@@ -3390,7 +4884,6 @@ function ResearchFeedback() {
           sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
       </div>
 
-      {/* ── Filters row ── */}
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
@@ -3428,7 +4921,6 @@ function ResearchFeedback() {
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {/* ── Download hint when something is selected ── */}
       {selectedCount > 0 && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -3449,7 +4941,6 @@ function ResearchFeedback() {
         </div>
       )}
 
-      {/* ── Table ── */}
       {loading ? (
         <p style={{ color: C.textMuted }}>Loading…</p>
       ) : filtered.length === 0 ? (
@@ -3478,7 +4969,6 @@ function ResearchFeedback() {
             gap: 12,
             alignItems: "center",
           }}>
-            {/* Select-all checkbox */}
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div
                 onClick={toggleAll}
@@ -3528,7 +5018,6 @@ function ResearchFeedback() {
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
                 onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.research}08` : C.surface; }}>
 
-                {/* Checkbox */}
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
                   <div style={{
                     width: 18, height: 18, borderRadius: 4, flexShrink: 0,
@@ -3541,7 +5030,6 @@ function ResearchFeedback() {
                   </div>
                 </div>
 
-                {/* Name */}
                 <div>
                   <div style={{
                     width: 32, height: 32, borderRadius: "50%", background: C.researchLight,
@@ -3556,7 +5044,6 @@ function ResearchFeedback() {
                   </div>
                 </div>
 
-                {/* Date */}
                 <div style={{ fontSize: 13, color: C.textSecondary, paddingTop: 6 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     <Calendar size={11} color={C.textMuted} />
@@ -3564,7 +5051,6 @@ function ResearchFeedback() {
                   </div>
                 </div>
 
-                {/* Feedback */}
                 <div style={{
                   fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4,
                   wordBreak: "break-word",
@@ -3577,7 +5063,6 @@ function ResearchFeedback() {
         </div>
       )}
 
-      {/* Footer count */}
       {!loading && filtered.length > 0 && (
         <div style={{
           marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right",
@@ -3598,7 +5083,16 @@ function ResearchFeedback() {
   );
 }
 
-// ── Admin: Overview ───────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                      ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: ADMIN — USER MANAGEMENT & OVERVIEW                               ║
+// ║  Includes: AdminOverview, AdminUsers, AdminAddUser                        ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 function AdminOverview({ setActive }) {
   const [counts, setCounts] = useState({ ft: 0, fb: 0, flagged: 0, users: 0, visits: 0 });
   useEffect(() => {
@@ -3677,7 +5171,6 @@ function AdminOverview({ setActive }) {
   );
 }
 
-// ── Admin: Users ──────────────────────────────────────────────────────────────
 function AdminUsers({ onEdit }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3751,7 +5244,6 @@ function AdminUsers({ onEdit }) {
   );
 }
 
-// ── Admin: Add / Edit User ────────────────────────────────────────────────────
 function AdminAddUser({ editUser, onSuccess, onCancel }) {
   const [form, setForm] = useState({
     username:     editUser?.username     || "",
@@ -3818,6 +5310,7 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
           { value: "soulcare",  label: "Soul Care"       },
           { value: "research",  label: "Research Team"   },
           { value: "admin",     label: "Admin"           },
+          { value: "experienceadmin", label: "Experience Admin" },
         ]} />
       <div style={{
         background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
@@ -3829,7 +5322,8 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records, visitation view<br />
         <strong>Soul Care</strong> — Visitation queue, log and edit visit records<br />
         <strong>Research Team</strong> — View and download service feedback responses (CSV export)<br />
-        <strong>Admin</strong> — All of the above + user management + bulk import
+        <strong>Admin</strong> — All of the above + user management + bulk import<br />
+        <strong>Experience Admin</strong> — Assign contacts to team members, view call queue and all feedback<br />
       </div>
       <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
         onClick={submit} disabled={loading}>
@@ -3839,7 +5333,16 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
   );
 }
 
-// ── Login ─────────────────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: ADMIN — USER MANAGEMENT & OVERVIEW                           ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: AUTHENTICATION — LOGIN                                            ║
+// ║  Includes: FALLBACK_ACCOUNTS constant, Login component                    ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 const FALLBACK_ACCOUNTS = [
   { username: "admin",      password: "admin1",     role: "admin",    display_name: "Administrator"   },
   { username: "dofficer1",  password: "dofficer1",  role: "dofficer", display_name: "Data Officer"    },
@@ -3847,6 +5350,7 @@ const FALLBACK_ACCOUNTS = [
   { username: "pasteam1",   password: "pasteam1",   role: "pasteam",  display_name: "Pastoral Team"   },
   { username: "soulcare1",  password: "soulcare1",  role: "soulcare", display_name: "Soul Care Team"  },
   { username: "research1",  password: "research1",  role: "research", display_name: "Research Team"   },
+  { username: "experienceadmin", password: "expadmin1", role: "experienceadmin", display_name: "Experience Admin" },
 ];
 
 function Login({ onLogin }) {
@@ -3905,7 +5409,16 @@ function Login({ onLogin }) {
   );
 }
 
-// ── App Shell ─────────────────────────────────────────────────────────────────
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: AUTHENTICATION — LOGIN                                        ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: APP SHELL — ROOT COMPONENT & ROUTING                             ║
+// ║  Includes: App (default export) — manages all state, routing, rendering   ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 export default function App() {
   const [session, setSession] = useState(() => loadSession());
   const [active, setActive] = useState(() => {
@@ -3920,6 +5433,9 @@ export default function App() {
   const [mobileOpen,     setMobileOpen]     = useState(false);
   const [flagCount,      setFlagCount]      = useState(0);
   const [addVisitMode,   setAddVisitMode]   = useState(false);
+  const [editWeekTarget,   setEditWeekTarget]   = useState(null); // { person, week }
+  const [showCompleted,    setShowCompleted]     = useState(false);
+  const [editOverviewTarget, setEditOverviewTarget] = useState(null);
 
   useEffect(() => {
     const p = window.location.pathname;
@@ -3953,6 +5469,8 @@ export default function App() {
   const navTo = (v) => {
     setActive(v); setEditTarget(null); setFeedbackTarget(null);
     setEditUser(null); setEditVisit(null); setAddVisitMode(false);
+    setEditWeekTarget(null); setShowCompleted(false);
+    setEditOverviewTarget(null);   // ← add this
     setMobileOpen(false);
   };
 
@@ -3998,28 +5516,90 @@ export default function App() {
       return <FirstTimersList onEdit={r => setEditTarget(r)} />;
     }
 
-    // ── Experience Team: My Calls ──────────────────────────────────────────
     if (active === "mycalls") {
-      if (feedbackTarget) return (
-        <LogFeedback person={feedbackTarget} callerName={user}
-          onBack={() => setFeedbackTarget(null)} />
+      if (editOverviewTarget) return (
+        <PipelineOverviewForm
+          person={editOverviewTarget}
+          callerName={user}
+          onBack={() => setEditOverviewTarget(null)}
+          onDone={() => { setEditOverviewTarget(null); navTo("mycalls"); }}
+        />
       );
-      return <MyCallsView currentUser={user} onLogFeedback={r => setFeedbackTarget(r)} />;
+      if (editWeekTarget) return (
+        <LogFeedback
+          person={editWeekTarget.person}
+          callerName={user}
+          editWeek={editWeekTarget.week}
+          onBack={() => setEditWeekTarget(null)}
+        />
+      );
+      if (feedbackTarget) return (
+        <LogFeedback
+          person={feedbackTarget}
+          callerName={user}
+          onBack={() => setFeedbackTarget(null)}
+        />
+      );
+      return (
+        <MyCallsView
+          currentUser={user}
+          onLogFeedback={r => setFeedbackTarget(r)}
+          onEditWeekFeedback={(person, week) => setEditWeekTarget({ person, week })}
+          onEditOverview={r => setEditOverviewTarget(r)}   // ← now wired up
+        />
+      );
     }
+    if (active === "assign_calls") return (
+      <AssignCallsView
+        currentUser={user}
+        onViewCompleted={() => navTo("completed_pipelines")}
+      />
+    );
+
+    if (active === "completed_pipelines") return (
+      <CompletedPipelines onBack={() => navTo("assign_calls")} />
+    );
 
     if (active === "callqueue") {
-      if (feedbackTarget) return (
-        <LogFeedback person={feedbackTarget} callerName={user}
-          onBack={() => setFeedbackTarget(null)} />
+      if (editWeekTarget) return (
+        <LogFeedback
+          person={editWeekTarget.person}
+          callerName={user}
+          editWeek={editWeekTarget.week}
+          onBack={() => setEditWeekTarget(null)}
+        />
       );
-      return <CallQueue onLogFeedback={r => setFeedbackTarget(r)} />;
+      if (feedbackTarget) return (
+        <LogFeedback
+          person={feedbackTarget}
+          callerName={user}
+          onBack={() => setFeedbackTarget(null)}
+        />
+      );
+      return (
+        <CallQueue
+          currentUser={user}
+          currentUserRole={role}
+          onLogFeedback={r => setFeedbackTarget(r)}
+          onEditWeek={(person, week) => setEditWeekTarget({ person, week })}
+        />
+      );
     }
+
     if (active === "callbacks") {
       if (feedbackTarget) return (
-        <LogFeedback person={feedbackTarget} callerName={user}
-          onBack={() => setFeedbackTarget(null)} />
+        <LogFeedback
+          person={feedbackTarget}
+          callerName={user}
+          onBack={() => setFeedbackTarget(null)}
+        />
       );
-      return <CallBackQueue onLogFeedback={r => setFeedbackTarget(r)} />;
+      return (
+        <CallBackQueue
+          currentUser={user}
+          onLogFeedback={r => setFeedbackTarget(r)}
+        />
+      );
     }
 
     if (active === "sc_queue" || active === "sc_mine") {
@@ -4066,7 +5646,7 @@ export default function App() {
       <MobileHeader onMenu={() => setMobileOpen(true)} title={pageTitle} />
       <Sidebar role={role} active={active} setActive={navTo} user={user}
         onLogout={logout} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)}
-        flagCount={flagCount} /> 
+        flagCount={flagCount} />
       <div className="main-content" style={{ marginLeft: 224, padding: "2rem", minHeight: "100vh" }}>
         <div style={{ maxWidth: 940 }}>
           {renderContent()}
@@ -4075,3 +5655,7 @@ export default function App() {
     </div>
   );
 }
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  END MODULE: APP SHELL — ROOT COMPONENT & ROUTING                         ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
