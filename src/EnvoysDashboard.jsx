@@ -1415,15 +1415,36 @@ function CSVImport({ onDone }) {
 }
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v7.1)                        ║
+// ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                        ║
 // ║                                                                             ║
-// ║  CHANGES FROM v7.0:                                                         ║
-// ║  1. LogFeedback: "Your Name (Caller)" no longer shows a dropdown for       ║
-// ║     expteam users — it is locked to the signed-in user's display name.      ║
-// ║  2. MyCallsView / PipelineOverviewForm: an "Edit Overview" button is        ║
-// ║     shown after an overview has been submitted, letting callers re-open      ║
-// ║     and amend the form. PipelineOverviewForm now pre-populates from         ║
-// ║     person.overview when an existing record is present.                     ║
+// ║  CHANGES FROM v7.1 (internal naming):                                      ║
+// ║  1. Gender shown as (M) or (F) in parentheses after every first-timer      ║
+// ║     name across the entire Experience Team module:                          ║
+// ║       • PipelineBar tooltip                                                 ║
+// ║       • CallQueue card rows                                                 ║
+// ║       • CallBackQueue card rows                                             ║
+// ║       • MyCallsView card rows                                               ║
+// ║       • AssignCallsView card rows                                           ║
+// ║       • LogFeedback header                                                  ║
+// ║       • PipelineOverviewForm header + membership recommendation button      ║
+// ║       • CompletedPipelines table rows                                       ║
+// ║  2. Helper genderTag(row) added — returns " (M)", " (F)", or "".           ║
+// ║     Uses first_timers.gender field (already fetched by useCallData).        ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PASTE THIS ENTIRE BLOCK to replace the section currently bounded by:
+//
+//   // ╔══ MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v7.1) ══╗
+//   ...
+//   // ╚══ END MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v7.1) ══╝
+//
+// in EnvoysDashboard.jsx.  All imports, design tokens, and other modules
+// remain exactly as they are — only this module is replaced.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                        ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1439,29 +1460,39 @@ const CONNECT_CENTERS = [
 const NATURAL_GROUPS = ["Interphaze", "Solid Rock", "Royal Diade"];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HELPER — gender tag
+// Returns " (M)", " (F)", or "" depending on the gender field of a row.
+// Used inline after every first-timer name in this module.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function genderTag(row) {
+  if (!row) return "";
+  const g = (row.gender || "").trim().toLowerCase();
+  if (g === "male")   return " (M)";
+  if (g === "female") return " (F)";
+  return "";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPERS — pipeline utilities
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Given an array of call_feedback rows for one first-timer, return weeks present */
 function weeksLogged(fbRows) {
   const weeks = new Set();
   (fbRows || []).forEach(r => { if (r.week_number) weeks.add(r.week_number); });
   return weeks;
 }
 
-/** How many of the 3 pipeline weeks have at least one log? */
 function pipelineProgress(fbRows) {
-  return weeksLogged(fbRows).size; // 0–3
+  return weeksLogged(fbRows).size;
 }
 
-/** What is the next week to log? null if pipeline complete */
 function nextWeek(fbRows) {
   const done = weeksLogged(fbRows);
   for (let w = 1; w <= 3; w++) { if (!done.has(w)) return w; }
   return null;
 }
 
-/** Is the 3-week pipeline complete? */
 function pipelineComplete(fbRows) {
   return nextWeek(fbRows) === null;
 }
@@ -1471,12 +1502,12 @@ function pipelineComplete(fbRows) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineBar({ fbRows, compact = false }) {
-  const done = weeksLogged(fbRows);
+  const done     = weeksLogged(fbRows);
   const complete = pipelineComplete(fbRows);
 
   const weekColor = (w) => {
     if (!done.has(w)) return { bg: C.border, text: C.textMuted };
-    const row = (fbRows || []).find(r => r.week_number === w);
+    const row  = (fbRows || []).find(r => r.week_number === w);
     const norm = normaliseStatus(row?.call_status);
     if (norm === "Reached")           return { bg: C.green,  text: "#fff" };
     if (norm === "Call Back")         return { bg: C.amber,  text: "#fff" };
@@ -1507,7 +1538,7 @@ function PipelineBar({ fbRows, compact = false }) {
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       {[1, 2, 3].map(w => {
-        const c = weekColor(w);
+        const c   = weekColor(w);
         const row = done.has(w) ? (fbRows || []).find(r => r.week_number === w) : null;
         return (
           <div key={w}
@@ -1540,13 +1571,14 @@ function PipelineBar({ fbRows, compact = false }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // useCallData — shared data loader
 // Returns first_timers enriched with .fbRows[], .assignment, .overview
+// NOTE: gender is already present on first_timers rows — no SQL change needed.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function useCallData() {
-  const [data, setData] = useState([]);
+  const [data, setData]       = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  const [tick, setTick] = useState(0);
+  const [err, setErr]         = useState("");
+  const [tick, setTick]       = useState(0);
   const reload = useCallback(() => setTick(t => t + 1), []);
 
   useEffect(() => {
@@ -1561,22 +1593,20 @@ function useCallData() {
           sb("pipeline_overviews?select=*").catch(() => []),
         ]);
 
-        const fbMap = {};
-        (fbRows || []).forEach(f => {
-          if (!fbMap[f.first_timer_id]) fbMap[f.first_timer_id] = [];
+        const fbMap  = {};
+        (fbRows  || []).forEach(f => {
+          if (!fbMap[f.first_timer_id])  fbMap[f.first_timer_id] = [];
           fbMap[f.first_timer_id].push(f);
         });
-
         const asgMap = {};
         (asgRows || []).forEach(a => { asgMap[a.first_timer_id] = a; });
-
-        const ovMap = {};
-        (ovRows || []).forEach(o => { ovMap[o.first_timer_id] = o; });
+        const ovMap  = {};
+        (ovRows  || []).forEach(o => { ovMap[o.first_timer_id]  = o; });
 
         if (!cancelled) {
           setData((ftRows || []).map(r => ({
             ...r,
-            fbRows:     fbMap[r.id] || [],
+            fbRows:     fbMap[r.id]  || [],
             assignment: asgMap[r.id] || null,
             overview:   ovMap[r.id]  || null,
           })));
@@ -1591,8 +1621,8 @@ function useCallData() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AssignCallsView — only visible to experienceadmin / admin
-// (unchanged from v7.0)
+// AssignCallsView — experienceadmin / admin only
+// Change: name shown as "Full Name (M)" or "Full Name (F)"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AssignCallsView({ currentUser, onViewCompleted }) {
@@ -1665,9 +1695,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
         });
       }
       setPendingAssign(p => { const n = { ...p }; delete n[ftId]; return n; });
-      setMsg(`Assigned to ${member}.`);
-      setMsgType("success");
-      reload();
+      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
     } catch (e) { setMsg(e.message); setMsgType("error"); }
     setSaving(false);
   };
@@ -1682,10 +1710,10 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
   };
 
   const tabs = [
-    { k: "unassigned", label: "Unassigned",        count: unassignedCount, col: C.gold     },
-    { k: "assigned",   label: "Assigned",           count: assignedCount,   col: C.green    },
-    { k: "complete",   label: "Pipeline Complete",  count: completeCount,   col: C.greenMid },
-    { k: "all",        label: "All",                count: data.length,     col: C.textMuted},
+    { k: "unassigned", label: "Unassigned",       count: unassignedCount, col: C.gold      },
+    { k: "assigned",   label: "Assigned",          count: assignedCount,   col: C.green     },
+    { k: "complete",   label: "Pipeline Complete", count: completeCount,   col: C.greenMid  },
+    { k: "all",        label: "All",               count: data.length,     col: C.textMuted },
   ];
 
   return (
@@ -1702,8 +1730,8 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
       />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Contacts"  value={data.length}      icon={Users}       accent={C.green}   />
-        <StatCard label="Assigned"        value={assignedCount}    icon={UserCheck}   accent={C.greenMid}/>
+        <StatCard label="Total Contacts"  value={data.length}      icon={Users}       accent={C.green}    />
+        <StatCard label="Assigned"        value={assignedCount}    icon={UserCheck}   accent={C.greenMid} />
         <StatCard label="Unassigned"      value={unassignedCount}  icon={AlertCircle} accent={C.gold}
           sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
       </div>
@@ -1780,6 +1808,8 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
           {filtered.map(r => {
             const complete = pipelineComplete(r.fbRows);
             const pending  = pendingAssign[r.id];
+            // ── v5.5: name with gender tag ──
+            const displayName = `${r.full_name}${genderTag(r)}`;
             return (
               <div key={r.id} style={{
                 ...card, padding: "12px 16px",
@@ -1793,7 +1823,8 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
                       justifyContent: "center", fontWeight: 800, color: C.green, fontSize: 14, fontFamily: F.head,
                     }}>{r.full_name?.charAt(0)}</div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      {/* ── gender tag in name ── */}
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
                       <div style={{ marginTop: 5 }}><PipelineBar fbRows={r.fbRows} compact /></div>
                     </div>
@@ -1866,14 +1897,14 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CallQueue — role-aware: experienceadmin sees expandable week detail
-// (unchanged from v7.0)
+// CallQueue — role-aware; experienceadmin sees expandable week detail
+// Change: name shown as "Full Name (M/F)"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", currentUser = "" }) {
   const { data, loading, err, reload } = useCallData();
-  const [filter, setFilter]   = useState("pending");
-  const [search, setSearch]   = useState("");
+  const [filter, setFilter]     = useState("pending");
+  const [search, setSearch]     = useState("");
   const [expanded, setExpanded] = useState(null);
 
   const isAdmin = currentUserRole === "experienceadmin" || currentUserRole === "admin";
@@ -1897,23 +1928,26 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
 
   const visible = isAdmin
     ? searched
-    : searched.filter(r => r.assignment?.assigned_to === currentUser || r.fbRows.some(f => f.caller_name === currentUser));
+    : searched.filter(r =>
+        r.assignment?.assigned_to === currentUser ||
+        r.fbRows.some(f => f.caller_name === currentUser)
+      );
 
   const pending   = visible.filter(r => categorise(r) === "pending");
   const reached   = visible.filter(r => categorise(r) === "reached");
   const callback  = visible.filter(r => categorise(r) === "callback");
   const incorrect = visible.filter(r => categorise(r) === "incorrect");
   const complete  = visible.filter(r => categorise(r) === "complete");
-  const views = { pending, reached, callback, incorrect, complete, all: visible };
-  const filtered = views[filter] || visible;
+  const views     = { pending, reached, callback, incorrect, complete, all: visible };
+  const filtered  = views[filter] || visible;
 
   const tabs = [
-    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold     },
-    { k: "callback",  label: "Call Back", count: callback.length,  col: C.amber    },
-    { k: "reached",   label: "Reached",   count: reached.length,   col: C.green    },
-    { k: "incorrect", label: "Incorrect", count: incorrect.length, col: C.danger   },
-    { k: "complete",  label: "Complete",  count: complete.length,  col: C.greenMid },
-    { k: "all",       label: "All",       count: visible.length,   col: C.textMuted},
+    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold      },
+    { k: "callback",  label: "Call Back", count: callback.length,  col: C.amber     },
+    { k: "reached",   label: "Reached",   count: reached.length,   col: C.green     },
+    { k: "incorrect", label: "Incorrect", count: incorrect.length, col: C.danger    },
+    { k: "complete",  label: "Complete",  count: complete.length,  col: C.greenMid  },
+    { k: "all",       label: "All",       count: visible.length,   col: C.textMuted },
   ];
 
   return (
@@ -1951,16 +1985,18 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
-            const latestFb = r.fbRows[r.fbRows.length - 1];
-            const complete = pipelineComplete(r.fbRows);
-            const sm       = latestFb ? statusMeta(latestFb.call_status)
+            const latestFb   = r.fbRows[r.fbRows.length - 1];
+            const complete   = pipelineComplete(r.fbRows);
+            const sm         = latestFb
+              ? statusMeta(latestFb.call_status)
               : { color: C.gold, bg: C.goldLight, label: "Pending" };
-            const nxt      = nextWeek(r.fbRows);
-            const isOpen   = expanded === r.id;
-
+            const nxt        = nextWeek(r.fbRows);
+            const isOpen     = expanded === r.id;
             const isMyContact = isAdmin ||
               r.assignment?.assigned_to === currentUser ||
               r.fbRows.some(f => f.caller_name === currentUser);
+            // ── v5.5: name with gender tag ──
+            const displayName = `${r.full_name}${genderTag(r)}`;
 
             return (
               <div key={r.id} style={{
@@ -1980,7 +2016,8 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
                       fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
                     }}>{r.full_name?.charAt(0)}</div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      {/* ── gender tag in name ── */}
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>
                         {r.phone} · {r.membership_decision} · {r.service_date}
                       </div>
@@ -1989,9 +2026,7 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
                           <UserCheck size={10} />Assigned to <strong>{r.assignment.assigned_to}</strong>
                         </div>
                       )}
-                      <div style={{ marginTop: 6 }}>
-                        <PipelineBar fbRows={r.fbRows} />
-                      </div>
+                      <div style={{ marginTop: 6 }}><PipelineBar fbRows={r.fbRows} /></div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
@@ -2122,7 +2157,7 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CallBackQueue — with assignment guard
-// (unchanged from v7.0)
+// Change: name shown as "Full Name (M/F)"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CallBackQueue({ onLogFeedback, currentUser = "" }) {
@@ -2150,11 +2185,14 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
           {callbacks.map(r => {
             const latest = r.fbRows[r.fbRows.length - 1];
             const nxt    = nextWeek(r.fbRows);
+            // ── v5.5: name with gender tag ──
+            const displayName = `${r.full_name}${genderTag(r)}`;
             return (
               <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${C.amber}` }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                    {/* ── gender tag in name ── */}
+                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
                     {latest?.follow_up_date && (
                       <div style={{ fontSize: 12, color: C.amber, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
@@ -2194,10 +2232,7 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MyCallsView — per-week Edit buttons + assignment guard
-//
-// CHANGE (v7.1): When a pipeline overview exists, shows both an
-// "Edit Overview" button (to revise it) and an "Overview Submitted" badge.
-// The "onEditOverview" prop opens PipelineOverviewForm in edit mode.
+// Change: name shown as "Full Name (M/F)"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOverview }) {
@@ -2217,7 +2252,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
   const complete = mine.filter(r => pipelineComplete(r.fbRows));
   const flagged  = mine.filter(r => r.fbRows.some(f => f.flagged_for_pastoral));
 
-  const views = { all: mine, reached, callback, complete, flagged };
+  const views    = { all: mine, reached, callback, complete, flagged };
   const filtered = views[filter] || mine;
 
   const tabs = [
@@ -2237,9 +2272,9 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
       />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Assigned to Me"    value={mine.length}      icon={Phone}       accent={C.green}   />
-        <StatCard label="Pipeline Complete" value={complete.length}  icon={CheckCircle} accent={C.greenMid}/>
-        <StatCard label="Call Backs"        value={callback.length}  icon={RefreshCw}   accent={C.amber}   />
+        <StatCard label="Assigned to Me"    value={mine.length}      icon={Phone}       accent={C.green}    />
+        <StatCard label="Pipeline Complete" value={complete.length}  icon={CheckCircle} accent={C.greenMid} />
+        <StatCard label="Call Backs"        value={callback.length}  icon={RefreshCw}   accent={C.amber}    />
         <StatCard label="Flagged"           value={flagged.length}   icon={Flag}        accent={C.flag}
           sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
       </div>
@@ -2270,10 +2305,13 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
             const isComplete  = pipelineComplete(r.fbRows);
             const nxt         = nextWeek(r.fbRows);
             const lastFb      = r.fbRows[r.fbRows.length - 1];
-            const sm          = lastFb ? statusMeta(lastFb.call_status)
+            const sm          = lastFb
+              ? statusMeta(lastFb.call_status)
               : { color: C.gold, bg: C.goldLight, label: "Pending" };
             const anyFlagged  = r.fbRows.some(f => f.flagged_for_pastoral);
             const hasOverview = !!r.overview;
+            // ── v5.5: name with gender tag ──
+            const displayName = `${r.full_name}${genderTag(r)}`;
 
             return (
               <div key={r.id} style={{
@@ -2289,7 +2327,8 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
                       fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
                     }}>{r.full_name?.charAt(0) || "?"}</div>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      {/* ── gender tag in name ── */}
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
                     </div>
                   </div>
@@ -2300,7 +2339,6 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
                         <span style={badge(C.greenMid, C.greenLight, { fontSize: 11 })}>
                           <CheckCircle size={10} />Pipeline Complete
                         </span>
-                        {/* ── v7.1: Edit Overview always available once overview exists ── */}
                         {hasOverview ? (
                           <>
                             <button
@@ -2458,18 +2496,15 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LogFeedback — v7.1
-//
-// CHANGE: "Your Name (Caller)" is now a locked read-only display that shows the
-// signed-in user's display name (callerName prop). The dropdown is removed for
-// expteam users so callers cannot impersonate another team member.
-// The field is still editable only if callerName is empty (fallback for edge cases).
+// LogFeedback — v5.5
+// Change: header shows "Full Name (M/F)"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
-  const fbRows = person.fbRows || [];
-
+  const fbRows    = person.fbRows || [];
   const weekToLog = editWeek !== null ? editWeek : nextWeek(fbRows);
+  // ── v5.5: name with gender tag ──
+  const displayName = `${person.full_name}${genderTag(person)}`;
 
   const [form, setForm] = useState({
     call_status: "", experience_rating: "", returning_likelihood: "",
@@ -2477,11 +2512,11 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
     flagged_for_pastoral: false, flag_reason: "",
     church_attendance: "",
   });
-  const [loading, setLoading]   = useState(false);
-  const [fetching, setFetching] = useState(true);
-  const [done, setDone]         = useState(false);
+  const [loading, setLoading]         = useState(false);
+  const [fetching, setFetching]       = useState(true);
+  const [done, setDone]               = useState(false);
   const [showOverview, setShowOverview] = useState(false);
-  const [err, setErr]           = useState("");
+  const [err, setErr]                 = useState("");
   const [existingRow, setExistingRow] = useState(null);
 
   useEffect(() => {
@@ -2501,8 +2536,6 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
             returning_likelihood: r.returning            || "",
             notes:                r.notes                || "",
             follow_up_date:       r.follow_up_date       || "",
-            // Always keep the signed-in caller's name, not the stored one,
-            // so a corrected name from the session takes precedence.
             caller_name:          callerName || r.caller_name || "",
             flagged_for_pastoral: r.flagged_for_pastoral || false,
             flag_reason:          r.flag_reason          || "",
@@ -2515,7 +2548,7 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
   }, [person.id, weekToLog]);
 
   const lsRef = useRef({});
-  const lset = useCallback((key) => {
+  const lset  = useCallback((key) => {
     if (!lsRef.current[key]) {
       lsRef.current[key] = (e) => {
         const val = e && e.target !== undefined ? e.target.value : e;
@@ -2577,8 +2610,9 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
     return (
       <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
         <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
+        {/* ── gender tag in completion screen ── */}
         <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>
-          Pipeline complete for {person.full_name}
+          Pipeline complete for {displayName}
         </h3>
         <p style={{ fontSize: 13, color: C.textMuted }}>All 3 weeks have been logged.</p>
         <div style={{ margin: "16px 0" }}><PipelineBar fbRows={fbRows} /></div>
@@ -2602,8 +2636,9 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
   if (done) return (
     <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
       <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
+      {/* ── gender tag in success screen ── */}
       <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>
-        Week {weekToLog} feedback {existingRow ? "updated" : "logged"} for {person.full_name}
+        Week {weekToLog} feedback {existingRow ? "updated" : "logged"} for {displayName}
       </h3>
       {form.flagged_for_pastoral && (
         <div style={{ ...badge(C.flag, C.flagLight), marginTop: 8, fontSize: 13, display: "inline-flex" }}>
@@ -2626,12 +2661,12 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
 
   return (
     <div style={card} className="page-enter">
-      {/* Header */}
+      {/* Header — gender tag shown here */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
         <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
         <div>
           <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
-            {editWeek ? `Edit Week ${weekToLog}` : `Week ${weekToLog} Call`} — {person.full_name}
+            {editWeek ? `Edit Week ${weekToLog}` : `Week ${weekToLog} Call`} — {displayName}
           </h2>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
             {person.phone} · visited {person.service_date}
@@ -2663,13 +2698,7 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
       {CREDS_MISSING && <CredsBanner />}
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {/*
-        ── v7.1 CHANGE: Caller name ──────────────────────────────────────────
-        Show a locked read-only chip with the signed-in user's display name.
-        This prevents expteam users from selecting a different caller name.
-        If callerName is somehow empty (edge case), fall back to a plain text
-        input so the form is still usable.
-      */}
+      {/* Caller name — locked to session */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
           Your Name (Caller)
@@ -2677,27 +2706,18 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
         {callerName ? (
           <div style={{
             ...inputBase,
-            background: C.greenXLight,
-            border: `1.5px solid ${C.greenBorder}`,
-            color: C.green,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            cursor: "default",
-            userSelect: "none",
+            background: C.greenXLight, border: `1.5px solid ${C.greenBorder}`,
+            color: C.green, fontWeight: 700,
+            display: "flex", alignItems: "center", gap: 8,
+            cursor: "default", userSelect: "none",
           }}>
             <UserCheck size={14} color={C.green} />
             {callerName}
-            <span style={{
-              marginLeft: "auto", fontSize: 11, fontWeight: 400,
-              color: C.textMuted, fontStyle: "italic",
-            }}>
+            <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 400, color: C.textMuted, fontStyle: "italic" }}>
               Logged as you
             </span>
           </div>
         ) : (
-          /* Fallback: plain text input if session name is unavailable */
           <FieldInput label="" id="cn" required
             value={form.caller_name} onChange={lset("caller_name")}
             placeholder="Enter your name"
@@ -2750,13 +2770,15 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
             value={form.experience_rating} onChange={lset("experience_rating")}
             options={[
               { value: "Excellent", label: "Excellent" }, { value: "Good", label: "Good" },
-              { value: "Average", label: "Average" }, { value: "Poor", label: "Poor" },
+              { value: "Average",   label: "Average"   }, { value: "Poor",  label: "Poor"  },
             ]} />
           <FieldInput label="Returning?" id="rl" type="select"
             value={form.returning_likelihood} onChange={lset("returning_likelihood")}
             options={[
-              { value: "Yes", label: "Yes: will return next week" }, { value: "Maybe", label: "Maybe: on special services" },
-              { value: "No", label: "No: came to visit" }, { value: "Undecided", label: "Undecided" },
+              { value: "Yes",       label: "Yes: will return next week"     },
+              { value: "Maybe",     label: "Maybe: on special services"     },
+              { value: "No",        label: "No: came to visit"              },
+              { value: "Undecided", label: "Undecided"                      },
             ]} />
         </>
       )}
@@ -2803,15 +2825,14 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PipelineOverviewForm — v7.1
-//
-// CHANGE: Now supports both creating a new overview AND editing an existing one.
-// When person.overview is present the form pre-populates all fields.
-// The "Edit" flow is opened via the "Edit Overview" button in MyCallsView.
+// PipelineOverviewForm — v5.5
+// Change: header and membership recommendation button show "Full Name (M/F)"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
   const existingOverview = person.overview || null;
+  // ── v5.5: name with gender tag ──
+  const displayName = `${person.full_name}${genderTag(person)}`;
 
   const [form, setForm] = useState({
     move_to_membership: existingOverview ? existingOverview.move_to_membership : null,
@@ -2853,35 +2874,29 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
       };
 
       if (isEditing) {
-        // We already know the record's id from person.overview
         await sb(`pipeline_overviews?id=eq.${existingOverview.id}`, {
           method: "PATCH",
           body: JSON.stringify(payload),
         });
       } else {
-        // Check for an orphan record just in case, then insert
         const existing = await sb(
           `pipeline_overviews?first_timer_id=eq.${person.id}&select=id&limit=1`
         ).catch(() => []);
-
         if (existing && existing.length > 0) {
           await sb(`pipeline_overviews?id=eq.${existing[0].id}`, {
-            method: "PATCH",
-            body: JSON.stringify(payload),
+            method: "PATCH", body: JSON.stringify(payload),
           });
         } else {
           await sb("pipeline_overviews", { method: "POST", body: JSON.stringify(payload) });
         }
       }
 
-      // Sync membership decision in first_timers when recommended
       if (form.move_to_membership) {
         await sb(`first_timers?id=eq.${person.id}`, {
           method: "PATCH",
           body: JSON.stringify({ membership_decision: "Member" }),
         }).catch(() => {});
       }
-
       setDone(true);
     } catch (e) { setErr(e.message); }
     setLoading(false);
@@ -2894,7 +2909,8 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
         {isEditing ? "Overview Updated!" : "VIP Retention Overview Submitted!"}
       </h3>
       <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
-        {person.full_name}'s retention overview has been {isEditing ? "updated" : "recorded"}.
+        {/* ── gender tag in success screen ── */}
+        {displayName}'s retention overview has been {isEditing ? "updated" : "recorded"}.
         {form.move_to_membership && " Their membership decision has been updated to Member."}
       </p>
       <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginTop: 16 }}>
@@ -2910,8 +2926,9 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
         <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
         <div>
+          {/* ── gender tag in header ── */}
           <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
-            {isEditing ? "Edit" : "VIP"} Retention Overview — {person.full_name}
+            {isEditing ? "Edit" : "VIP"} Retention Overview — {displayName}
           </h2>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
             {isEditing
@@ -2921,7 +2938,6 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
         </div>
       </div>
 
-      {/* Edit mode banner */}
       {isEditing && (
         <div style={{
           marginBottom: 16, padding: "8px 14px", background: C.goldLight,
@@ -2932,7 +2948,6 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
         </div>
       )}
 
-      {/* Pipeline complete banner */}
       {!isEditing && (
         <div style={{
           marginBottom: 20, padding: "12px 16px", background: C.greenLight,
@@ -2951,12 +2966,22 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
         <SH title="Membership Recommendation" icon={UserCheck} />
         <div style={{ marginBottom: 12, fontSize: 13, color: C.textSecondary }}>
           Based on your 3-week engagement, do you recommend moving{" "}
-          <strong>{person.full_name}</strong> to full membership?
+          {/* ── gender tag in body copy ── */}
+          <strong>{displayName}</strong> to full membership?
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {[
-            { val: true,  label: `Yes — Move ${person.full_name?.split(" ")[0]} to Membership`, col: C.green,  bg: C.greenLight  },
-            { val: false, label: "No — Not ready for membership yet",                            col: C.danger, bg: C.dangerLight },
+            {
+              val: true,
+              // ── first name + gender tag in button label ──
+              label: `Yes — Move ${person.full_name?.split(" ")[0]}${genderTag(person)} to Membership`,
+              col: C.green,  bg: C.greenLight,
+            },
+            {
+              val: false,
+              label: "No — Not ready for membership yet",
+              col: C.danger, bg: C.dangerLight,
+            },
           ].map(opt => (
             <button key={String(opt.val)} type="button"
               onClick={() => setForm(f => ({ ...f, move_to_membership: opt.val }))}
@@ -3023,7 +3048,7 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
           placeholder="Any observations or context to share with the pastoral team…" />
       </div>
 
-      {/* Submitted by — locked to session name, same as LogFeedback */}
+      {/* Submitted by — locked to session */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
           Submitted by
@@ -3031,15 +3056,10 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
         {callerName ? (
           <div style={{
             ...inputBase,
-            background: C.greenXLight,
-            border: `1.5px solid ${C.greenBorder}`,
-            color: C.green,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            cursor: "default",
-            userSelect: "none",
+            background: C.greenXLight, border: `1.5px solid ${C.greenBorder}`,
+            color: C.green, fontWeight: 700,
+            display: "flex", alignItems: "center", gap: 8,
+            cursor: "default", userSelect: "none",
           }}>
             <UserCheck size={14} color={C.green} />
             {callerName}
@@ -3068,7 +3088,7 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CompletedPipelines — experienceadmin view
-// (unchanged from v7.0)
+// Change: VIP Name column shows "Full Name (M/F)" in table rows
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CompletedPipelines({ onBack }) {
@@ -3084,8 +3104,9 @@ function CompletedPipelines({ onBack }) {
     (async () => {
       setLoading(true); setErr("");
       try {
+        // ── v5.5: fetch gender alongside the join ──
         const data = await sb(
-          "pipeline_overviews?select=*,first_timers(full_name,phone,service_date)&order=submitted_at.desc&limit=500"
+          "pipeline_overviews?select=*,first_timers(full_name,phone,service_date,gender)&order=submitted_at.desc&limit=500"
         );
         setRows(data || []);
       } catch (e) { setErr(e.message); }
@@ -3139,13 +3160,15 @@ function CompletedPipelines({ onBack }) {
       return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
     };
 
-    const header = ["VIP Name", "Phone", "Service Date", "Move to Membership", "Natural Groups", "Connect Center", "Submitted By", "Submitted At"];
+    // ── v5.5: Gender column added to CSV ──
+    const header = ["VIP Name", "Gender", "Phone", "Service Date", "Move to Membership", "Natural Groups", "Connect Center", "Submitted By", "Submitted At"];
     const csvRows = [
       header.join(","),
       ...toExport.map(r => {
         const ft = r.first_timers || {};
         return [
           escape(ft.full_name),
+          escape(ft.gender || ""),
           escape(ft.phone),
           escape(ft.service_date),
           escape(r.move_to_membership ? "Yes" : "No"),
@@ -3157,9 +3180,9 @@ function CompletedPipelines({ onBack }) {
       }),
     ];
 
-    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
+    const blob  = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement("a");
     const dateLabel = dateFrom || dateTo
       ? `_${dateFrom || "start"}_to_${dateTo || "end"}`
       : `_${new Date().toISOString().slice(0, 10)}`;
@@ -3198,9 +3221,9 @@ function CompletedPipelines({ onBack }) {
       />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Overviews"   value={rows.length}     icon={FileText}    accent={C.blue}    />
-        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}      accent={C.green}   />
-        <StatCard label="Selected"          value={selectedCount}   icon={Download}    accent={selectedCount > 0 ? C.blue : C.textMuted}
+        <StatCard label="Total Overviews"  value={rows.length}     icon={FileText} accent={C.blue}                                      />
+        <StatCard label="Matching Filter"  value={filtered.length} icon={Filter}   accent={C.green}                                     />
+        <StatCard label="Selected"         value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.blue : C.textMuted}
           sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
       </div>
 
@@ -3305,6 +3328,8 @@ function CompletedPipelines({ onBack }) {
             const groups    = Array.isArray(r.natural_groups)
               ? r.natural_groups
               : (r.natural_groups ? [r.natural_groups] : []);
+            // ── v5.5: gender tag in table name cell ──
+            const ftDisplayName = `${ft.full_name}${genderTag(ft)}`;
 
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
@@ -3332,7 +3357,7 @@ function CompletedPipelines({ onBack }) {
                   </div>
                 </div>
 
-                {/* Name */}
+                {/* Name — with gender tag */}
                 <div>
                   <div style={{
                     width: 30, height: 30, borderRadius: "50%", background: C.blueLight,
@@ -3343,7 +3368,7 @@ function CompletedPipelines({ onBack }) {
                     {ft.full_name?.charAt(0) || "?"}
                   </div>
                   <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>
-                    {ft.full_name}
+                    {ftDisplayName}
                   </div>
                   <div style={{ fontSize: 11, color: C.textMuted }}>{ft.phone} · {ft.service_date}</div>
                 </div>
@@ -3412,7 +3437,7 @@ function CompletedPipelines({ onBack }) {
 }
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  END MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v7.1)                    ║
+// ║  END MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                    ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
