@@ -43,6 +43,16 @@ import {
     /* ── Sidebar width as a CSS variable so every breakpoint can reuse it ── */
     :root { --sidebar-w: 224px; }
 
+    /* ── Mobile viewport-height fix: use dvh where supported so the
+         sidebar's bottom edge (Sign Out button) is never hidden behind
+         a collapsing browser address bar ── */
+    @supports (height: 100dvh) {
+      .sidebar { height: 100dvh; }
+    }
+
+    {/* Sign out */}
+        <div style={{ padding: "10px 8px", borderTop: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
+
     /* ── Desktop / default: sidebar fixed, content fills the rest ── */
     .main-content {
       margin-left: var(--sidebar-w);
@@ -812,8 +822,9 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
       )}
       <div className={`sidebar${mobileOpen ? " open" : ""}`}
         style={{
-          width: "var(--sidebar-w)", background: C.sidebar, height: "100vh",
-          display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 100,
+          width: "var(--sidebar-w)", background: C.sidebar,
+          display: "flex", flexDirection: "column",
+          position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 100,
           boxShadow: "2px 0 12px rgba(0,0,0,.15)", overflow: "hidden",
         }}>
 
