@@ -14,6 +14,10 @@ import {
   FileText, Bell, Filter, Download, ChevronDown, Info, Zap, Camera, Image as ImageIcon,
 } from "lucide-react";
 
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
+} from "recharts";
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: GLOBAL STYLES & CSS INJECTION                                     ║
@@ -26,6 +30,7 @@ import {
   s.textContent = `
     @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=satoshi@400,500,700&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+    html, body, #root { height: 100%; width: 100%; overflow-x: hidden; }
     body { -webkit-font-smoothing: antialiased; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -34,15 +39,39 @@ import {
     @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
     .page-enter { animation: fadeIn .2s ease; }
+
+    /* ── Sidebar width as a CSS variable so every breakpoint can reuse it ── */
+    :root { --sidebar-w: 224px; }
+
+    /* ── Desktop / default: sidebar fixed, content fills the rest ── */
+    .main-content {
+      margin-left: var(--sidebar-w);
+      width: calc(100% - var(--sidebar-w));
+      padding: 2rem;
+      min-height: 100vh;
+    }
+    .content-inner { max-width: 1180px; width: 100%; margin: 0 auto; }
+
+    /* ── Tablet (iPad / small laptop window) ── */
+    @media (max-width: 1100px) {
+      :root { --sidebar-w: 200px; }
+      .main-content { padding: 1.5rem; }
+      .content-inner { max-width: 100%; }
+      .g4 { grid-template-columns: repeat(2, 1fr) !important; }
+    }
+
+    /* ── Mobile ── */
     @media (max-width: 768px) {
+      :root { --sidebar-w: 224px; }
       .sidebar      { transform: translateX(-100%); transition: transform .25s ease; }
       .sidebar.open { transform: translateX(0); }
-      .main-content { margin-left: 0 !important; padding: 1rem !important; }
+      .main-content { margin-left: 0 !important; width: 100% !important; padding: 1rem !important; }
       .mob-header   { display: flex !important; }
       .g2           { grid-template-columns: 1fr !important; }
       .g4           { grid-template-columns: 1fr 1fr !important; }
       .greport      { grid-template-columns: 1fr !important; }
     }
+
     @media (min-width: 769px) {
       .sidebar    { transform: translateX(0) !important; }
       .mob-header { display: none !important; }
@@ -783,7 +812,7 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
       )}
       <div className={`sidebar${mobileOpen ? " open" : ""}`}
         style={{
-          width: 224, background: C.sidebar, minHeight: "100vh",
+          width: "var(--sidebar-w)", background: C.sidebar, minHeight: "100vh",
           display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 100,
           boxShadow: "2px 0 12px rgba(0,0,0,.15)",
         }}>
@@ -1457,7 +1486,7 @@ const CONNECT_CENTERS = [
   "Ogba", "Ojoo", "OPIC Estates", "Redemption City",
 ];
 
-const NATURAL_GROUPS = ["Interphaze", "Solid Rock", "Royal Diade"];
+const NATURAL_GROUPS = ["Interphaze", "Solid Rock", "Royal Diadem"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPER — gender tag
@@ -2974,7 +3003,7 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
             {
               val: true,
               // ── first name + gender tag in button label ──
-              label: `Yes — Move ${person.full_name?.split(" ")[0]}${genderTag(person)} to Membership`,
+              label: `Yes — Move to Membership`,
               col: C.green,  bg: C.greenLight,
             },
             {
@@ -3442,9 +3471,324 @@ function CompletedPipelines({ onBack }) {
 
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT                          ║
+// ║  MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT  (v6.1)                  ║
 // ║  Includes: AllFeedback, FlaggedRecords, Report                            ║
+// ║                                                                             ║
+// ║  CHANGES FROM v6.0:                                                        ║
+// ║   1. "Retention Snapshot" renamed to "VIPs Membership Decision" and is     ║
+// ║      now sourced from pipeline_overviews (the 3-week-follow-up Membership  ║
+// ║      Recommendation), NOT from first_timers.membership_decision.           ║
+// ║   2. "Conversion Rate" stat card now = Yes-recommendations ÷ total         ║
+// ║      pipeline_overviews submitted (within the active date filter),        ║
+// ║      instead of first_timers.membership_decision === "Member".            ║
+// ║   3. New "New Golden Envoys" widget — a compact, scrollable mini-table     ║
+// ║      of the most recent people whose VIP Retention Overview recommended   ║
+// ║      "Yes — Move to Membership". A small download icon sits directly in   ║
+// ║      front of the widget title and exports the full filtered list (not    ║
+// ║      just the 5 visible rows) as CSV — handy for monthly membership       ║
+// ║      reporting using the existing date filter.                            ║
+// ║   4. Report's date filter (dateFrom/dateTo) now also drives the           ║
+// ║      pipeline_overviews query (filtered on submitted_at) in addition to   ║
+// ║      the first_timers query (filtered on service_date), so both halves    ║
+// ║      of the dashboard respect the same date range control.                ║
+// ║                                                                             ║
+// ║  REQUIRES: `recharts` (see INTEGRATION_GUIDE.md). All other helpers        ║
+// ║  (C, F, SHADOW, card, btn, badge, dot, inputBase, Alert, PageHeader,       ║
+// ║  StatCard, SH, FieldInput, AREAS, parseAreas, normaliseStatus,             ║
+// ║  statusMeta, sb, CredsBanner) are assumed already in scope from earlier    ║
+// ║  modules in the same file.                                                 ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PasEmpty — small reusable "no data" placeholder for chart cards
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PasEmpty({ label = "No data yet" }) {
+  return (
+    <div style={{
+      height: 200, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", color: C.textMuted, gap: 6,
+    }}>
+      <BarChart2 size={22} style={{ opacity: .35 }} />
+      <span style={{ fontSize: 12 }}>{label}</span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PasDonut — recharts PieChart wrapped with a center label + legend chips
+// data: [{ name, value, color }]
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PasDonut({ data, centerLabel, centerValue, height = 230 }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (!total) return <PasEmpty />;
+  return (
+    <div>
+      <div style={{ position: "relative", height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data} dataKey="value" nameKey="name"
+              cx="50%" cy="50%" innerRadius="62%" outerRadius="92%"
+              paddingAngle={2} stroke="none" startAngle={90} endAngle={-270}>
+              {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+            </Pie>
+            <Tooltip
+              contentStyle={{
+                borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: F.body,
+                boxShadow: SHADOW.sm,
+              }}
+              formatter={(v, n) => [`${v} (${Math.round((v / total) * 100)}%)`, n]} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", pointerEvents: "none",
+        }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: C.textPrimary, fontFamily: F.head, lineHeight: 1 }}>
+            {centerValue}
+          </div>
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3, textAlign: "center", maxWidth: 110 }}>
+            {centerLabel}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center", marginTop: 10 }}>
+        {data.map(d => (
+          <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textSecondary }}>
+            <span style={{ width: 9, height: 9, borderRadius: 3, background: d.color, display: "inline-block" }} />
+            {d.name} <strong style={{ color: C.textPrimary }}>{d.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PasBarRow — single horizontal progress-style bar (used for leaderboards)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PasBarRow({ label, value, sub, max, color }) {
+  const pct = Math.round((value / (max || 1)) * 100);
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 5 }}>
+        <span style={{ color: C.textSecondary, fontWeight: 600 }}>{label}</span>
+        <span style={{ color: C.textMuted, fontSize: 12 }}>{sub}</span>
+      </div>
+      <div style={{ height: 8, background: C.bg, borderRadius: 5, overflow: "hidden" }}>
+        <div style={{
+          height: 8, borderRadius: 5, background: color || C.green,
+          width: `${pct}%`, transition: "width .5s ease",
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PasTrendChart — stacked area chart of weekly call outcomes
+// rows: [{ week: "Jun 02", Reached, "Call Back", Incorrect }]
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PasTrendChart({ rows }) {
+  if (!rows.length) return <PasEmpty label="No calls logged in this range" />;
+  return (
+    <ResponsiveContainer width="100%" height={260}>
+      <AreaChart data={rows} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+        <defs>
+          <linearGradient id="pasReached" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={C.green} stopOpacity={0.55} />
+            <stop offset="95%" stopColor={C.green} stopOpacity={0.04} />
+          </linearGradient>
+          <linearGradient id="pasCallback" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={C.amber} stopOpacity={0.5} />
+            <stop offset="95%" stopColor={C.amber} stopOpacity={0.03} />
+          </linearGradient>
+          <linearGradient id="pasIncorrect" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={C.danger} stopOpacity={0.45} />
+            <stop offset="95%" stopColor={C.danger} stopOpacity={0.03} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 5" stroke={C.border} vertical={false} />
+        <XAxis dataKey="week" tick={{ fontSize: 11, fill: C.textMuted, fontFamily: F.body }}
+          axisLine={{ stroke: C.border }} tickLine={false} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: C.textMuted, fontFamily: F.body }}
+          axisLine={false} tickLine={false} width={28} />
+        <Tooltip contentStyle={{
+          borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: F.body, boxShadow: SHADOW.sm,
+        }} />
+        <Legend wrapperStyle={{ fontSize: 11, fontFamily: F.body }} iconType="circle" iconSize={8} />
+        <Area type="monotone" dataKey="Reached" stackId="1" stroke={C.green} fill="url(#pasReached)" strokeWidth={2} />
+        <Area type="monotone" dataKey="Call Back" stackId="1" stroke={C.amber} fill="url(#pasCallback)" strokeWidth={2} />
+        <Area type="monotone" dataKey="Incorrect Contact" stackId="1" stroke={C.danger} fill="url(#pasIncorrect)" strokeWidth={2} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PasOutcomeBars — vertical bar chart for call outcomes / ratings / returning
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PasOutcomeBars({ data, height = 220 }) {
+  if (!data.length) return <PasEmpty />;
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 5" stroke={C.border} vertical={false} />
+        <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.textMuted, fontFamily: F.body }}
+          axisLine={{ stroke: C.border }} tickLine={false} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: C.textMuted, fontFamily: F.body }}
+          axisLine={false} tickLine={false} width={28} />
+        <Tooltip
+          cursor={{ fill: C.bg }}
+          contentStyle={{ borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: F.body, boxShadow: SHADOW.sm }} />
+        <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={46}>
+          {data.map((d, i) => <Cell key={i} fill={d.color || C.green} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PasGoldenEnvoys — compact scrollable mini-table of new confirmed members,
+// drawn from pipeline_overviews where move_to_membership = true.
+// A download icon sits in front of the title and exports the full filtered
+// list (every row passed in, not just the visible scroll window) as CSV.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PasGoldenEnvoys({ rows, dateFrom, dateTo }) {
+  const escape = (v) => {
+    if (v === null || v === undefined) return "";
+    const str = String(v).replace(/"/g, '""');
+    return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+  };
+
+  const downloadCSV = () => {
+    if (!rows.length) return;
+    const header = ["Name", "Gender", "Phone", "Connect Center", "Natural Groups", "Submitted By", "Confirmed At"];
+    const csvRows = [
+      header.join(","),
+      ...rows.map(r => {
+        const ft = r.first_timers || {};
+        const groups = Array.isArray(r.natural_groups) ? r.natural_groups.join("; ") : (r.natural_groups || "");
+        return [
+          escape(ft.full_name),
+          escape(ft.gender || ""),
+          escape(ft.phone),
+          escape(r.connect_center),
+          escape(groups),
+          escape(r.submitted_by),
+          escape(r.submitted_at ? r.submitted_at.slice(0, 10) : ""),
+        ].join(",");
+      }),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateLabel = dateFrom || dateTo
+      ? `_${dateFrom || "start"}_to_${dateTo || "end"}`
+      : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href     = url;
+    a.download = `envoys_new_golden_members${dateLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={card}>
+      {/* Header: download icon sits directly in front of the title */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        marginBottom: 16, paddingBottom: 8, borderBottom: `1.5px solid ${C.greenLight}`,
+      }}>
+        <button
+          onClick={downloadCSV}
+          disabled={!rows.length}
+          title="Download full list as CSV"
+          style={{
+            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+            background: rows.length ? C.goldLight : C.bg,
+            border: `1px solid ${rows.length ? C.gold : C.border}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: rows.length ? "pointer" : "not-allowed",
+            color: rows.length ? C.goldDark : C.textMuted,
+          }}>
+          <Download size={12} />
+        </button>
+        <span style={{
+          display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700,
+          letterSpacing: ".08em", color: C.textMuted, textTransform: "uppercase", fontFamily: F.head,
+        }}>
+          <Star size={13} strokeWidth={2} color={C.goldDark} />
+          New Golden Envoys
+        </span>
+        <span style={{
+          marginLeft: "auto", fontSize: 11, color: C.green, fontWeight: 700,
+          background: C.greenLight, padding: "2px 10px", borderRadius: 10,
+        }}>
+          {rows.length} confirmed
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <PasEmpty label="No confirmed members in this date range yet" />
+      ) : (
+        <>
+          <div style={{ maxHeight: 235, overflowY: "auto", paddingRight: 4 }}>
+            <div style={{ display: "grid", gap: 6 }}>
+              {rows.map(r => {
+                const ft = r.first_timers || {};
+                const groups = Array.isArray(r.natural_groups) ? r.natural_groups : (r.natural_groups ? [r.natural_groups] : []);
+                return (
+                  <div key={r.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 10px", borderRadius: 8, background: C.goldLight,
+                    border: `1px solid ${C.gold}22`,
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                      background: "#fff", border: `1.5px solid ${C.gold}50`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: C.goldDark, fontSize: 13, fontFamily: F.head,
+                    }}>
+                      {ft.full_name?.charAt(0) || "?"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>
+                        {ft.full_name}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textMuted, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {r.connect_center && <span>{r.connect_center}</span>}
+                        {groups.length > 0 && <span>· {groups.join(", ")}</span>}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.goldDark, fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap" }}>
+                      {r.submitted_at ? r.submitted_at.slice(0, 10) : "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          {rows.length > 5 && (
+            <div style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 8 }}>
+              Scroll for {rows.length - 5} more · download icon exports all {rows.length}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AllFeedback — call log browser with quick-stat chips + tidied filters
+// ─────────────────────────────────────────────────────────────────────────────
 
 function AllFeedback() {
   const [rows, setRows] = useState([]);
@@ -3489,6 +3833,10 @@ function AllFeedback() {
 
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
+  const reachedCount   = filtered.filter(r => normaliseStatus(r.call_status) === "Reached").length;
+  const callbackCount  = filtered.filter(r => normaliseStatus(r.call_status) === "Call Back").length;
+  const flaggedCount   = filtered.filter(r => r.flagged_for_pastoral).length;
+
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
@@ -3509,6 +3857,19 @@ function AllFeedback() {
             </select>
           </div>
         } />
+
+      {/* Quick-stat chips */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        <span style={badge(C.green, C.greenLight, { fontSize: 12, padding: "5px 12px" })}>
+          <span style={dot(C.green)} />{reachedCount} Reached
+        </span>
+        <span style={badge(C.amber, C.amberLight, { fontSize: 12, padding: "5px 12px" })}>
+          <span style={dot(C.amber)} />{callbackCount} Call Back
+        </span>
+        <span style={badge(C.flag, C.flagLight, { fontSize: 12, padding: "5px 12px" })}>
+          <Flag size={10} />{flaggedCount} Flagged
+        </span>
+      </div>
 
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
@@ -3615,6 +3976,10 @@ function AllFeedback() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FlaggedRecords — pastoral attention queue, with an "aging" indicator
+// ─────────────────────────────────────────────────────────────────────────────
+
 function FlaggedRecords() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3631,19 +3996,34 @@ function FlaggedRecords() {
     })();
   }, []);
 
+  const daysOpen = (createdAt) => {
+    if (!createdAt) return 0;
+    const ms = Date.now() - new Date(createdAt).getTime();
+    return Math.floor(ms / (1000 * 60 * 60 * 24));
+  };
+
+  const agingCount = rows.filter(r => daysOpen(r.created_at) >= 3).length;
+
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title="Flagged for Pastoral"
-        subtitle={`${rows.length} record${rows.length !== 1 ? "s" : ""} requiring pastoral attention`} />
+        subtitle={`${rows.length} record${rows.length !== 1 ? "s" : ""} requiring pastoral attention`}
+        action={agingCount > 0 && (
+          <span style={badge(C.danger, C.dangerLight, { fontSize: 12, padding: "6px 12px" })}>
+            <AlertCircle size={12} />{agingCount} aging 3+ days
+          </span>
+        )} />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map(r => {
             const ft = r.first_timers || {};
             const sm = statusMeta(r.call_status);
+            const age = daysOpen(r.created_at);
+            const aging = age >= 3;
             return (
-              <div key={r.id} style={{ ...card, borderLeft: `3px solid ${C.flag}`, padding: "14px 16px" }}>
+              <div key={r.id} style={{ ...card, borderLeft: `3px solid ${aging ? C.danger : C.flag}`, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.head }}>{ft.full_name}</div>
@@ -3655,7 +4035,11 @@ function FlaggedRecords() {
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
-                    <span style={badge(C.flag, C.flagLight)}><Flag size={11} />Flagged</span>
+                    {aging ? (
+                      <span style={badge(C.danger, C.dangerLight)}><AlertCircle size={11} />Aging · {age}d open</span>
+                    ) : (
+                      <span style={badge(C.flag, C.flagLight)}><Flag size={11} />Flagged · {age}d open</span>
+                    )}
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{sm.label}</span>
                   </div>
                 </div>
@@ -3686,6 +4070,13 @@ function FlaggedRecords() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Report — Recharts-based analytics. Membership decision + conversion rate
+// now sourced from pipeline_overviews (post 3-week-follow-up recommendation)
+// rather than the raw first_timers.membership_decision field. Also includes
+// the new "New Golden Envoys" scrollable mini-table with CSV export.
+// ─────────────────────────────────────────────────────────────────────────────
+
 function Report() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -3696,18 +4087,33 @@ function Report() {
   const load = useCallback(async () => {
     setLoading(true); setErr("");
     try {
-      let q = "first_timers?select=membership_decision,life_stage,gender,areas_of_interest";
-      if (dateFrom) q += `&service_date=gte.${dateFrom}`;
-      if (dateTo)   q += `&service_date=lte.${dateTo}`;
-      const ft = await sb(q) || [];
-      const fb = await sb("call_feedback?select=call_status,experience_rating,returning,caller_name,flagged_for_pastoral") || [];
+      // ── first_timers: general registry stats (unchanged) ──
+      let ftq = "first_timers?select=membership_decision,life_stage,gender,areas_of_interest,service_date";
+      if (dateFrom) ftq += `&service_date=gte.${dateFrom}`;
+      if (dateTo)   ftq += `&service_date=lte.${dateTo}`;
+      const ft = await sb(ftq) || [];
+
+      // ── call_feedback: call outcomes / ratings / trend (unchanged) ──
+      const fb = await sb("call_feedback?select=call_status,experience_rating,returning,caller_name,flagged_for_pastoral,created_at") || [];
+
+      // ── pipeline_overviews: drives Membership Decision donut + Conversion
+      //    Rate + New Golden Envoys, filtered on submitted_at (the date the
+      //    3-week follow-up was actually completed) so it respects the same
+      //    date-range control as the rest of the report. ──
+      let ovq = "pipeline_overviews?select=*,first_timers(full_name,phone,gender,service_date)&order=submitted_at.desc&limit=1000";
+      if (dateFrom) ovq += `&submitted_at=gte.${dateFrom}`;
+      if (dateTo)   ovq += `&submitted_at=lte.${dateTo}T23:59:59`;
+      const overviews = await sb(ovq).catch(() => []) || [];
+
       const tally = (arr, key) => arr.reduce((a, r) => {
         const v = r[key] || "Unknown"; a[v] = (a[v] || 0) + 1; return a;
       }, {});
+
       const areasTally = {};
       ft.forEach(r => {
         parseAreas(r.areas_of_interest).forEach(v => { areasTally[v] = (areasTally[v] || 0) + 1; });
       });
+
       const callerTally = {};
       fb.forEach(f => {
         if (!f.caller_name) return;
@@ -3715,18 +4121,37 @@ function Report() {
         callerTally[f.caller_name].total++;
         if (normaliseStatus(f.call_status) === "Reached") callerTally[f.caller_name].reached++;
       });
+
       const callStatusNorm = {};
       fb.forEach(f => {
         const n = normaliseStatus(f.call_status) || "Unknown";
         callStatusNorm[n] = (callStatusNorm[n] || 0) + 1;
       });
+
+      // ── Weekly trend: bucket calls by week of created_at ──
+      const weekKey = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+      const weekBuckets = {};
+      fb.filter(f => f.created_at).forEach(f => {
+        const label = weekKey(f.created_at);
+        if (!weekBuckets[label]) weekBuckets[label] = { week: label, ts: new Date(f.created_at).getTime(), Reached: 0, "Call Back": 0, "Incorrect Contact": 0 };
+        const norm = normaliseStatus(f.call_status) || "Call Back";
+        weekBuckets[label][norm] = (weekBuckets[label][norm] || 0) + 1;
+      });
+      const trend = Object.values(weekBuckets).sort((a, b) => a.ts - b.ts).slice(-10);
+
+      // ── Overview-derived stats ──
+      const totalOverviews = overviews.length;
+      const yesCount = overviews.filter(o => o.move_to_membership).length;
+      const noCount  = totalOverviews - yesCount;
+      const goldenEnvoys = overviews.filter(o => o.move_to_membership); // already sorted desc by submitted_at
+
       setStats({
         total: ft.length, totalCalls: fb.length,
         flagged: fb.filter(f => f.flagged_for_pastoral).length,
-        decisions: tally(ft, "membership_decision"), lifeStage: tally(ft, "life_stage"),
-        gender: tally(ft, "gender"), callStatus: callStatusNorm,
-        rating: tally(fb, "experience_rating"), returning: tally(fb, "returning"),
-        areas: areasTally, callers: callerTally,
+        lifeStage: tally(ft, "life_stage"), gender: tally(ft, "gender"),
+        callStatus: callStatusNorm, rating: tally(fb, "experience_rating"),
+        returning: tally(fb, "returning"), areas: areasTally, callers: callerTally,
+        trend, totalOverviews, yesCount, noCount, goldenEnvoys,
       });
     } catch (e) { setErr(e.message); }
     setLoading(false);
@@ -3734,27 +4159,37 @@ function Report() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <p style={{ color: C.textMuted }}>Loading report…</p>;
+  if (!stats) return null;
 
-  const Bar = ({ label, value, max, color }) => (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-        <span style={{ color: C.textSecondary }}>{label}</span>
-        <span style={{ fontWeight: 600, color: C.textPrimary }}>{value}</span>
-      </div>
-      <div style={{ height: 7, background: C.border, borderRadius: 4 }}>
-        <div style={{
-          height: 7, borderRadius: 4, transition: "width .5s",
-          background: color || C.green,
-          width: `${Math.round((value / (max || 1)) * 100)}%`,
-        }} />
-      </div>
-    </div>
-  );
+  const conversionPct = stats.totalOverviews > 0 ? Math.round((stats.yesCount / stats.totalOverviews) * 100) : 0;
 
-  const maxD = Math.max(...Object.values(stats?.decisions || {}), 1);
-  const maxA = Math.max(...Object.values(stats?.areas || {}), 1);
-  const maxC = Math.max(...Object.values(stats?.callStatus || {}), 1);
-  const csColor = k => k === "Reached" ? C.green : k === "Call Back" ? C.amber : C.danger;
+  const decisionDonut = [
+    { name: "Yes — Move to Membership",      value: stats.yesCount, color: C.green },
+    { name: "No — Not Ready Yet",            value: stats.noCount,  color: C.amber },
+  ].filter(d => d.value > 0);
+
+  const callStatusColor = k => k === "Reached" ? C.green : k === "Call Back" ? C.amber : C.danger;
+  const callOutcomeBars = Object.entries(stats.callStatus).map(([k, v]) => ({ name: k, value: v, color: callStatusColor(k) }));
+
+  const ratingColor = { Excellent: C.green, Good: C.greenMid, Average: C.amber, Poor: C.danger };
+  const ratingBars   = Object.entries(stats.rating).map(([k, v]) => ({ name: k, value: v, color: ratingColor[k] || C.textMuted }));
+
+  const returningColor = { Yes: C.green, Maybe: C.gold, No: C.danger, Undecided: C.textMuted };
+  const returningBars   = Object.entries(stats.returning).map(([k, v]) => ({ name: k, value: v, color: returningColor[k] || C.textMuted }));
+
+  const genderDonut = Object.entries(stats.gender).map(([k, v]) => ({
+    name: k, value: v, color: k === "Female" ? C.goldMid : k === "Male" ? C.green : C.textMuted,
+  }));
+
+  const topCallers = Object.entries(stats.callers)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 6);
+  const maxCallerTotal = Math.max(...topCallers.map(([, s]) => s.total), 1);
+
+  const topAreas = Object.entries(stats.areas)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+  const maxArea = Math.max(...topAreas.map(([, v]) => v), 1);
 
   return (
     <div className="page-enter">
@@ -3771,89 +4206,93 @@ function Report() {
           </div>
         } />
 
-      {stats && (
-        <>
-          <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-            <StatCard label="First-Timers"  value={stats.total}                     icon={Users}     accent={C.green}   />
-            <StatCard label="Calls Logged"  value={stats.totalCalls}                icon={Phone}     accent={C.greenMid}/>
-            <StatCard label="Members"       value={stats.decisions["Member"] || 0}  icon={UserCheck} accent={C.goldDark}/>
-            <StatCard label="Flagged"       value={stats.flagged}                   icon={Flag}      accent={C.flag}
-              sub={stats.flagged > 0 ? "Needs attention" : ""} />
-          </div>
+      {/* Top-line stats */}
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="First-Timers"      value={stats.total}                    icon={Users}     accent={C.green}   />
+        <StatCard label="Calls Logged"      value={stats.totalCalls}               icon={Phone}     accent={C.greenMid} />
+        <StatCard label="Conversion Rate"   value={`${conversionPct}%`}            icon={TrendingUp}accent={C.goldDark}
+          sub={stats.totalOverviews > 0
+            ? `${stats.yesCount} of ${stats.totalOverviews} VIP Overviews say Yes`
+            : "No VIP Overviews submitted yet"} />
+        <StatCard label="Flagged"           value={stats.flagged}                  icon={Flag}      accent={C.flag}
+          sub={stats.flagged > 0 ? "Needs attention" : ""} />
+      </div>
 
-          <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div style={card}>
-              <SH title="Membership Decision" icon={UserCheck} />
-              {Object.entries(stats.decisions).map(([k, v]) => (
-                <Bar key={k} label={k} value={v} max={maxD}
-                  color={k === "Member" ? C.green : k === "Visitor" ? C.goldMid : C.amber} />
-              ))}
-              {!Object.keys(stats.decisions).length && <p style={{ color: C.textMuted, fontSize: 13 }}>No data yet.</p>}
-            </div>
-            <div style={card}>
-              <SH title="Call Outcomes" icon={Phone} />
-              {Object.entries(stats.callStatus).map(([k, v]) => (
-                <Bar key={k} label={k} value={v} max={maxC} color={csColor(k)} />
-              ))}
-              {!Object.keys(stats.callStatus).length && <p style={{ color: C.textMuted, fontSize: 13 }}>No data yet.</p>}
-            </div>
-            <div style={card}>
-              <SH title="Returning Likelihood" icon={TrendingUp} />
-              {Object.entries(stats.returning).map(([k, v]) => (
-                <Bar key={k} label={k} value={v}
-                  max={Math.max(...Object.values(stats.returning), 1)}
-                  color={k === "Yes" ? C.green : k === "Maybe" ? C.gold : C.danger} />
-              ))}
-              {!Object.keys(stats.returning).length && <p style={{ color: C.textMuted, fontSize: 13 }}>No data yet.</p>}
-            </div>
-            <div style={card}>
-              <SH title="Gender & Life Stage" icon={Activity} />
-              {Object.entries(stats.gender).map(([k, v]) => (
-                <Bar key={k} label={k} value={v} max={stats.total} color={k === "Female" ? C.goldMid : C.green} />
-              ))}
-              <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 12, paddingTop: 12 }}>
-                {Object.entries(stats.lifeStage).map(([k, v]) => (
-                  <Bar key={k} label={k} value={v} max={stats.total} color={C.greenMid} />
-                ))}
-              </div>
-            </div>
-            <div style={card}>
-              <SH title="Caller Activity" icon={Users} />
-              {Object.entries(stats.callers).sort((a, b) => b[1].total - a[1].total).map(([name, s]) => (
-                <div key={name} style={{ marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
-                    <span style={{ color: C.textSecondary, fontWeight: 500 }}>{name}</span>
-                    <span style={{ color: C.textMuted, fontSize: 12 }}>{s.reached}/{s.total} reached</span>
-                  </div>
-                  <div style={{ height: 7, background: C.border, borderRadius: 4 }}>
-                    <div style={{
-                      height: 7, borderRadius: 4, background: C.green,
-                      width: `${Math.round((s.total / Math.max(...Object.values(stats.callers).map(x => x.total), 1)) * 100)}%`,
-                    }} />
-                  </div>
-                </div>
-              ))}
-              {!Object.keys(stats.callers).length && <p style={{ color: C.textMuted, fontSize: 13 }}>No calls logged yet.</p>}
-            </div>
-            <div style={{ ...card, gridColumn: "1 / -1" }}>
-              <SH title="Areas of Interest" icon={Star} />
-              <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-                {Object.entries(stats.areas).map(([k, v]) => {
-                  const label = AREAS.find(a => a.value === k)?.label || k;
-                  return <Bar key={k} label={label} value={v} max={maxA} color={C.greenMid} />;
-                })}
-                {!Object.keys(stats.areas).length && <p style={{ color: C.textMuted, fontSize: 13 }}>No area data yet.</p>}
-              </div>
-            </div>
+      <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+
+        {/* Membership decision donut — sourced from pipeline_overviews */}
+        <div style={card}>
+          <SH title="VIPs Membership Decision" icon={UserCheck} />
+          <PasDonut data={decisionDonut} centerValue={`${conversionPct}%`} centerLabel="recommended for Membership" />
+          <div style={{ fontSize: 11, color: C.textMuted, textAlign: "center", marginTop: 4 }}>
+            Based on the Membership Recommendation in each VIP Retention Overview, submitted after the 3-week follow-up.
           </div>
-        </>
-      )}
+        </div>
+
+        {/* Call outcomes bar */}
+        <div style={card}>
+          <SH title="Call Outcomes" icon={Phone} />
+          <PasOutcomeBars data={callOutcomeBars} />
+        </div>
+
+        {/* Weekly trend — full width */}
+        <div style={{ ...card, gridColumn: "1 / -1" }}>
+          <SH title="Weekly Call Activity" icon={Activity} />
+          <PasTrendChart rows={stats.trend} />
+        </div>
+
+        {/* New Golden Envoys — full width */}
+        <div style={{ gridColumn: "1 / -1" }}>
+          <PasGoldenEnvoys rows={stats.goldenEnvoys} dateFrom={dateFrom} dateTo={dateTo} />
+        </div>
+
+        {/* Returning likelihood */}
+        <div style={card}>
+          <SH title="Returning Likelihood" icon={TrendingUp} />
+          <PasOutcomeBars data={returningBars} height={200} />
+        </div>
+
+        {/* Experience rating */}
+        <div style={card}>
+          <SH title="Experience Rating" icon={Star} />
+          <PasOutcomeBars data={ratingBars} height={200} />
+        </div>
+
+        {/* Gender + life stage */}
+        <div style={card}>
+          <SH title="Gender Split" icon={Users} />
+          <PasDonut data={genderDonut} centerValue={stats.total} centerLabel="First-Timers" height={200} />
+        </div>
+
+        {/* Caller leaderboard */}
+        <div style={card}>
+          <SH title="Caller Leaderboard" icon={UserCheck} />
+          {topCallers.length === 0 ? <PasEmpty label="No calls logged yet" /> : topCallers.map(([name, s]) => (
+            <PasBarRow key={name} label={name}
+              value={s.total} max={maxCallerTotal} color={C.green}
+              sub={`${s.reached}/${s.total} reached (${Math.round((s.reached / s.total) * 100)}%)`} />
+          ))}
+        </div>
+
+        {/* Areas of interest — full width */}
+        <div style={{ ...card, gridColumn: "1 / -1" }}>
+          <SH title="Areas of Interest" icon={Star} />
+          {topAreas.length === 0 ? <PasEmpty label="No area-of-interest data yet" /> : (
+            <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
+              {topAreas.map(([k, v]) => {
+                const label = AREAS.find(a => a.value === k)?.label || k;
+                return <PasBarRow key={k} label={label} value={v} max={maxArea} sub={v} color={C.greenMid} />;
+              })}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  END MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT                      ║
+// ║  END MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT  (v6.1)              ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
@@ -5672,8 +6111,8 @@ export default function App() {
       <Sidebar role={role} active={active} setActive={navTo} user={user}
         onLogout={logout} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)}
         flagCount={flagCount} />
-      <div className="main-content" style={{ marginLeft: 224, padding: "2rem", minHeight: "100vh" }}>
-        <div style={{ maxWidth: 940 }}>
+      <div className="main-content">
+        <div className="content-inner">
           {renderContent()}
         </div>
       </div>
