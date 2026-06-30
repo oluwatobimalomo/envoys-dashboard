@@ -812,9 +812,9 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
       )}
       <div className={`sidebar${mobileOpen ? " open" : ""}`}
         style={{
-          width: "var(--sidebar-w)", background: C.sidebar, minHeight: "100vh",
+          width: "var(--sidebar-w)", background: C.sidebar, height: "100vh",
           display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 100,
-          boxShadow: "2px 0 12px rgba(0,0,0,.15)",
+          boxShadow: "2px 0 12px rgba(0,0,0,.15)", overflow: "hidden",
         }}>
 
         {/* Brand */}
@@ -859,7 +859,8 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: "10px 8px", overflowY: "auto" }}>
+        {/* Nav */}
+        <nav style={{ flex: "1 1 auto", minHeight: 0, padding: "10px 8px", overflowY: "auto" }}>
           {(NAV[role] || []).map(item => {
             const on = active === item.id;
             const Icon = NAV_ICONS[item.id] || FileText;
@@ -892,7 +893,7 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
         </nav>
 
         {/* Sign out */}
-        <div style={{ padding: "10px 8px", borderTop: "1px solid rgba(255,255,255,.06)" }}>
+        <div style={{ padding: "10px 8px", borderTop: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
           <button onClick={onLogout}
             style={{
               display: "flex", alignItems: "center", gap: 10, width: "100%",
@@ -1188,13 +1189,21 @@ function FirstTimersList({ onEdit }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
   const load = useCallback(async () => {
     setLoading(true); setErr("");
-    try { setData((await sb("first_timers?order=created_at.desc&limit=300")) || []); }
+    try {
+      let q = "first_timers?order=created_at.desc&limit=300";
+      if (dateFrom) q += `&service_date=gte.${dateFrom}`;
+      if (dateTo)   q += `&service_date=lte.${dateTo}`;
+      setData((await sb(q)) || []);
+    }
     catch (e) { setErr(e.message); }
     setLoading(false);
-  }, []);
+  }, [dateFrom, dateTo]);
   useEffect(() => { load(); }, [load]);
 
   const filtered = data.filter(r =>
@@ -1210,7 +1219,7 @@ function FirstTimersList({ onEdit }) {
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="First-Timers Registry" subtitle={`${data.length} total records`}
+      <PageHeader title="First-Timers Registry" subtitle={`${data.length} record${data.length !== 1 ? "s" : ""}${(dateFrom || dateTo) ? " in date range" : " total"}`}
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{ position: "relative" }}>
@@ -1221,6 +1230,34 @@ function FirstTimersList({ onEdit }) {
             <button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>
           </div>
         } />
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.greenXLight, borderRadius: 10, border: `1px solid ${C.greenBorder}`,
+      }}>
+        <Calendar size={14} color={C.green} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by service date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
+              <X size={12} />Clear dates
+            </button>
+          )}
+        </div>
+      </div>
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
@@ -1603,7 +1640,7 @@ function PipelineBar({ fbRows, compact = false }) {
 // NOTE: gender is already present on first_timers rows — no SQL change needed.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function useCallData() {
+function useCallData(dateFrom, dateTo) {
   const [data, setData]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr]         = useState("");
@@ -1615,8 +1652,12 @@ function useCallData() {
     (async () => {
       setLoading(true); setErr("");
       try {
+        let ftQuery = "first_timers?order=created_at.desc&limit=500";
+        if (dateFrom) ftQuery += `&service_date=gte.${dateFrom}`;
+        if (dateTo)   ftQuery += `&service_date=lte.${dateTo}`;
+
         const [ftRows, fbRows, asgRows, ovRows] = await Promise.all([
-          sb("first_timers?order=created_at.desc&limit=500"),
+          sb(ftQuery),
           sb("call_feedback?select=*&order=created_at.asc"),
           sb("call_assignments?select=*").catch(() => []),
           sb("pipeline_overviews?select=*").catch(() => []),
@@ -1644,7 +1685,7 @@ function useCallData() {
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [tick]);
+  }, [tick, dateFrom, dateTo]);
 
   return { data, loading, err, reload };
 }
@@ -1931,11 +1972,13 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", currentUser = "" }) {
-  const { data, loading, err, reload } = useCallData();
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err, reload } = useCallData(dateFrom, dateTo);
   const [filter, setFilter]     = useState("pending");
   const [search, setSearch]     = useState("");
   const [expanded, setExpanded] = useState(null);
-
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
   const isAdmin = currentUserRole === "experienceadmin" || currentUserRole === "admin";
 
   const categorise = (r) => {
@@ -1990,6 +2033,34 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
               style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
           </div>
         } />
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.greenXLight, borderRadius: 10, border: `1px solid ${C.greenBorder}`,
+      }}>
+        <Calendar size={14} color={C.green} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by service date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
+              <X size={12} />Clear dates
+            </button>
+          )}
+        </div>
+      </div>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
         {tabs.map(t => (
