@@ -4294,7 +4294,7 @@ function Report() {
         <StatCard label="Calls Logged"      value={stats.totalCalls}               icon={Phone}     accent={C.greenMid} />
         <StatCard label="Conversion Rate"   value={`${conversionPct}%`}            icon={TrendingUp}accent={C.goldDark}
           sub={stats.totalOverviews > 0
-            ? `${stats.yesCount} of ${stats.totalOverviews} VIP Overviews say Yes`
+            ? `${stats.yesCount} of ${stats.totalOverviews} are now Golden Envoys`
             : "No VIP Overviews submitted yet"} />
         <StatCard label="Flagged"           value={stats.flagged}                  icon={Flag}      accent={C.flag}
           sub={stats.flagged > 0 ? "Needs attention" : ""} />
