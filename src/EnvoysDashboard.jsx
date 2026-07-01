@@ -50,9 +50,6 @@ import {
       .sidebar { height: 100dvh; }
     }
 
-    {/* Sign out */}
-        <div style={{ padding: "10px 8px", borderTop: "1px solid rgba(255,255,255,.06)", flexShrink: 0 }}>
-
     /* ── Desktop / default: sidebar fixed, content fills the rest ── */
     .main-content {
       margin-left: var(--sidebar-w);
@@ -80,6 +77,8 @@ import {
       .g2           { grid-template-columns: 1fr !important; }
       .g4           { grid-template-columns: 1fr 1fr !important; }
       .greport      { grid-template-columns: 1fr !important; }
+      .et-head      { flex-direction: column !important; align-items: stretch !important; }
+      .et-actions   { width: 100% !important; }
     }
 
     @media (min-width: 769px) {
@@ -1551,6 +1550,33 @@ function genderTag(row) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HELPER — full caller profile tag (Gender + Marital + Life Stage)
+// Used ONLY on Call Queue and Assign Calls, appended after the name.
+// e.g. " (Male) - M - E" · " (Female) - S - S"
+// ─────────────────────────────────────────────────────────────────────────────
+function callerProfileTag(row) {
+  if (!row) return "";
+
+  const g = (row.gender || "").trim().toLowerCase();
+  const gender = g === "male" ? "Male" : g === "female" ? "Female" : "";
+
+  const marital = ({ married: "M", single: "S", divorced: "D", widowed: "W" })[
+    (row.marital_status || "").trim().toLowerCase()
+  ] || "";
+
+  const l = (row.life_stage || "").trim().toLowerCase();
+  const life =
+    (l === "employee" || l === "employed") ? "E" :
+    (l === "business owner" || l === "businessowner") ? "B" :
+    (l === "student") ? "S" : "";
+
+  let tag = gender ? ` (${gender})` : "";
+  const extras = [marital, life].filter(Boolean);
+  if (extras.length) tag += ` - ${extras.join(" - ")}`;
+  return tag;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPERS — pipeline utilities
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1626,6 +1652,7 @@ function PipelineBar({ fbRows, compact = false }) {
               fontSize: 11, fontWeight: 700, fontFamily: F.head,
               border: `1.5px solid ${done.has(w) ? "transparent" : C.border}`,
               cursor: row ? "help" : "default",
+              whiteSpace: "nowrap",
             }}>
             Week {w}
             {row && (
@@ -1889,8 +1916,8 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
           {filtered.map(r => {
             const complete = pipelineComplete(r.fbRows);
             const pending  = pendingAssign[r.id];
-            // ── v5.5: name with gender tag ──
-            const displayName = `${r.full_name}${genderTag(r)}`;
+            // ── v5.6: name + gender + marital + life stage ──
+            const displayName = `${r.full_name}${callerProfileTag(r)}`;
             return (
               <div key={r.id} style={{
                 ...card, padding: "12px 16px",
@@ -1921,14 +1948,24 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
                         <span style={badge(C.blue, C.blueLight, { fontSize: 11 })}>
                           <UserCheck size={10} />{r.assignment.assigned_to}
                         </span>
-                        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
-                          onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.assignment.assigned_to }))}>
-                          <Edit3 size={10} />Reassign
-                        </button>
-                        <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
-                          onClick={() => removeAssignment(r.id, r.assignment.id)} disabled={saving}>
-                          <X size={10} />Unassign
-                        </button>
+                        {complete ? (
+                          <span
+                            style={badge(C.textMuted, C.bg, { fontSize: 11 })}
+                            title="Locked — the 3-week pipeline is complete">
+                            <Shield size={10} />Locked
+                          </span>
+                        ) : (
+                          <>
+                            <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
+                              onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.assignment.assigned_to }))}>
+                              <Edit3 size={10} />Reassign
+                            </button>
+                            <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
+                              onClick={() => removeAssignment(r.id, r.assignment.id)} disabled={saving}>
+                              <X size={10} />Unassign
+                            </button>
+                          </>
+                        )}
                       </>
                     ) : (
                       <>
@@ -2106,15 +2143,15 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
             const isMyContact = isAdmin ||
               r.assignment?.assigned_to === currentUser ||
               r.fbRows.some(f => f.caller_name === currentUser);
-            // ── v5.5: name with gender tag ──
-            const displayName = `${r.full_name}${genderTag(r)}`;
+            // ── v5.6: name + gender + marital + life stage ──
+            const displayName = `${r.full_name}${callerProfileTag(r)}`;
 
             return (
               <div key={r.id} style={{
                 ...card, padding: 0, overflow: "hidden",
                 borderLeft: `3px solid ${complete ? C.greenMid : sm.color}`,
               }}>
-                <div style={{
+                <div className="et-head" style={{
                   display: "flex", justifyContent: "space-between", flexWrap: "wrap",
                   gap: 10, padding: "12px 16px",
                   cursor: isAdmin ? "pointer" : "default",
@@ -2140,7 +2177,7 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
                       <div style={{ marginTop: 6 }}><PipelineBar fbRows={r.fbRows} /></div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
                     {complete ? (
                       <span style={badge(C.greenMid, C.greenLight, { fontSize: 11 })}>
                         <CheckCircle size={10} />Complete
