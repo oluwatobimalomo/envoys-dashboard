@@ -86,18 +86,6 @@ import {
       .sidebar    { transform: translateX(0) !important; }
       .mob-header { display: none !important; }
     }
-
-    /* ── Call Queue card layout ── */
-    .qc-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
-    .qc-actions { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; flex-shrink: 0; }
-    @media (max-width: 640px) {
-      .qc-actions {
-        width: 100%;
-        padding-top: 10px;
-        border-top: 1px solid rgba(0,0,0,.06);
-        justify-content: flex-end;
-      }
-    }
   `;
   document.head.appendChild(s);
 })();
@@ -1606,12 +1594,12 @@ function PipelineBar({ fbRows, compact = false }) {
 
   if (compact) {
     return (
-      <div style={{ display: "inline-flex", gap: 4, alignItems: "center", flexWrap: "nowrap" }}>
+      <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
         {[1, 2, 3].map(w => {
           const c = weekColor(w);
           return (
             <div key={w} style={{
-              width: 24, height: 24, borderRadius: 5, flexShrink: 0,
+              width: 20, height: 20, borderRadius: 4,
               background: c.bg, color: c.text,
               fontSize: 9, fontWeight: 700, fontFamily: F.head,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -1619,12 +1607,7 @@ function PipelineBar({ fbRows, compact = false }) {
             }}>W{w}</div>
           );
         })}
-        {complete && (
-          <span style={{
-            fontSize: 10, color: C.green, fontWeight: 700,
-            marginLeft: 2, whiteSpace: "nowrap", flexShrink: 0,
-          }}>✓ Done</span>
-        )}
+        {complete && <span style={{ fontSize: 10, color: C.green, fontWeight: 700, marginLeft: 3 }}>✓</span>}
       </div>
     );
   }
