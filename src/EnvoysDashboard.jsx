@@ -322,7 +322,8 @@ const ROLE_META = {
   pasteam:  { label: "Pastoral Team",   color: C.goldDark,   bg: C.goldLight    },
   soulcare: { label: "Soul Care",       color: C.soul,       bg: C.soulLight    },
   research: { label: "Research Team",   color: C.research,   bg: C.researchLight},
-  experienceadmin: { label: "Exp. Admin", color: C.blue, bg: C.blueLight },
+  experienceadmin: { label: "Exp. Admin",      color: C.blue, bg: C.blueLight },
+  soulcareadmin:   { label: "Soul Care Admin", color: C.soul, bg: C.soulLight  },
 };
 
 const NAV_ICONS = {
@@ -330,11 +331,15 @@ const NAV_ICONS = {
   firsttimers: Users, addmember: UserPlus, report: BarChart2,
   allfeedback: MessageSquare, flagged: Flag, qrcode: QrCode,
   callqueue: Phone, callbacks: RefreshCw, mycalls: Phone,
-  sc_queue: Heart, sc_add: UserPlus, sc_mine: Clipboard,
+  sc_queue: Heart, sc_mine: Clipboard,
   visitation_tab: MapPin,
   research_feedback: FileText,
   assign_calls: UserCheck,
   completed_pipelines: FileText,
+  sc_assign: UserCheck,
+  sc_flagged: Flag,
+  sc_testimonies: Star,
+  add_visit: UserPlus,
 };
 
 const NAV = {
@@ -343,11 +348,18 @@ const NAV = {
     { id: "admin_users",    label: "Users"         },
     { id: "admin_adduser",  label: "Add User"      },
     { id: "firsttimers",   label: "First-Timers"  },
+    { id: "assign_calls",        label: "Assign Calls"        },
+    { id: "completed_pipelines", label: "Completed Pipelines" },
+    { id: "callqueue",           label: "Call Queue"          },
+    { id: "sc_assign",     label: "Assign Visits" },
+    { id: "sc_queue",      label: "Visit Queue"   },
+    { id: "add_visit",     label: "Add Visit"     },
     { id: "report",        label: "Report"        },
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
     { id: "research_feedback", label: "Research"  },
+    { id: "sc_testimonies",   label: "Testimonies" },
     { id: "qrcode",        label: "QR Code"       },
   ],
   dofficer: [
@@ -369,9 +381,20 @@ const NAV = {
     { id: "visitation_tab",label: "Visitations"   },
   ],
   soulcare: [
+    { id: "sc_queue",   label: "Visit Queue" },
+    { id: "add_visit",  label: "Add Visit"  },
+    { id: "sc_mine",    label: "My Visits"  },
+    { id: "sc_flagged", label: "Flagged"     },
+  ],
+  soulcareadmin: [
+    { id: "sc_assign",     label: "Assign Visits" },
+    { id: "add_visit",     label: "Add Visit"     },
     { id: "sc_queue",      label: "Visit Queue"   },
-    { id: "sc_add",        label: "Add Visit"     },
-    { id: "sc_mine",       label: "My Visits"     },
+    { id: "sc_flagged",    label: "Flagged"       },
+    { id: "sc_testimonies",label: "Testimonies"   },
+  ],
+  research: [
+    { id: "research_feedback", label: "Service Feedback" },
   ],
   research: [
     { id: "research_feedback", label: "Service Feedback" },
@@ -4416,474 +4439,39 @@ function Report() {
 
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  MODULE: SOUL CARE — VISITATION MANAGEMENT                                ║
-// ║  Includes: MemberPicker, SoulCareForm, SoulCareQueue,                     ║
-// ║            MySoulCareVisits, VisitationTab, DetailBlock                   ║
+// ║  MODULE: SOUL CARE — VISITATION MANAGEMENT  (v7.0)                        ║
+// ║                                                                             ║
+// ║  Rebuilt to mirror the Experience Team module's architecture:              ║
+// ║   • soul_care_contacts    — the pool of people awaiting a visit            ║
+// ║     (the Soul Care equivalent of first_timers for the calling pipeline)    ║
+// ║   • soul_care_assignments — assigns ONE contact to ONE Soul Care team      ║
+// ║     member (equivalent of call_assignments)                                ║
+// ║   • soul_care_visits      — one row per visit EVENT logged against a       ║
+// ║     contact (equivalent of call_feedback — but there is no fixed 3-week    ║
+// ║     pipeline here; visits are open-ended and can repeat)                   ║
+// ║                                                                             ║
+// ║  New "soulcareadmin" role owns: bulk CSV import of contacts, assignment    ║
+// ║  of contacts to Soul Care team members, the global Visit Queue, Flagged    ║
+// ║  cases, and Testimonies. Regular "soulcare" members only ever see          ║
+// ║  contacts assigned to them — never the full pool.                         ║
+// ║                                                                             ║
+// ║  REQUIRES: soul_care_contacts / soul_care_assignments / soul_care_visits   ║
+// ║  tables per INTEGRATION_GUIDE.md. All shared helpers (C, F, SHADOW, card,  ║
+// ║  btn, badge, dot, inputBase, Alert, PageHeader, StatCard, SH, FieldInput,  ║
+// ║  PhotoUpload, CredsBanner, sb, useRoleUsers) are assumed already in scope  ║
+// ║  from earlier modules in the same file.                                   ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
-function MemberPicker({ onSelect, onAddNew }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS & STATUS META
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const search = async () => {
-    if (!query.trim()) return;
-    setLoading(true); setSearched(true);
-    try {
-      const enc = encodeURIComponent(query.trim().toLowerCase());
-      const data = await sb(
-        `first_timers?or=(full_name.ilike.*${enc}*,phone.ilike.*${enc}*)&order=created_at.desc&limit=15`
-      );
-      setResults(data || []);
-    } catch (e) { setResults([]); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <SH title="Find Existing Member" icon={Search} />
-      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
-        Search by name or phone to auto-populate member details. If the person isn't in the system yet, add them as new.
-      </p>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <div style={{ position: "relative", flex: 1 }}>
-          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={query} onChange={e => setQuery(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && search()}
-            placeholder="Name or phone number…"
-            style={{ ...inputBase, paddingLeft: 32 }} />
-        </div>
-        <button style={btn("primary")} onClick={search} disabled={loading}>
-          {loading ? "…" : <><Search size={13} />Search</>}
-        </button>
-        <button style={btn("soul")} onClick={onAddNew}>
-          <UserPlus size={13} />Add New
-        </button>
-      </div>
-      {searched && (
-        <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, overflow: "hidden", boxShadow: SHADOW.xs }}>
-          {results.length === 0 ? (
-            <div style={{ padding: "20px", textAlign: "center", color: C.textMuted, fontSize: 13 }}>
-              No members found.{" "}
-              <button onClick={onAddNew}
-                style={{ ...btn("soul", { padding: "4px 12px", fontSize: 12 }), marginLeft: 8 }}>
-                <UserPlus size={11} />Add as New Member
-              </button>
-            </div>
-          ) : results.map(r => (
-            <button key={r.id} onClick={() => onSelect(r)}
-              style={{
-                display: "flex", alignItems: "center", gap: 12, width: "100%",
-                padding: "11px 14px", border: "none", borderBottom: `1px solid ${C.border}`,
-                background: C.surface, cursor: "pointer", textAlign: "left", transition: "background .1s",
-              }}
-              onMouseOver={e => e.currentTarget.style.background = C.greenXLight}
-              onMouseOut={e => e.currentTarget.style.background = C.surface}>
-              <div style={{
-                width: 36, height: 36, borderRadius: "50%", background: C.soulLight,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, color: C.soul, fontSize: 14, fontFamily: F.head, flexShrink: 0,
-              }}>
-                {r.full_name?.charAt(0)}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head }}>{r.full_name}</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.gender} · {r.membership_decision}</div>
-              </div>
-              <ChevronRight size={14} color={C.textMuted} />
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-const BLANK_VISIT = {
-  first_timer_id: null,
-  member_name: "", phone: "", email: "", gender: "", house_address: "",
-  nearest_landmark: "", marital_status: "", life_stage: "",
-  visit_type: "", reason_for_care: "", assigned_to: "", urgency: "",
-  visit_status: "", visit_date: "", visit_time: "",
-  meeting_notes: "", material_support: false, material_support_notes: "",
-  prayer_requests: "", testimony: "",
-  follow_up_required: false, next_follow_up_date: "",
-  escalate_to_pastorate: false, escalation_reason: "",
-  visit_photo_url: "",
-};
-
-function SoulCareForm({ editData, onSuccess, onCancel, defaultAssignee = "" }) {
-  const [step, setStep] = useState(editData ? "form" : "picker");
-  const [form, setForm] = useState(() => editData ? { ...BLANK_VISIT, ...editData } : {
-    ...BLANK_VISIT,
-    assigned_to: defaultAssignee,
-    visit_date: new Date().toISOString().slice(0, 10),
-  });
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [isNewMember, setIsNewMember] = useState(false);
-
-  const { options: soulCareOptions, loading: scLoading } = useRoleUsers("soulcare");
-
-  const settersRef = useRef({});
-  const set = useCallback((key) => {
-    if (!settersRef.current[key]) {
-      settersRef.current[key] = (valOrEvt) => {
-        const val = valOrEvt && valOrEvt.target !== undefined ? valOrEvt.target.value : valOrEvt;
-        setForm(f => ({ ...f, [key]: val }));
-      };
-    }
-    return settersRef.current[key];
-  }, []);
-
-  const handleMemberSelect = (member) => {
-    setForm(f => ({
-      ...f,
-      first_timer_id:  member.id,
-      member_name:     member.full_name,
-      phone:           member.phone,
-      email:           member.email || "",
-      gender:          member.gender || "",
-      house_address:   member.house_address || "",
-      nearest_landmark:member.nearest_landmark || "",
-      marital_status:  member.marital_status || "",
-      life_stage:      member.life_stage || "",
-    }));
-    setIsNewMember(false);
-    setStep("form");
-  };
-
-  const handleAddNew = () => {
-    setIsNewMember(true);
-    setForm(f => ({ ...f, first_timer_id: null }));
-    setStep("form");
-  };
-
-  const submit = async () => {
-    if (!form.member_name.trim() || !form.phone.trim()) {
-      setErr("Member name and phone are required."); return;
-    }
-    if (!form.visit_type) { setErr("Visit type is required."); return; }
-    if (!form.assigned_to.trim()) { setErr("Assigned team member is required."); return; }
-    if (!form.visit_status) { setErr("Visit status is required."); return; }
-    setLoading(true); setErr("");
-    try {
-      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
-      let ftId = form.first_timer_id;
-
-      if (isNewMember && !ftId) {
-        const today = new Date().toISOString().slice(0, 10);
-        const newMember = await sb("first_timers", {
-          method: "POST",
-          body: JSON.stringify({
-            full_name:           form.member_name.trim(),
-            phone:               form.phone.trim(),
-            email:               n(form.email),
-            gender:              n(form.gender),
-            house_address:       n(form.house_address),
-            nearest_landmark:    n(form.nearest_landmark),
-            marital_status:      n(form.marital_status),
-            life_stage:          n(form.life_stage),
-            membership_decision: "Member",
-            service_date:        today,
-            areas_of_interest:   "[]",
-          }),
-        });
-        ftId = Array.isArray(newMember) ? newMember[0]?.id : newMember?.id;
-      }
-
-      const payload = {
-        first_timer_id:        ftId || null,
-        member_name:           form.member_name.trim(),
-        phone:                 form.phone.trim(),
-        email:                 n(form.email),
-        gender:                n(form.gender),
-        house_address:         n(form.house_address),
-        nearest_landmark:      n(form.nearest_landmark),
-        marital_status:        n(form.marital_status),
-        life_stage:            n(form.life_stage),
-        visit_type:            n(form.visit_type),
-        reason_for_care:       n(form.reason_for_care),
-        assigned_to:           form.assigned_to.trim(),
-        urgency:               n(form.urgency),
-        visit_status:          n(form.visit_status),
-        visit_date:            n(form.visit_date),
-        visit_time:            n(form.visit_time),
-        meeting_notes:         n(form.meeting_notes),
-        material_support:      !!form.material_support,
-        material_support_notes:form.material_support ? n(form.material_support_notes) : null,
-        prayer_requests:       n(form.prayer_requests),
-        testimony:             n(form.testimony),
-        follow_up_required:    !!form.follow_up_required,
-        next_follow_up_date:   form.follow_up_required ? n(form.next_follow_up_date) : null,
-        escalate_to_pastorate: !!form.escalate_to_pastorate,
-        escalation_reason:     form.escalate_to_pastorate ? n(form.escalation_reason) : null,
-        visit_photo_url:       n(form.visit_photo_url),
-      };
-
-      if (editData?.id) {
-        await sb(`soul_care_visits?id=eq.${editData.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } else {
-        await sb("soul_care_visits", { method: "POST", body: JSON.stringify(payload) });
-      }
-      onSuccess();
-    } catch (e) {
-      setErr(e.message);
-    }
-    setLoading(false);
-  };
-
-  if (step === "picker") {
-    return (
-      <div style={card} className="page-enter">
-        <PageHeader title="New Visitation Record"
-          subtitle="Start by finding the member in the system, or add them as new"
-          action={onCancel && (
-            <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>
-          )} />
-        <MemberPicker onSelect={handleMemberSelect} onAddNew={handleAddNew} />
-      </div>
-    );
-  }
-
-  const urgencyColors = { High: C.danger, Medium: C.amber, Low: C.green };
-  const uc = urgencyColors[form.urgency] || C.textMuted;
-  const showAssignedDropdown = !scLoading && soulCareOptions.length > 0;
-
-  return (
-    <div style={card} className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        marginBottom: 20, flexWrap: "wrap", gap: 10,
-      }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 20, fontFamily: F.head, fontWeight: 800 }}>
-            {editData ? "Edit Visit" : "New Visitation Record"}
-          </h2>
-          {form.member_name && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-              <span style={badge(C.soul, C.soulLight, { fontSize: 12 })}>
-                <Heart size={10} />{form.member_name}
-              </span>
-              {!editData && (
-                <button onClick={() => setStep("picker")}
-                  style={{
-                    fontSize: 11, color: C.textMuted, background: "none", border: "none",
-                    cursor: "pointer", textDecoration: "underline",
-                  }}>change member</button>
-              )}
-            </div>
-          )}
-        </div>
-        {onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>}
-      </div>
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {/* A. Member Information */}
-      <div style={{ marginBottom: 24 }}>
-        <SH title="A. Member Information" icon={Users} />
-        <div style={{
-          padding: "12px 14px", background: C.greenXLight, borderRadius: 8, marginBottom: 16,
-          fontSize: 13, color: C.textSecondary, display: "flex", alignItems: "center", gap: 6,
-        }}>
-          <Info size={13} color={C.green} />
-          {form.first_timer_id
-            ? "Member details auto-populated from First-Timers registry."
-            : isNewMember
-              ? "This member will be added to the First-Timers registry automatically on save."
-              : "Enter member details manually."}
-        </div>
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Full Name" id="mn" required value={form.member_name} onChange={set("member_name")}
-            disabled={!!form.first_timer_id} placeholder="e.g. Chukwudi Osei" />
-          <FieldInput label="Phone Number" id="mp" required value={form.phone} onChange={set("phone")}
-            disabled={!!form.first_timer_id} placeholder="+234 xxx xxx xxxx" />
-        </div>
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Email Address" id="me" type="email" value={form.email} onChange={set("email")}
-            disabled={!!form.first_timer_id} placeholder="you@example.com" />
-          <FieldInput label="Gender" id="mg" type="select" value={form.gender} onChange={set("gender")}
-            disabled={!!form.first_timer_id}
-            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
-        </div>
-        <FieldInput label="Residential Address" id="mha" value={form.house_address} onChange={set("house_address")}
-          disabled={!!form.first_timer_id} placeholder="Street, City" />
-        <FieldInput label="Nearest Landmark" id="mnl" value={form.nearest_landmark} onChange={set("nearest_landmark")}
-          disabled={!!form.first_timer_id} placeholder="e.g. Near Total Filling Station" />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Marital Status" id="mms" type="select" value={form.marital_status} onChange={set("marital_status")}
-            disabled={!!form.first_timer_id}
-            options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }]} />
-          <FieldInput label="Life Stage" id="mls" type="select" value={form.life_stage} onChange={set("life_stage")}
-            disabled={!!form.first_timer_id}
-            options={[
-              { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
-              { value: "Business Owner", label: "Business Owner" },
-            ]} />
-        </div>
-      </div>
-
-      {/* B. Visitation Details */}
-      <div style={{ marginBottom: 24 }}>
-        <SH title="B. Visitation Details" icon={MapPin} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Type of Visit" id="vt" type="select" required value={form.visit_type} onChange={set("visit_type")}
-            options={[
-              { value: "Home (Periodic)", label: "Home (Periodic)" },
-              { value: "Celebration", label: "Celebration (New Born, Wedding, House Warming…)" },
-              { value: "Pastoral Care", label: "Pastoral Care" },
-              { value: "Welfare Check", label: "Welfare Check" },
-            ]} />
-          <FieldInput label="Urgency Level" id="ul" type="select" value={form.urgency} onChange={set("urgency")}
-            options={[
-              { value: "High", label: "High" }, { value: "Medium", label: "Medium" }, { value: "Low", label: "Low" },
-            ]} />
-        </div>
-        {form.urgency && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16,
-            padding: "7px 12px", borderRadius: 8, background: `${uc}12`, fontSize: 12, color: uc, fontWeight: 600,
-          }}>
-            <Zap size={12} />Urgency: <strong>{form.urgency}</strong>
-          </div>
-        )}
-        <FieldInput label="Reason for Care" id="rfc" type="textarea" value={form.reason_for_care} onChange={set("reason_for_care")}
-          placeholder="Describe the purpose or context of this visit…" />
-
-        {scLoading ? (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
-              Assigned To <span style={{ color: C.danger }}>*</span>
-            </div>
-            <div style={{
-              ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8,
-            }}>
-              <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />
-              Loading Soul Care team…
-            </div>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          </div>
-        ) : showAssignedDropdown ? (
-          <FieldInput
-            label="Assigned To"
-            id="at"
-            type="select"
-            required
-            value={form.assigned_to}
-            onChange={set("assigned_to")}
-            options={soulCareOptions}
-            hint="Select the Soul Care team member responsible for this visit"
-          />
-        ) : (
-          <FieldInput
-            label="Assigned To"
-            id="at"
-            required
-            value={form.assigned_to}
-            onChange={set("assigned_to")}
-            placeholder="Name of Soul Care team member responsible"
-          />
-        )}
-      </div>
-
-      {/* C. Feedback & Outcome */}
-      <div style={{ marginBottom: 24 }}>
-        <SH title="C. Feedback & Outcome" icon={MessageSquare} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Visit Status" id="vs" type="select" required value={form.visit_status} onChange={set("visit_status")}
-            options={[
-              { value: "Scheduled", label: "Scheduled" },
-              { value: "Completed", label: "Completed" },
-              { value: "Rescheduled", label: "Rescheduled" },
-              { value: "Member Unavailable", label: "Member Unavailable" },
-            ]} />
-          <FieldInput label="Date Conducted" id="vd" type="date" value={form.visit_date} onChange={set("visit_date")} />
-        </div>
-        <FieldInput label="Time Conducted" id="vtime" type="time" value={form.visit_time} onChange={set("visit_time")} />
-        <FieldInput label="Meeting Notes" id="mn2" type="textarea" value={form.meeting_notes} onChange={set("meeting_notes")}
-          placeholder="Detailed spiritual and physical observations from the visit…" />
-
-        <div style={{
-          background: C.soulLight, border: `1px solid ${C.soul}22`,
-          borderRadius: 10, padding: 16, marginBottom: 16,
-        }}>
-          <div style={{
-            fontWeight: 700, fontSize: 12, color: C.soul, marginBottom: 12,
-            display: "flex", alignItems: "center", gap: 5, fontFamily: F.head,
-            textTransform: "uppercase", letterSpacing: ".06em",
-          }}>
-            <Camera size={12} />Visit Photo
-          </div>
-          <PhotoUpload
-            value={form.visit_photo_url}
-            onChange={set("visit_photo_url")}
-            existingUrl={editData?.visit_photo_url || ""}
-          />
-        </div>
-
-        <div style={{
-          background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16,
-        }}>
-          <FieldInput label="Material Support Provided" id="msp" type="bool-toggle"
-            value={form.material_support} onChange={set("material_support")}
-            hint="Toggle if the church provided physical aid (groceries, financial welfare, medical package, etc.)" />
-          {form.material_support && (
-            <FieldInput label="Support Details" id="msn" type="textarea"
-              value={form.material_support_notes} onChange={set("material_support_notes")}
-              placeholder="Describe what was provided…" />
-          )}
-        </div>
-
-        <FieldInput label="Prayer Requests" id="pr" type="textarea" value={form.prayer_requests} onChange={set("prayer_requests")}
-          placeholder="Specific items the member asked the church to stand in agreement with them for…" />
-        <FieldInput label="Testimony" id="test" type="textarea" value={form.testimony} onChange={set("testimony")}
-          placeholder="A brief summary of their testimonies since joining The Envoys…" />
-      </div>
-
-      {/* D. Next Steps */}
-      <div style={{ marginBottom: 24 }}>
-        <SH title="D. Next Steps & Post-Visit Action" icon={Calendar} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <div>
-            <FieldInput label="Follow-Up Required" id="fur" type="bool-toggle"
-              value={form.follow_up_required} onChange={set("follow_up_required")} />
-            {form.follow_up_required && (
-              <FieldInput label="Next Follow-Up Date" id="nfud" type="date"
-                value={form.next_follow_up_date} onChange={set("next_follow_up_date")} />
-            )}
-          </div>
-          <div>
-            <div style={{
-              background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10, padding: 14,
-            }}>
-              <div style={{
-                fontWeight: 700, fontSize: 12, color: C.flag, marginBottom: 10,
-                display: "flex", alignItems: "center", gap: 5, fontFamily: F.head,
-              }}>
-                <Flag size={12} />Escalation
-              </div>
-              <FieldInput label="Escalate to Pastorate" id="etp" type="toggle"
-                value={form.escalate_to_pastorate} onChange={set("escalate_to_pastorate")}
-                hint="Notify the Pastoral Team about this case" />
-              {form.escalate_to_pastorate && (
-                <FieldInput label="Reason for Escalation" id="er2" type="textarea" required
-                  value={form.escalation_reason} onChange={set("escalation_reason")}
-                  placeholder="Describe the concern requiring pastoral escalation…" />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }}
-        onClick={submit} disabled={loading}>
-        {loading ? "Saving…" : editData ? "Update Visit Record" : "Save Visitation Record"}
-      </button>
-    </div>
-  );
-}
+const SC_VISIT_TYPES = [
+  { value: "Home (Periodic)", label: "Home (Periodic)" },
+  { value: "Celebration",     label: "Celebration (New Born, Wedding, House Warming…)" },
+  { value: "Pastoral Care",   label: "Pastoral Care" },
+  { value: "Welfare Check",   label: "Welfare Check" },
+];
 
 const VISIT_STATUS_META = {
   Scheduled:             { color: C.blue,   bg: C.blueLight   },
@@ -4897,64 +4485,692 @@ const URGENCY_META = {
   Low:    { color: C.green,  bg: C.greenLight  },
 };
 
-function SoulCareQueue({ onEdit, onAdd, currentUser }) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const load = useCallback(async () => {
+function scGenderTag(row) {
+  if (!row) return "";
+  const g = (row.gender || "").trim().toLowerCase();
+  if (g === "male")   return " (M)";
+  if (g === "female") return " (F)";
+  return "";
+}
+
+function scProfileTag(row) {
+  if (!row) return "";
+  const g = (row.gender || "").trim().toLowerCase();
+  const gender = g === "male" ? "Male" : g === "female" ? "Female" : "";
+  const marital = ({ married: "M", single: "S", divorced: "D", widowed: "W" })[
+    (row.marital_status || "").trim().toLowerCase()
+  ] || "";
+  const l = (row.life_stage || "").trim().toLowerCase();
+  const life =
+    (l === "employee" || l === "employed") ? "E" :
+    (l === "business owner" || l === "businessowner") ? "B" :
+    (l === "student") ? "S" : "";
+  let tag = gender ? ` (${gender})` : "";
+  const extras = [marital, life].filter(Boolean);
+  if (extras.length) tag += ` - ${extras.join(" - ")}`;
+  return tag;
+}
+
+function scLatestVisit(visits) {
+  return (visits && visits.length) ? visits[visits.length - 1] : null;
+}
+
+function scCategorise(contact) {
+  const latest = scLatestVisit(contact.visits);
+  if (!latest) return "pending";
+  if (latest.visit_status === "Completed")            return "completed";
+  if (latest.visit_status === "Scheduled")             return "scheduled";
+  if (latest.visit_status === "Rescheduled")            return "rescheduled";
+  if (latest.visit_status === "Member Unavailable")     return "unavailable";
+  return "pending";
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCDateFilterBar — reusable date-range filter bar (used across every page)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SCDateFilterBar({ dateFrom, setDateFrom, dateTo, setDateTo, label = "Filter by date:" }) {
+  const clear = () => { setDateFrom(""); setDateTo(""); };
+  return (
+    <div style={{
+      display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+      marginBottom: 16, padding: "12px 16px",
+      background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
+    }}>
+      <Calendar size={14} color={C.soul} style={{ flexShrink: 0 }} />
+      <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clear}>
+            <X size={12} />Clear dates
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// useVisitData — shared data loader, mirrors useCallData()
+// Returns soul_care_contacts enriched with .visits[] and .assignment
+// dateFrom/dateTo filter on soul_care_contacts.created_at (date added to pool)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useVisitData(dateFrom, dateTo) {
+  const [data, setData]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+  const [tick, setTick]       = useState(0);
+  const reload = useCallback(() => setTick(t => t + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        let cq = "soul_care_contacts?order=created_at.desc&limit=500";
+        if (dateFrom) cq += `&created_at=gte.${dateFrom}`;
+        if (dateTo)   cq += `&created_at=lte.${dateTo}T23:59:59`;
+
+        const [contacts, visits, asgRows] = await Promise.all([
+          sb(cq),
+          sb("soul_care_visits?select=*&order=created_at.asc"),
+          sb("soul_care_assignments?select=*").catch(() => []),
+        ]);
+
+        const vMap = {};
+        (visits || []).forEach(v => {
+          if (!vMap[v.contact_id]) vMap[v.contact_id] = [];
+          vMap[v.contact_id].push(v);
+        });
+        const aMap = {};
+        (asgRows || []).forEach(a => { aMap[a.contact_id] = a; });
+
+        if (!cancelled) {
+          setData((contacts || []).map(c => ({
+            ...c,
+            visits:     vMap[c.id] || [],
+            assignment: aMap[c.id] || null,
+          })));
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick, dateFrom, dateTo]);
+
+  return { data, loading, err, reload };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SoulCareCSVImport — bulk import of contacts to visit (soulcareadmin only)
+// Columns: full_name, phone, email, gender, house_address, nearest_landmark,
+//          marital_status, life_stage
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SoulCareCSVImport({ currentUser, onDone }) {
+  const [rows, setRows]       = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState("");
+  const [success, setSuccess] = useState("");
+  const fileRef = useRef();
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      return obj;
+    });
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setRows(parseCSV(ev.target.result)); setErr(""); setSuccess("");
+    };
+    reader.readAsText(file);
+  };
+
+  const sanitizeGender = (g) => {
+    const c = (g || "").toString().trim().toLowerCase();
+    if (c === "male")   return "Male";
+    if (c === "female") return "Female";
+    return null;
+  };
+  const sanitizeMaritalStatus = (s) => {
+    const c = (s || "").toString().trim().toLowerCase();
+    if (c === "single")   return "Single";
+    if (c === "married")  return "Married";
+    if (c === "divorced") return "Divorced";
+    if (c === "widowed")  return "Widowed";
+    return null;
+  };
+  const sanitizeLifeStage = (ls) => {
+    const c = (ls || "").toString().trim().toLowerCase();
+    if (c === "student")  return "Student";
+    if (c === "employee") return "Employee";
+    if (c === "business owner" || c === "businessowner") return "Business Owner";
+    return null;
+  };
+
+  const importAll = async () => {
+    if (!rows.length) return;
     setLoading(true); setErr("");
     try {
-      const rows = await sb("soul_care_visits?order=created_at.desc&limit=300");
-      setData(rows || []);
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const payload = rows
+        .map(r => ({
+          full_name:        (r.full_name || r.name || "").toString().trim(),
+          phone:             (r.phone || r.phone_number || "").toString().trim(),
+          email:             n(r.email?.toString().trim()),
+          gender:            sanitizeGender(r.gender),
+          house_address:     n((r.house_address || r.address || "").toString().trim()),
+          nearest_landmark:  n((r.nearest_landmark || r.landmark || "").toString().trim()),
+          marital_status:    sanitizeMaritalStatus(r.marital_status),
+          life_stage:        sanitizeLifeStage(r.life_stage),
+          added_by:          currentUser || null,
+        }))
+        .filter(r => r.full_name && r.phone);
+
+      if (!payload.length) {
+        setErr("No valid rows found. Each row needs at least full_name and phone.");
+        setLoading(false); return;
+      }
+
+      await sb("soul_care_contacts", { method: "POST", body: JSON.stringify(payload) });
+      setSuccess(`${payload.length} contact${payload.length !== 1 ? "s" : ""} imported successfully.`);
+      setRows([]);
+      onDone?.();
     } catch (e) { setErr(e.message); }
     setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
+  };
 
-  const now = new Date();
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const completedMonth = data.filter(r => r.visit_status === "Completed" && r.visit_date >= monthStart).length;
-  const highPriority = data.filter(r => r.urgency === "High" && r.visit_status !== "Completed").length;
-  const escalated = data.filter(r => r.escalate_to_pastorate).length;
+  return (
+    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
+      <SH title="Bulk CSV Import — Contacts to Visit" icon={Upload} />
+      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
+        Upload a CSV to add multiple people to the Soul Care visitation pool. Required columns:{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: email,
+        gender, house_address, nearest_landmark, marital_status, life_stage.
+      </p>
+      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
+      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
 
-  const filtered = data.filter(r => {
-    const matchFilter = filter === "all" || r.visit_status === filter || r.urgency === filter;
-    const matchSearch = !search ||
-      r.member_name?.toLowerCase().includes(search.toLowerCase()) ||
-      r.assigned_to?.toLowerCase().includes(search.toLowerCase());
-    return matchFilter && matchSearch;
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: rows.length ? 16 : 0 }}>
+        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
+        <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => fileRef.current.click()}>
+          <Upload size={14} />Choose CSV File
+        </button>
+        {rows.length > 0 && (
+          <button style={btn("soul")} onClick={importAll} disabled={loading}>
+            {loading ? "Importing…" : `Import ${rows.length} rows`}
+          </button>
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
+            <thead>
+              <tr style={{ background: C.bg }}>
+                {Object.keys(rows[0]).slice(0, 6).map(h => (
+                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: C.textSecondary, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 5).map((r, i) => (
+                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  {Object.values(r).slice(0, 6).map((v, j) => (
+                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
+                  ))}
+                </tr>
+              ))}
+              {rows.length > 5 && (
+                <tr><td colSpan={6} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
+                  …and {rows.length - 5} more rows
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AssignVisitsView — soulcareadmin only. Bulk import + assign contacts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AddVisitPage — single-entry flow: search existing people (soul_care_contacts
+// + first_timers) or add someone brand new, then go straight into logging a
+// visit for them. Available to soulcare / soulcareadmin / admin. This sits
+// ALONGSIDE the bulk CSV import in AssignVisitsView, not instead of it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
+  const [step, setStep]           = useState("search"); // "search" | "new"
+  const [query, setQuery]         = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched]   = useState(false);
+  const [results, setResults]     = useState([]);
+  const [creating, setCreating]   = useState(false);
+  const [err, setErr]             = useState("");
+  const [contactForLogging, setContactForLogging] = useState(null);
+
+  const [newForm, setNewForm] = useState({
+    full_name: "", phone: "", email: "", gender: "",
+    house_address: "", nearest_landmark: "", marital_status: "", life_stage: "",
   });
 
-  const statusTabs = [
-    { k: "all",       label: "All",          count: data.length,                                         },
-    { k: "Scheduled", label: "Scheduled",     count: data.filter(r => r.visit_status === "Scheduled").length,  col: C.blue  },
-    { k: "Completed", label: "Completed",     count: data.filter(r => r.visit_status === "Completed").length,  col: C.green },
-    { k: "Rescheduled",label: "Rescheduled",  count: data.filter(r => r.visit_status === "Rescheduled").length,col: C.amber },
-    { k: "High",      label: "High Urgency",  count: highPriority,                                        col: C.danger },
+  const setRef = useRef({});
+  const setField = useCallback((key) => {
+    if (!setRef.current[key]) {
+      setRef.current[key] = (valOrEvt) => {
+        const val = valOrEvt && valOrEvt.target !== undefined ? valOrEvt.target.value : valOrEvt;
+        setNewForm(f => ({ ...f, [key]: val }));
+      };
+    }
+    return setRef.current[key];
+  }, []);
+
+  const doSearch = async () => {
+    if (!query.trim()) return;
+    setSearching(true); setErr(""); setSearched(true);
+    try {
+      const q = query.trim().replace(/[,()]/g, "");
+      const [scRows, ftRows] = await Promise.all([
+        sb(`soul_care_contacts?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&order=full_name.asc&limit=10`).catch(() => []),
+        sb(`first_timers?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&order=full_name.asc&limit=10`).catch(() => []),
+      ]);
+      const seen = new Set();
+      const merged = [];
+      (scRows || []).forEach(r => {
+        if (!seen.has(r.phone)) { seen.add(r.phone); merged.push({ ...r, _source: "soul_care" }); }
+      });
+      (ftRows || []).forEach(r => {
+        if (!seen.has(r.phone)) {
+          seen.add(r.phone);
+          merged.push({
+            full_name: r.full_name, phone: r.phone, email: r.email, gender: r.gender,
+            house_address: r.house_address, nearest_landmark: r.nearest_landmark,
+            marital_status: r.marital_status, life_stage: r.life_stage,
+            _source: "first_timer",
+          });
+        }
+      });
+      setResults(merged);
+    } catch (e) { setErr(e.message); }
+    setSearching(false);
+  };
+
+  // Only creates an assignment if none exists yet — never steals a contact
+  // that's already assigned to someone else.
+  const ensureSelfAssigned = async (contactId) => {
+    try {
+      const existing = await sb(
+        `soul_care_assignments?contact_id=eq.${contactId}&select=id,assigned_to&limit=1`
+      ).catch(() => []);
+      if (!existing || existing.length === 0) {
+        await sb("soul_care_assignments", {
+          method: "POST",
+          body: JSON.stringify({ contact_id: contactId, assigned_to: currentUser, assigned_by: currentUser }),
+        });
+      }
+    } catch { /* non-fatal — visit can still be logged */ }
+  };
+
+  const selectExisting = async (person) => {
+    setCreating(true); setErr("");
+    try {
+      let contactRow = person;
+      if (person._source === "first_timer") {
+        const [created] = await sb("soul_care_contacts", {
+          method: "POST",
+          body: JSON.stringify({
+            full_name: person.full_name, phone: person.phone, email: person.email || null,
+            gender: person.gender || null, house_address: person.house_address || null,
+            nearest_landmark: person.nearest_landmark || null,
+            marital_status: person.marital_status || null, life_stage: person.life_stage || null,
+            added_by: currentUser || null,
+          }),
+        });
+        contactRow = created;
+      }
+      await ensureSelfAssigned(contactRow.id);
+      setContactForLogging({ ...contactRow, visits: [] });
+    } catch (e) { setErr(e.message); }
+    setCreating(false);
+  };
+
+  const createNewAndProceed = async () => {
+    if (!newForm.full_name.trim() || !newForm.phone.trim()) {
+      setErr("Full name and phone are required."); return;
+    }
+    setCreating(true); setErr("");
+    try {
+      const dupe = await sb(
+        `soul_care_contacts?phone=eq.${encodeURIComponent(newForm.phone.trim())}&select=id&limit=1`
+      ).catch(() => []);
+      if (dupe && dupe.length > 0) {
+        setErr('A contact with this phone number already exists — use "Find Existing Member" to search for them instead.');
+        setCreating(false); return;
+      }
+      const n = (v) => (v === "" || v === undefined) ? null : v;
+      const [created] = await sb("soul_care_contacts", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: newForm.full_name.trim(), phone: newForm.phone.trim(),
+          email: n(newForm.email), gender: n(newForm.gender),
+          house_address: n(newForm.house_address), nearest_landmark: n(newForm.nearest_landmark),
+          marital_status: n(newForm.marital_status), life_stage: n(newForm.life_stage),
+          added_by: currentUser || null,
+        }),
+      });
+      await ensureSelfAssigned(created.id);
+      setContactForLogging({ ...created, visits: [] });
+    } catch (e) { setErr(e.message); }
+    setCreating(false);
+  };
+
+  if (contactForLogging) {
+    return (
+      <LogVisitForm
+        contact={contactForLogging}
+        loggedBy={currentUser}
+        onBack={() => setContactForLogging(null)}
+        onDone={onLoggingDone}
+      />
+    );
+  }
+
+  return (
+    <div style={card} className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="New Visitation Record" subtitle="Start by finding the member in the system, or add them as new"
+        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {step === "search" ? (
+        <>
+          <SH title="Find Existing Member" icon={Search} />
+          <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
+            Search by name or phone to auto-populate member details. If the person isn't in the system yet, add them as new.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <input value={query} onChange={e => setQuery(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && doSearch()}
+                placeholder="Name or phone number…" style={inputBase} />
+            </div>
+            <button style={btn("primary")} onClick={doSearch} disabled={searching}>
+              <Search size={14} />{searching ? "Searching…" : "Search"}
+            </button>
+            <button style={btn("soul")} onClick={() => setStep("new")}>
+              <UserPlus size={14} />Add New
+            </button>
+          </div>
+
+          {searched && !searching && (
+            <div style={{ display: "grid", gap: 8 }}>
+              {results.length === 0 ? (
+                <div style={{ ...card, textAlign: "center", padding: "2rem", color: C.textMuted }}>
+                  <Search size={24} style={{ marginBottom: 8, opacity: .4 }} />
+                  <div>No matches found. Try "Add New" to create a fresh record.</div>
+                </div>
+              ) : results.map(p => (
+                <div key={`${p._source}-${p.phone}`} style={{
+                  ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
+                  alignItems: "center", flexWrap: "wrap", gap: 10,
+                }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: "50%", background: C.soulLight,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: C.soul, fontFamily: F.head,
+                    }}>{p.full_name?.charAt(0)}</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{p.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{p.phone}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span style={badge(
+                      p._source === "soul_care" ? C.soul : C.green,
+                      p._source === "soul_care" ? C.soulLight : C.greenLight,
+                      { fontSize: 11 }
+                    )}>{p._source === "soul_care" ? "In Soul Care pool" : "First-Timer record"}</span>
+                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })}
+                      onClick={() => selectExisting(p)} disabled={creating}>
+                      {creating ? "…" : "Use this Person"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <SH title="Add New Contact" icon={UserPlus} />
+          <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <FieldInput label="Full Name" id="nvn" required value={newForm.full_name} onChange={setField("full_name")} placeholder="e.g. Adaeze Okafor" />
+            <FieldInput label="Phone Number" id="nvp" required value={newForm.phone} onChange={setField("phone")} placeholder="+234 xxx xxx xxxx" />
+          </div>
+          <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <FieldInput label="Gender" id="nvg" type="select" value={newForm.gender} onChange={setField("gender")}
+              options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+            <FieldInput label="Email Address" id="nve" type="email" value={newForm.email} onChange={setField("email")} placeholder="you@example.com" />
+          </div>
+          <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+            <FieldInput label="Marital Status" id="nvm" type="select" value={newForm.marital_status} onChange={setField("marital_status")}
+              options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
+            <FieldInput label="Life Stage" id="nvl" type="select" value={newForm.life_stage} onChange={setField("life_stage")}
+              options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
+          </div>
+          <FieldInput label="House Address" id="nvh" value={newForm.house_address} onChange={setField("house_address")} placeholder="Street, City" />
+          <FieldInput label="Nearest Landmark" id="nvk" value={newForm.nearest_landmark} onChange={setField("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
+
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            <button style={btn("ghost")} onClick={() => setStep("search")}><ArrowLeft size={14} />Back to Search</button>
+            <button style={{ ...btn("soul"), flex: 1 }} onClick={createNewAndProceed} disabled={creating}>
+              {creating ? "Saving…" : "Save & Log Visit"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AssignVisitsView — soulcareadmin only. Bulk import + assign contacts.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AssignVisitsView({ currentUser }) {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers("soulcare");
+
+  const [selectedMember, setSelectedMember] = useState("");
+  const [search, setSearch]                 = useState("");
+  const [filter, setFilter]                 = useState("unassigned");
+  const [saving, setSaving]                 = useState(false);
+  const [msg, setMsg]                       = useState("");
+  const [msgType, setMsgType]               = useState("success");
+  const [pendingAssign, setPendingAssign]   = useState({});
+  const [showImport, setShowImport]         = useState(false);
+
+  const filtered = data.filter(c => {
+    const matchSearch = !search ||
+      c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.phone?.includes(search);
+    if (filter === "unassigned") return matchSearch && !c.assignment;
+    if (filter === "assigned")   return matchSearch && !!c.assignment;
+    if (filter === "visited")    return matchSearch && c.visits.length > 0;
+    return matchSearch;
+  });
+
+  const assignedCount   = data.filter(c => !!c.assignment).length;
+  const unassignedCount = data.filter(c => !c.assignment).length;
+  const visitedCount    = data.filter(c => c.visits.length > 0).length;
+
+  const bulkAssign = async () => {
+    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
+    const targets = data.filter(c => !c.assignment);
+    if (!targets.length) { setMsg("No unassigned contacts to assign."); setMsgType("warn"); return; }
+    setSaving(true); setMsg("");
+    try {
+      const payload = targets.map(c => ({
+        contact_id:  c.id,
+        assigned_to: selectedMember,
+        assigned_by: currentUser,
+      }));
+      for (let i = 0; i < payload.length; i += 50) {
+        await sb("soul_care_assignments", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=representation",
+          body: JSON.stringify(payload.slice(i, i + 50)),
+        });
+      }
+      setMsg(`${targets.length} contact${targets.length !== 1 ? "s" : ""} assigned to ${selectedMember}.`);
+      setMsgType("success");
+      reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const saveAssignment = async (contactId) => {
+    const member = pendingAssign[contactId];
+    if (!member) return;
+    setSaving(true);
+    try {
+      const existing = data.find(c => c.id === contactId)?.assignment;
+      if (existing) {
+        await sb(`soul_care_assignments?id=eq.${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
+        });
+      } else {
+        await sb("soul_care_assignments", {
+          method: "POST",
+          body: JSON.stringify({ contact_id: contactId, assigned_to: member, assigned_by: currentUser }),
+        });
+      }
+      setPendingAssign(p => { const n = { ...p }; delete n[contactId]; return n; });
+      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const removeAssignment = async (asgId) => {
+    setSaving(true);
+    try {
+      await sb(`soul_care_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
+      setMsg("Assignment removed."); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const tabs = [
+    { k: "unassigned", label: "Unassigned", count: unassignedCount, col: C.gold      },
+    { k: "assigned",   label: "Assigned",   count: assignedCount,   col: C.soul      },
+    { k: "visited",    label: "Visited",    count: visitedCount,    col: C.green     },
+    { k: "all",        label: "All",        count: data.length,     col: C.textMuted },
   ];
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Visit Queue" subtitle="Track Soul Care team visitations"
-        action={<button style={btn("soul")} onClick={onAdd}><UserPlus size={14} />Add Visit</button>} />
+      <PageHeader
+        title="Assign Visits"
+        subtitle="Import contacts and allocate them to Soul Care team members for follow-up"
+        action={
+          <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => setShowImport(s => !s)}>
+            <Upload size={14} />{showImport ? "Hide Import" : "Bulk Import"}
+          </button>
+        }
+      />
 
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Visits"          value={data.length}      icon={MapPin}      accent={C.soul}   />
-        <StatCard label="Completed This Month"   value={completedMonth}   icon={CheckCircle} accent={C.green}  />
-        <StatCard label="High Priority / Open"   value={highPriority}     icon={AlertCircle} accent={C.danger} />
-        <StatCard label="Escalated to Pastorate" value={escalated}        icon={Flag}        accent={C.flag}   />
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
+        label="Filter by date added to pool:" />
+
+      {showImport && <SoulCareCSVImport currentUser={currentUser} onDone={reload} />}
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Contacts" value={data.length}     icon={Users}       accent={C.soul}  />
+        <StatCard label="Assigned"       value={assignedCount}   icon={UserCheck}   accent={C.green} />
+        <StatCard label="Unassigned"     value={unassignedCount} icon={AlertCircle} accent={C.gold}
+          sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
       </div>
 
+      {/* Bulk assign panel */}
+      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10,
+          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
+          display: "flex", alignItems: "center", gap: 5,
+        }}>
+          <Zap size={11} />Bulk Assignment
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+              Assign all <strong>{unassignedCount}</strong> unassigned contacts to:
+            </div>
+            {teamLoading ? (
+              <div style={{ ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8 }}>
+                <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />Loading…
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            ) : (
+              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
+                <option value="">Select team member</option>
+                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            )}
+          </div>
+          <button
+            style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
+            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
+            <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount} contacts`}
+          </button>
+        </div>
+      </div>
+
+      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
-        {statusTabs.map(t => (
+        {tabs.map(t => (
           <button key={t.k} onClick={() => setFilter(t.k)}
             style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-              cursor: "pointer", fontFamily: F.body, transition: "all .15s",
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              fontFamily: F.body, transition: "all .15s",
               background: filter === t.k ? (t.col || C.soul) : C.bg,
               color: filter === t.k ? "#fff" : C.textSecondary,
               border: `1.5px solid ${filter === t.k ? (t.col || C.soul) : C.border}`,
@@ -4964,64 +5180,82 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
         ))}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-            style={{ ...inputBase, width: 160, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
         </div>
-        <button style={btn("ghost", { padding: "6px 10px" })} onClick={load}><RefreshCw size={13} /></button>
+        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
       </div>
 
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => {
-            const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
-            const um = URGENCY_META[r.urgency] || {};
+          {filtered.map(c => {
+            const pending     = pendingAssign[c.id];
+            const displayName = `${c.full_name}${scProfileTag(c)}`;
+            const hasVisits   = c.visits.length > 0;
             return (
-              <div key={r.id} style={{
+              <div key={c.id} style={{
                 ...card, padding: "12px 16px",
-                borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : r.urgency === "High" ? C.danger : sm.color}`,
+                borderLeft: `3px solid ${hasVisits ? C.green : c.assignment ? C.soul : C.gold}`,
               }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    {r.visit_photo_url ? (
-                      <img src={r.visit_photo_url} alt="Visit"
-                        style={{
-                          width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                          objectFit: "cover", border: `2px solid ${C.soul}40`,
-                        }} />
-                    ) : (
-                      <div style={{
-                        width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-                        background: C.soulLight, display: "flex", alignItems: "center",
-                        justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
-                      }}>
-                        {r.member_name?.charAt(0)}
-                      </div>
-                    )}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.visit_type}</div>
-                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                        <UserCheck size={10} />Assigned to <strong>{r.assigned_to}</strong>
-                        {r.visit_date && <> · <Calendar size={10} />{r.visit_date}</>}
-                      </div>
-                      {r.prayer_requests && (
-                        <div style={{ fontSize: 11, color: C.soul, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
-                          <Heart size={10} />Prayer request on file
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                      background: C.soulLight, display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
+                    }}>{c.full_name?.charAt(0)}</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.phone} · added {c.created_at?.slice(0, 10)}</div>
+                      {hasVisits && (
+                        <div style={{ fontSize: 11, color: C.green, marginTop: 3 }}>
+                          {c.visits.length} visit{c.visits.length !== 1 ? "s" : ""} logged · latest: {scLatestVisit(c.visits)?.visit_status || "—"}
                         </div>
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
-                    {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}><Zap size={9} />{r.urgency}</span>}
-                    {r.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={9} />Escalated</span>}
-                    {r.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
-                    {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
-                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
-                    <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(r)}>
-                      <Edit3 size={12} />Edit
-                    </button>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                    {c.assignment && !pending ? (
+                      <>
+                        <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>
+                          <UserCheck size={10} />{c.assignment.assigned_to}
+                        </span>
+                        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
+                          onClick={() => setPendingAssign(p => ({ ...p, [c.id]: c.assignment.assigned_to }))}>
+                          <Edit3 size={10} />Reassign
+                        </button>
+                        <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
+                          onClick={() => removeAssignment(c.assignment.id)} disabled={saving}>
+                          <X size={10} />Unassign
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {teamLoading ? (
+                          <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span>
+                        ) : (
+                          <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [c.id]: e.target.value }))}
+                            style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
+                            <option value="">Select visitor</option>
+                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        )}
+                        {pending && (
+                          <>
+                            <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })}
+                              onClick={() => saveAssignment(c.id)} disabled={saving}>
+                              {saving ? "…" : "Save"}
+                            </button>
+                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })}
+                              onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[c.id]; return n; })}>
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
+                        {!pending && !c.assignment && <span style={badge(C.gold, C.goldLight, { fontSize: 11 })}>Unassigned</span>}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -5029,13 +5263,8 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
           })}
           {filtered.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontFamily: F.head }}>No visits found</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>
-                <button style={{ ...btn("soul", { padding: "7px 14px", fontSize: 13 }), marginTop: 12 }} onClick={onAdd}>
-                  <UserPlus size={13} />Add First Visit
-                </button>
-              </div>
+              <UserCheck size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No contacts in this category</div>
             </div>
           )}
         </div>
@@ -5044,87 +5273,182 @@ function SoulCareQueue({ onEdit, onAdd, currentUser }) {
   );
 }
 
-function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+// ─────────────────────────────────────────────────────────────────────────────
+// SoulCareQueue — role-aware. soulcareadmin/admin see everyone + can expand
+// ─────────────────────────────────────────────────────────────────────────────
+// SoulCareQueue — role-aware. soulcareadmin/admin see everyone + can expand
+// visit history; soulcare members only see contacts assigned to them.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const rows = await sb("soul_care_visits?order=created_at.desc&limit=300");
-        const mine = (rows || []).filter(r =>
-          r.assigned_to?.toLowerCase() === currentUser?.toLowerCase()
-        );
-        setData(mine);
-      } catch (e) { setErr(e.message); }
-      setLoading(false);
-    })();
-  }, [currentUser]);
+function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser = "" }) {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
+  const [filter, setFilter]     = useState("pending");
+  const [search, setSearch]     = useState("");
+  const [expanded, setExpanded] = useState(null);
+  const isAdmin = currentUserRole === "soulcareadmin" || currentUserRole === "admin";
+
+  const searched = data.filter(c =>
+    !search ||
+    c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.phone?.includes(search)
+  );
+
+  const visible = isAdmin
+    ? searched
+    : searched.filter(c => c.assignment?.assigned_to === currentUser);
+
+  const pending     = visible.filter(c => scCategorise(c) === "pending");
+  const scheduled   = visible.filter(c => scCategorise(c) === "scheduled");
+  const completed   = visible.filter(c => scCategorise(c) === "completed");
+  const rescheduled = visible.filter(c => scCategorise(c) === "rescheduled");
+  const unavailable = visible.filter(c => scCategorise(c) === "unavailable");
+  const views  = { pending, scheduled, completed, rescheduled, unavailable, all: visible };
+  const filtered = views[filter] || visible;
+
+  const tabs = [
+    { k: "pending",     label: "Pending",       count: pending.length,     col: C.gold      },
+    { k: "scheduled",   label: "Scheduled",     count: scheduled.length,   col: C.blue      },
+    { k: "completed",   label: "Completed",     count: completed.length,   col: C.green     },
+    { k: "rescheduled", label: "Rescheduled",   count: rescheduled.length, col: C.amber     },
+    { k: "unavailable", label: "Unavailable",   count: unavailable.length, col: C.danger    },
+    { k: "all",         label: "All",           count: visible.length,     col: C.textMuted },
+  ];
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="My Visits"
-        subtitle={`${data.length} visit${data.length !== 1 ? "s" : ""} assigned to you`}
-        action={<button style={btn("soul")} onClick={onAdd}><UserPlus size={14} />Log New Visit</button>} />
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <PageHeader title="Visit Queue" subtitle="People awaiting or receiving a Soul Care visit"
+        action={
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          </div>
+        } />
+
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
+        label="Filter by date added to pool:" />
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              fontFamily: F.body, transition: "all .15s",
+              background: filter === t.k ? t.col : C.bg,
+              color: filter === t.k ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+            }}>
+            {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
+          </button>
+        ))}
+        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => {}} />
+
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
-          {data.map(r => {
-            const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
-            const um = URGENCY_META[r.urgency] || {};
+          {filtered.map(c => {
+            const latest = scLatestVisit(c.visits);
+            const sm     = latest ? (VISIT_STATUS_META[latest.visit_status] || { color: C.gold, bg: C.goldLight }) : { color: C.gold, bg: C.goldLight };
+            const isOpen = expanded === c.id;
+            const isMine = c.assignment?.assigned_to === currentUser;
+            const displayName = `${c.full_name}${scProfileTag(c)}`;
+
             return (
-              <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${sm.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    {r.visit_photo_url ? (
-                      <img src={r.visit_photo_url} alt="Visit"
-                        style={{
-                          width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                          objectFit: "cover", border: `2px solid ${C.soul}40`,
-                        }} />
-                    ) : (
-                      <div style={{
-                        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                        background: C.soulLight, display: "flex", alignItems: "center",
-                        justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
-                      }}>
-                        {r.member_name?.charAt(0)}
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.visit_type}</div>
-                      {r.visit_date && (
-                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                          <Calendar size={10} />{r.visit_date}
+              <div key={c.id} style={{ ...card, padding: 0, overflow: "hidden", borderLeft: `3px solid ${sm.color}` }}>
+                <div className="et-head" style={{
+                  display: "flex", justifyContent: "space-between", flexWrap: "wrap",
+                  gap: 10, padding: "12px 16px", cursor: isAdmin ? "pointer" : "default",
+                }}
+                  onClick={() => isAdmin && setExpanded(isOpen ? null : c.id)}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                      background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
+                    }}>{c.full_name?.charAt(0)}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.phone}</div>
+                      {c.assignment && (
+                        <div style={{ fontSize: 11, color: C.soul, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                          <UserCheck size={10} />Assigned to <strong>{c.assignment.assigned_to}</strong>
                         </div>
                       )}
-                      {r.follow_up_required && r.next_follow_up_date && (
-                        <div style={{ fontSize: 11, color: C.amber, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                          <Bell size={10} />Follow-up: {r.next_follow_up_date}
+                      {latest && (
+                        <div style={{ marginTop: 5 }}>
+                          <span style={badge(sm.color, sm.bg, { fontSize: 11 })}>
+                            <span style={dot(sm.color)} />{latest.visit_status}
+                          </span>
+                          {c.visits.length > 1 && (
+                            <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 6 }}>
+                              ({c.visits.length} visits logged)
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
-                    {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}><Zap size={9} />{r.urgency}</span>}
-                    {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
-                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
-                    <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(r)}>
-                      <Edit3 size={12} />Edit
-                    </button>
+                  <div className="et-actions" style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
+                    {!isAdmin && isMine && (
+                      <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })}
+                        onClick={e => { e.stopPropagation(); onLogVisit(c); }}>
+                        <MapPin size={13} />Log Visit
+                      </button>
+                    )}
+                    {!isAdmin && !isMine && (
+                      <span style={badge(C.textMuted, C.bg, { fontSize: 11 })}>Not assigned to you</span>
+                    )}
+                    {isAdmin && (
+                      <ChevronDown size={14} color={C.textMuted}
+                        style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", alignSelf: "center" }} />
+                    )}
                   </div>
                 </div>
+
+                {isAdmin && isOpen && (
+                  <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}` }}>
+                    {c.visits.length === 0 ? (
+                      <p style={{ fontSize: 12, color: C.textMuted, marginTop: 12 }}>No visits logged yet.</p>
+                    ) : (
+                      <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                        {c.visits.map(v => {
+                          const vsm = VISIT_STATUS_META[v.visit_status] || { color: C.textMuted, bg: C.bg };
+                          const um  = URGENCY_META[v.urgency] || {};
+                          return (
+                            <div key={v.id} style={{ background: C.bg, borderRadius: 8, padding: "10px 14px", border: `1px solid ${C.border}` }}>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
+                                <span style={badge(vsm.color, vsm.bg, { fontSize: 11, fontFamily: F.head })}>{v.visit_type || "Visit"} · {v.visit_status}</span>
+                                {v.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{v.urgency}</span>}
+                                {v.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Escalated</span>}
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>
+                                Logged by <strong>{v.logged_by || "—"}</strong>
+                                {v.visit_date && <span style={{ marginLeft: 8 }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> {v.visit_date}</span>}
+                              </div>
+                              {v.meeting_notes && <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.5 }}>{v.meeting_notes}</div>}
+                              {v.escalate_to_pastorate && v.escalation_reason && (
+                                <div style={{ fontSize: 12, color: C.flag, marginTop: 6, background: C.flagLight, padding: "5px 8px", borderRadius: 5 }}>
+                                  🚩 {v.escalation_reason}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
-          {data.length === 0 && (
+          {filtered.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontFamily: F.head }}>No visits assigned to you yet</div>
+              <CheckCircle size={28} color={C.green} style={{ marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No records in this category</div>
             </div>
           )}
         </div>
@@ -5133,19 +5457,673 @@ function MySoulCareVisits({ onEdit, onAdd, currentUser }) {
   );
 }
 
-function VisitationTab() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+// ─────────────────────────────────────────────────────────────────────────────
+// MySoulCareVisits — visits assigned to the logged-in Soul Care member
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
   const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
+  const [filter, setFilter] = useState("all");
+
+  const mine = data.filter(c => c.assignment?.assigned_to === currentUser);
+
+  const pending   = mine.filter(c => c.visits.length === 0);
+  const scheduled = mine.filter(c => scLatestVisit(c.visits)?.visit_status === "Scheduled");
+  const completed = mine.filter(c => scLatestVisit(c.visits)?.visit_status === "Completed");
+  const flagged   = mine.filter(c => c.visits.some(v => v.escalate_to_pastorate));
+
+  const views    = { all: mine, pending, scheduled, completed, flagged };
+  const filtered = views[filter] || mine;
+
+  const tabs = [
+    { k: "all",       label: "All",       count: mine.length,      col: C.textMuted },
+    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold      },
+    { k: "scheduled", label: "Scheduled", count: scheduled.length, col: C.blue      },
+    { k: "completed", label: "Completed", count: completed.length, col: C.green     },
+    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="My Visits" subtitle={`${mine.length} contact${mine.length !== 1 ? "s" : ""} assigned to you`} />
+
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
+        label="Filter by date added to pool:" />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Assigned to Me" value={mine.length}      icon={MapPin}      accent={C.soul}  />
+        <StatCard label="Completed"      value={completed.length} icon={CheckCircle} accent={C.green} />
+        <StatCard label="Scheduled"      value={scheduled.length} icon={Calendar}    accent={C.blue}  />
+        <StatCard label="Flagged"        value={flagged.length}   icon={Flag}        accent={C.flag}
+          sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              fontFamily: F.body, transition: "all .15s",
+              background: filter === t.k ? t.col : C.bg,
+              color: filter === t.k ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+            }}>
+            {t.label} ({t.count})
+          </button>
+        ))}
+        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {filtered.map(c => {
+            const latest      = scLatestVisit(c.visits);
+            const sm          = latest ? (VISIT_STATUS_META[latest.visit_status] || { color: C.gold, bg: C.goldLight }) : { color: C.gold, bg: C.goldLight };
+            const anyFlagged  = c.visits.some(v => v.escalate_to_pastorate);
+            const displayName = `${c.full_name}${scGenderTag(c)}`;
+
+            return (
+              <div key={c.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${anyFlagged ? C.flag : sm.color}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+                      background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
+                    }}>{c.full_name?.charAt(0) || "?"}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.phone}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                    {anyFlagged && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>}
+                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogVisit(c)}>
+                      <MapPin size={13} />Log New Visit
+                    </button>
+                  </div>
+                </div>
+
+                {c.visits.length > 0 ? (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {c.visits.map(v => {
+                      const vsm = VISIT_STATUS_META[v.visit_status] || { color: C.textMuted, bg: C.bg };
+                      return (
+                        <div key={v.id} style={{ background: C.bg, borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.border}` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4, alignItems: "center" }}>
+                                <span style={badge(vsm.color, vsm.bg, { fontSize: 10, padding: "2px 8px", fontFamily: F.head })}>
+                                  {v.visit_type || "Visit"} · {v.visit_status}
+                                </span>
+                                {v.visit_date && <span style={{ fontSize: 11, color: C.textMuted }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> {v.visit_date}</span>}
+                              </div>
+                              {v.meeting_notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 3, lineHeight: 1.5 }}>{v.meeting_notes}</div>}
+                              {v.escalate_to_pastorate && v.escalation_reason && (
+                                <div style={{ fontSize: 12, color: C.flag, marginTop: 4, background: C.flagLight, padding: "5px 8px", borderRadius: 5 }}>
+                                  🚩 {v.escalation_reason}
+                                </div>
+                              )}
+                            </div>
+                            {v.logged_by === currentUser && (
+                              <button style={btn("ghost", { padding: "5px 10px", fontSize: 11, flexShrink: 0 })} onClick={() => onEditVisit(c, v)}>
+                                <Edit3 size={11} />Edit
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>No visits logged yet.</div>
+                )}
+              </div>
+            );
+          })}
+
+          {!loading && filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>
+                {mine.length === 0 ? "No contacts assigned to you yet." : "No contacts in this category."}
+              </div>
+              {mine.length === 0 && <p style={{ fontSize: 13, marginTop: 6 }}>Ask your Soul Care Admin to assign contacts to you.</p>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LogVisitForm — log a new visit, or edit an existing one, for a contact
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LogVisitForm({ contact, editVisit = null, loggedBy = "", onBack, onDone }) {
+  const displayName = `${contact.full_name}${scGenderTag(contact)}`;
+
+  const [form, setForm] = useState({
+    visit_type: editVisit?.visit_type || "",
+    urgency: editVisit?.urgency || "",
+    reason_for_care: editVisit?.reason_for_care || "",
+    visit_status: editVisit?.visit_status || "",
+    visit_date: editVisit?.visit_date || new Date().toISOString().slice(0, 10),
+    visit_time: editVisit?.visit_time || "",
+    meeting_notes: editVisit?.meeting_notes || "",
+    visit_photo_url: editVisit?.visit_photo_url || "",
+    material_support: editVisit?.material_support || false,
+    material_support_notes: editVisit?.material_support_notes || "",
+    prayer_requests: editVisit?.prayer_requests || "",
+    testimony: editVisit?.testimony || "",
+    follow_up_required: editVisit?.follow_up_required || false,
+    next_follow_up_date: editVisit?.next_follow_up_date || "",
+    escalate_to_pastorate: editVisit?.escalate_to_pastorate || false,
+    escalation_reason: editVisit?.escalation_reason || "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [err, setErr]         = useState("");
+
+  const setRef = useRef({});
+  const set = useCallback((key) => {
+    if (!setRef.current[key]) {
+      setRef.current[key] = (valOrEvt) => {
+        const val = valOrEvt && valOrEvt.target !== undefined ? valOrEvt.target.value : valOrEvt;
+        setForm(f => ({ ...f, [key]: val }));
+      };
+    }
+    return setRef.current[key];
+  }, []);
+
+  const submit = async () => {
+    if (!form.visit_type)   { setErr("Type of visit is required."); return; }
+    if (!form.visit_status) { setErr("Visit status is required."); return; }
+    if (form.escalate_to_pastorate && !form.escalation_reason.trim()) {
+      setErr("Please describe the reason for escalation."); return;
+    }
+    setLoading(true); setErr("");
+    try {
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const payload = {
+        contact_id:             contact.id,
+        logged_by:              loggedBy || editVisit?.logged_by || null,
+        visit_type:             form.visit_type,
+        reason_for_care:        n(form.reason_for_care),
+        urgency:                n(form.urgency),
+        visit_status:           form.visit_status,
+        visit_date:             n(form.visit_date),
+        visit_time:             n(form.visit_time),
+        meeting_notes:          n(form.meeting_notes),
+        visit_photo_url:        n(form.visit_photo_url),
+        material_support:       !!form.material_support,
+        material_support_notes: form.material_support ? n(form.material_support_notes) : null,
+        prayer_requests:        n(form.prayer_requests),
+        testimony:              n(form.testimony),
+        follow_up_required:     !!form.follow_up_required,
+        next_follow_up_date:    form.follow_up_required ? n(form.next_follow_up_date) : null,
+        escalate_to_pastorate:  !!form.escalate_to_pastorate,
+        escalation_reason:      form.escalate_to_pastorate ? n(form.escalation_reason) : null,
+      };
+      if (editVisit?.id) {
+        await sb(`soul_care_visits?id=eq.${editVisit.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      } else {
+        await sb("soul_care_visits", { method: "POST", body: JSON.stringify(payload) });
+      }
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
+      <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
+      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>
+        Visit {editVisit ? "updated" : "logged"} for {displayName}
+      </h3>
+      {form.escalate_to_pastorate && (
+        <div style={{ ...badge(C.flag, C.flagLight), marginTop: 8, fontSize: 13, display: "inline-flex" }}>
+          <Flag size={12} />Flagged for Pastoral Team
+        </div>
+      )}
+      <button style={{ ...btn("outline"), marginTop: 20 }} onClick={onDone}>
+        <ArrowLeft size={14} />Back
+      </button>
+    </div>
+  );
+
+  const uc = URGENCY_META[form.urgency]?.color || C.textMuted;
+
+  return (
+    <div style={card} className="page-enter">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
+            {editVisit ? "Edit Visit" : "Log New Visit"} — {displayName}
+          </h2>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{contact.phone}</p>
+        </div>
+      </div>
+
+      {CREDS_MISSING && <CredsBanner />}
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loggedBy && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>Logged By</div>
+          <div style={{
+            ...inputBase, background: C.soulLight, border: `1.5px solid ${C.soul}40`, color: C.soul, fontWeight: 700,
+            display: "flex", alignItems: "center", gap: 8, cursor: "default", userSelect: "none",
+          }}>
+            <UserCheck size={14} color={C.soul} />{loggedBy}
+            <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 400, color: C.textMuted, fontStyle: "italic" }}>Logged as you</span>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginBottom: 20 }}>
+        <SH title="Visitation Details" icon={MapPin} />
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Type of Visit" id="vt" type="select" required value={form.visit_type} onChange={set("visit_type")} options={SC_VISIT_TYPES} />
+          <FieldInput label="Urgency Level" id="ul" type="select" value={form.urgency} onChange={set("urgency")}
+            options={[{ value: "High", label: "High" }, { value: "Medium", label: "Medium" }, { value: "Low", label: "Low" }]} />
+        </div>
+        {form.urgency && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16,
+            padding: "7px 12px", borderRadius: 8, background: `${uc}12`, fontSize: 12, color: uc, fontWeight: 600,
+          }}>
+            <Zap size={12} />Urgency: <strong>{form.urgency}</strong>
+          </div>
+        )}
+        <FieldInput label="Reason for Care" id="rfc" type="textarea" value={form.reason_for_care} onChange={set("reason_for_care")}
+          placeholder="Describe the purpose or context of this visit…" />
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <SH title="Feedback & Outcome" icon={MessageSquare} />
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Visit Status" id="vs" type="select" required value={form.visit_status} onChange={set("visit_status")}
+            options={[
+              { value: "Scheduled", label: "Scheduled" }, { value: "Completed", label: "Completed" },
+              { value: "Rescheduled", label: "Rescheduled" }, { value: "Member Unavailable", label: "Member Unavailable" },
+            ]} />
+          <FieldInput label="Date Conducted" id="vd" type="date" value={form.visit_date} onChange={set("visit_date")} />
+        </div>
+        <FieldInput label="Time Conducted" id="vtime" type="time" value={form.visit_time} onChange={set("visit_time")} />
+        <FieldInput label="Meeting Notes" id="mn" type="textarea" value={form.meeting_notes} onChange={set("meeting_notes")}
+          placeholder="Detailed spiritual and physical observations from the visit…" />
+
+        <div style={{ background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 12, color: C.soul, marginBottom: 12, display: "flex", alignItems: "center", gap: 5, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            <Camera size={12} />Visit Photo
+          </div>
+          <PhotoUpload value={form.visit_photo_url} onChange={set("visit_photo_url")} existingUrl={editVisit?.visit_photo_url || ""} />
+        </div>
+
+        <div style={{ background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
+          <FieldInput label="Material Support Provided" id="msp" type="bool-toggle" value={form.material_support} onChange={set("material_support")}
+            hint="Toggle if the church provided physical aid (groceries, financial welfare, medical package, etc.)" />
+          {form.material_support && (
+            <FieldInput label="Support Details" id="msn" type="textarea" value={form.material_support_notes} onChange={set("material_support_notes")}
+              placeholder="Describe what was provided…" />
+          )}
+        </div>
+
+        <FieldInput label="Prayer Requests" id="pr" type="textarea" value={form.prayer_requests} onChange={set("prayer_requests")}
+          placeholder="Specific items the member asked the church to stand in agreement with them for…" />
+        <FieldInput label="Testimony" id="test" type="textarea" value={form.testimony} onChange={set("testimony")}
+          placeholder="A brief summary of their testimonies since joining The Envoys…" />
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <SH title="Next Steps & Post-Visit Action" icon={Calendar} />
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <div>
+            <FieldInput label="Follow-Up Required" id="fur" type="bool-toggle" value={form.follow_up_required} onChange={set("follow_up_required")} />
+            {form.follow_up_required && (
+              <FieldInput label="Next Follow-Up Date" id="nfud" type="date" value={form.next_follow_up_date} onChange={set("next_follow_up_date")} />
+            )}
+          </div>
+          <div>
+            <div style={{ background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10, padding: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, color: C.flag, marginBottom: 10, display: "flex", alignItems: "center", gap: 5, fontFamily: F.head }}>
+                <Flag size={12} />Escalation
+              </div>
+              <FieldInput label="Escalate to Pastorate" id="etp" type="toggle" value={form.escalate_to_pastorate} onChange={set("escalate_to_pastorate")}
+                hint="Notify the Pastoral Team about this case" />
+              {form.escalate_to_pastorate && (
+                <FieldInput label="Reason for Escalation" id="er" type="textarea" required value={form.escalation_reason} onChange={set("escalation_reason")}
+                  placeholder="Describe the concern requiring pastoral escalation…" />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
+        {loading ? "Saving…" : editVisit ? "Update Visit Record" : "Save Visitation Record"}
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SoulCareFlagged — global flagged/escalated visits, for soulcare + soulcareadmin
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SoulCareFlagged() {
+  const [rows, setRows]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      let q = "soul_care_visits?escalate_to_pastorate=eq.true&select=*,soul_care_contacts(full_name,phone,gender)&order=created_at.desc";
+      if (dateFrom) q += `&created_at=gte.${dateFrom}`;
+      if (dateTo)   q += `&created_at=lte.${dateTo}T23:59:59`;
+      setRows((await sb(q)) || []);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, [dateFrom, dateTo]);
+  useEffect(() => { load(); }, [load]);
+
+  const daysOpen = (createdAt) => {
+    if (!createdAt) return 0;
+    return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
+  };
+  const agingCount = rows.filter(r => daysOpen(r.created_at) >= 3).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Flagged for Pastoral" subtitle={`${rows.length} visit${rows.length !== 1 ? "s" : ""} escalated by the Soul Care team`}
+        action={agingCount > 0 && (
+          <span style={badge(C.danger, C.dangerLight, { fontSize: 12, padding: "6px 12px" })}>
+            <AlertCircle size={12} />{agingCount} aging 3+ days
+          </span>
+        )} />
+
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by date flagged:" />
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {rows.map(r => {
+            const contact = r.soul_care_contacts || {};
+            const age = daysOpen(r.created_at);
+            const aging = age >= 3;
+            const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
+            return (
+              <div key={r.id} style={{ ...card, borderLeft: `3px solid ${aging ? C.danger : C.flag}`, padding: "14px 16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.head }}>{contact.full_name}{scGenderTag(contact)}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}>{contact.phone} · {r.visit_type}</div>
+                    {r.logged_by && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Reported by <strong>{r.logged_by}</strong></div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
+                    {aging
+                      ? <span style={badge(C.danger, C.dangerLight)}><AlertCircle size={11} />Aging · {age}d open</span>
+                      : <span style={badge(C.flag, C.flagLight)}><Flag size={11} />Flagged · {age}d open</span>}
+                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
+                  </div>
+                </div>
+                <div style={{ background: C.flagLight, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.flag, lineHeight: 1.6 }}>
+                  <strong>Reason flagged:</strong> {r.escalation_reason || "No reason provided"}
+                </div>
+                {r.meeting_notes && (
+                  <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>
+                    <strong>Visit notes:</strong> {r.meeting_notes}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+          {rows.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Shield size={36} color={C.green} style={{ marginBottom: 8 }} />
+              <div style={{ fontWeight: 700, fontFamily: F.head }}>No flagged records</div>
+              <div style={{ fontSize: 13, marginTop: 4 }}>Nothing requires pastoral attention right now.</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Testimonies — mirrors ResearchFeedback exactly, sourced from soul_care_visits
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Testimonies() {
+  const [rows, setRows]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [err, setErr]             = useState("");
+  const [search, setSearch]       = useState("");
+  const [dateFrom, setDateFrom]   = useState("");
+  const [dateTo, setDateTo]       = useState("");
+  const [selected, setSelected]   = useState(new Set());
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const data = await sb(
+          "soul_care_visits?select=id,testimony,visit_date,soul_care_contacts(full_name)&order=visit_date.desc&limit=1000"
+        );
+        setRows((data || []).filter(r => r.testimony && r.testimony.trim() !== ""));
+      } catch (e) { setErr(e.message); }
+      setLoading(false);
+    })();
+  }, []);
+
+  const filtered = rows.filter(r => {
+    const name = r.soul_care_contacts?.full_name || "";
+    if (search) {
+      const q = search.toLowerCase();
+      if (!name.toLowerCase().includes(q) && !r.testimony?.toLowerCase().includes(q)) return false;
+    }
+    if (dateFrom && r.visit_date < dateFrom) return false;
+    if (dateTo   && r.visit_date > dateTo)   return false;
+    return true;
+  });
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected = allFilteredIds.some(id => selected.has(id));
+
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+      return n;
+    });
+  };
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (toExport.length === 0) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Name", "Visit Date", "Testimony"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [escape(r.soul_care_contacts?.full_name), escape(r.visit_date), escape(r.testimony)].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateLabel = dateFrom || dateTo ? `_${dateFrom || "start"}_to_${dateTo || "end"}` : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href = url; a.download = `envoys_testimonies${dateLabel}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Testimonies" subtitle="Testimonies shared during Soul Care visitations"
+        action={
+          <button
+            style={{ ...btn("soul"), background: selectedCount > 0 ? C.soul : C.border, color: selectedCount > 0 ? "#fff" : C.textMuted, cursor: selectedCount > 0 ? "pointer" : "not-allowed" }}
+            onClick={downloadCSV} disabled={selectedCount === 0}>
+            <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+          </button>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Testimonies" value={rows.length}     icon={FileText} accent={C.soul}  />
+        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}   accent={C.green} />
+        <StatCard label="Selected"          value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.soul : C.textMuted}
+          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+      </div>
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16, padding: "12px 16px",
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
+      }}>
+        <Calendar size={14} color={C.soul} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>Filter by visit date:</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}><X size={12} />Clear</button>
+          )}
+        </div>
+        <div style={{ position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or testimony…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {selectedCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
+          background: `${C.soul}12`, borderRadius: 8, border: `1px solid ${C.soul}30`, fontSize: 13, color: C.soul, fontWeight: 600, flexWrap: "wrap", gap: 10,
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><CheckCircle size={14} />{selectedCount} testimon{selectedCount !== 1 ? "ies" : "y"} selected</span>
+          <button style={{ ...btn("soul", { padding: "6px 14px", fontSize: 12 }) }} onClick={downloadCSV}><Download size={13} />Download CSV</button>
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ color: C.textMuted }}>Loading…</p>
+      ) : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0 ? "No testimonies recorded yet." : "No testimonies match your filters."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 12, alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all visible"}
+                style={{
+                  width: 18, height: 18, borderRadius: 4, cursor: "pointer", flexShrink: 0,
+                  border: `2px solid ${someSelected ? C.soul : C.border}`, background: allSelected ? C.soul : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: C.soul, borderRadius: 1 }} />}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Name</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Visit Date</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Testimony</div>
+          </div>
+
+          {filtered.map((r, i) => {
+            const isChecked = selected.has(r.id);
+            const name = r.soul_care_contacts?.full_name || "—";
+            return (
+              <div key={r.id} onClick={() => toggleRow(r.id)}
+                style={{
+                  display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", padding: "12px 16px", gap: 12, alignItems: "flex-start",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  background: isChecked ? `${C.soul}08` : C.surface, cursor: "pointer", transition: "background .12s",
+                }}
+                onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.soulLight; }}
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.soul}08` : C.surface; }}>
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    border: `2px solid ${isChecked ? C.soul : C.border}`, background: isChecked ? C.soul : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
+                </div>
+                <div>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "50%", background: C.soulLight, display: "inline-flex", alignItems: "center",
+                    justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 13, fontFamily: F.head, marginBottom: 4, border: `1.5px solid ${C.soul}30`,
+                  }}>{name.charAt(0) || "?"}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>{name}</div>
+                </div>
+                <div style={{ fontSize: 13, color: C.textSecondary, paddingTop: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={11} color={C.textMuted} />{r.visit_date || "—"}</div>
+                </div>
+                <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4, wordBreak: "break-word" }}>{r.testimony}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> testimon{rows.length !== 1 ? "ies" : "y"}</span>
+          {selectedCount === 0 && filtered.length > 0 && <span style={{ color: C.soul, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VisitationTab — admin/pasteam oversight view of ALL visits (unchanged nav id)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function VisitationTab() {
+  const [data, setData]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [expanded, setExpanded] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setErr("");
     try {
-      let q = "soul_care_visits?order=created_at.desc&limit=500";
+      let q = "soul_care_visits?select=*,soul_care_contacts(full_name,phone,gender,marital_status,life_stage)&order=created_at.desc&limit=500";
       if (dateFrom) q += `&visit_date=gte.${dateFrom}`;
       if (dateTo)   q += `&visit_date=lte.${dateTo}`;
       setData((await sb(q)) || []);
@@ -5157,16 +6135,15 @@ function VisitationTab() {
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const completedMonth = data.filter(r => r.visit_status === "Completed" && r.visit_date >= monthStart).length;
-  const highPriority = data.filter(r => r.urgency === "High" && r.visit_status !== "Completed").length;
-  const escalated = data.filter(r => r.escalate_to_pastorate).length;
+  const highPriority   = data.filter(r => r.urgency === "High" && r.visit_status !== "Completed").length;
+  const escalated      = data.filter(r => r.escalate_to_pastorate).length;
 
   const filtered = data.filter(r => !statusFilter || r.visit_status === statusFilter);
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Visitation Records"
-        subtitle="Soul Care team visits — pastoral oversight view"
+      <PageHeader title="Visitation Records" subtitle="Soul Care team visits — pastoral oversight view"
         action={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
@@ -5176,7 +6153,7 @@ function VisitationTab() {
         } />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Assigned Visits"  value={data.length}    icon={MapPin}      accent={C.soul}   />
+        <StatCard label="Total Visits Logged"    value={data.length}    icon={MapPin}      accent={C.soul}   />
         <StatCard label="Completed This Month"    value={completedMonth} icon={CheckCircle} accent={C.green}  />
         <StatCard label="High Priority / Open"    value={highPriority}   icon={AlertCircle} accent={C.danger} />
         <StatCard label="Escalated to Pastorate"  value={escalated}      icon={Flag}        accent={C.flag}   />
@@ -5190,15 +6167,13 @@ function VisitationTab() {
           return (
             <button key={s} onClick={() => setStatusFilter(s)}
               style={{
-                padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                cursor: "pointer", fontFamily: F.body, transition: "all .15s",
+                padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                fontFamily: F.body, transition: "all .15s",
                 background: statusFilter === s ? (sm.color || C.soul) : C.bg,
                 color: statusFilter === s ? "#fff" : C.textSecondary,
                 border: `1.5px solid ${statusFilter === s ? (sm.color || C.soul) : C.border}`,
               }}>
-              {s || "All"} {s
-                ? `(${data.filter(r => r.visit_status === s).length})`
-                : `(${data.length})`}
+              {s || "All"} {s ? `(${data.filter(r => r.visit_status === s).length})` : `(${data.length})`}
             </button>
           );
         })}
@@ -5207,44 +6182,29 @@ function VisitationTab() {
       {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
+            const contact = r.soul_care_contacts || {};
             const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
             const um = URGENCY_META[r.urgency] || {};
             const isOpen = expanded === r.id;
             return (
-              <div key={r.id} style={{
-                ...card, padding: 0, overflow: "hidden",
-                borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : sm.color}`,
-              }}>
-                <div style={{
-                  display: "flex", justifyContent: "space-between", flexWrap: "wrap",
-                  gap: 10, padding: "12px 16px", cursor: "pointer",
-                }}
+              <div key={r.id} style={{ ...card, padding: 0, overflow: "hidden", borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : sm.color}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "12px 16px", cursor: "pointer" }}
                   onClick={() => setExpanded(isOpen ? null : r.id)}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
                     {r.visit_photo_url ? (
-                      <img src={r.visit_photo_url} alt="Visit"
-                        style={{
-                          width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                          objectFit: "cover", border: `2px solid ${C.soul}40`,
-                        }} />
+                      <img src={r.visit_photo_url} alt="Visit" style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, objectFit: "cover", border: `2px solid ${C.soul}40` }} />
                     ) : (
-                      <div style={{
-                        width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                        background: C.soulLight, display: "flex", alignItems: "center",
-                        justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
-                      }}>
-                        {r.member_name?.charAt(0)}
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: C.soulLight, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head }}>
+                        {contact.full_name?.charAt(0)}
                       </div>
                     )}
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.member_name}</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{contact.full_name}{scGenderTag(contact)}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>
-                        {r.phone} · {r.visit_type}
+                        {contact.phone} · {r.visit_type}
                         {r.visit_date && <> · <Calendar size={10} style={{ verticalAlign: "middle" }} /> {r.visit_date}</>}
                       </div>
-                      <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
-                        Assigned to <strong>{r.assigned_to}</strong>
-                      </div>
+                      {r.logged_by && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Logged by <strong>{r.logged_by}</strong></div>}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
@@ -5253,40 +6213,27 @@ function VisitationTab() {
                     {r.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
                     {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
-                    <ChevronDown size={14} color={C.textMuted}
-                      style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+                    <ChevronDown size={14} color={C.textMuted} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
                   </div>
                 </div>
                 {isOpen && (
                   <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}`, marginTop: -4 }}>
                     {r.visit_photo_url && (
                       <div style={{ marginTop: 14, marginBottom: 14 }}>
-                        <div style={{
-                          fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 8,
-                          display: "flex", alignItems: "center", gap: 4,
-                          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
-                        }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 8, display: "flex", alignItems: "center", gap: 4, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
                           <Camera size={11} />Visit Photo
                         </div>
                         <img src={r.visit_photo_url} alt="Visit photo"
-                          style={{
-                            width: "100%", maxWidth: 360, height: 220, objectFit: "cover",
-                            borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block",
-                            cursor: "pointer",
-                          }}
-                          onClick={() => window.open(r.visit_photo_url, "_blank")}
-                          title="Click to open full image"
-                        />
-                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
-                          Click image to open full size
-                        </div>
+                          style={{ width: "100%", maxWidth: 360, height: 220, objectFit: "cover", borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block", cursor: "pointer" }}
+                          onClick={() => window.open(r.visit_photo_url, "_blank")} title="Click to open full image" />
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Click image to open full size</div>
                       </div>
                     )}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 14 }} className="g2">
-                      {r.reason_for_care        && <DetailBlock icon={Info}     label="Reason for Care"   value={r.reason_for_care} />}
-                      {r.meeting_notes          && <DetailBlock icon={FileText} label="Meeting Notes"     value={r.meeting_notes} />}
-                      {r.prayer_requests        && <DetailBlock icon={Heart}    label="Prayer Requests"   value={r.prayer_requests}        color={C.soul} />}
-                      {r.testimony              && <DetailBlock icon={Star}     label="Testimony"         value={r.testimony}              color={C.goldDark} />}
+                      {r.reason_for_care && <DetailBlock icon={Info} label="Reason for Care" value={r.reason_for_care} />}
+                      {r.meeting_notes   && <DetailBlock icon={FileText} label="Meeting Notes" value={r.meeting_notes} />}
+                      {r.prayer_requests && <DetailBlock icon={Heart} label="Prayer Requests" value={r.prayer_requests} color={C.soul} />}
+                      {r.testimony       && <DetailBlock icon={Star} label="Testimony" value={r.testimony} color={C.goldDark} />}
                       {r.material_support && r.material_support_notes && <DetailBlock icon={Shield} label="Material Support" value={r.material_support_notes} />}
                       {r.follow_up_required && r.next_follow_up_date && <DetailBlock icon={Calendar} label="Next Follow-Up" value={r.next_follow_up_date} color={C.amber} />}
                       {r.escalate_to_pastorate && r.escalation_reason && <DetailBlock icon={Flag} label="Escalation Reason" value={r.escalation_reason} color={C.flag} />}
@@ -5299,9 +6246,7 @@ function VisitationTab() {
           {filtered.length === 0 && (
             <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
               <MapPin size={28} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontFamily: F.head }}>
-                No visitation records{dateFrom || dateTo ? " in this date range" : ""}
-              </div>
+              <div style={{ fontWeight: 700, fontFamily: F.head }}>No visitation records{dateFrom || dateTo ? " in this date range" : ""}</div>
             </div>
           )}
         </div>
@@ -5313,11 +6258,7 @@ function VisitationTab() {
 function DetailBlock({ icon: Icon, label, value, color }) {
   return (
     <div style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
-      <div style={{
-        fontSize: 11, fontWeight: 700, color: color || C.textMuted,
-        marginBottom: 4, display: "flex", alignItems: "center", gap: 4,
-        fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em",
-      }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: color || C.textMuted, marginBottom: 4, display: "flex", alignItems: "center", gap: 4, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
         {Icon && <Icon size={11} />}{label}
       </div>
       <div style={{ fontSize: 13, color: C.textPrimary, lineHeight: 1.6 }}>{value}</div>
@@ -5326,9 +6267,8 @@ function DetailBlock({ icon: Icon, label, value, color }) {
 }
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  END MODULE: SOUL CARE — VISITATION MANAGEMENT                            ║
+// ║  END MODULE: SOUL CARE — VISITATION MANAGEMENT  (v7.0)                    ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
-
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                          ║
@@ -5894,6 +6834,7 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
           { value: "research",  label: "Research Team"   },
           { value: "admin",     label: "Admin"           },
           { value: "experienceadmin", label: "Experience Admin" },
+          { value: "soulcareadmin",   label: "Soul Care Admin"  },
         ]} />
       <div style={{
         background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
@@ -5903,11 +6844,13 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong>Data Officer</strong> — Add/edit first-timer records, generate QR code<br />
         <strong>Experience Team</strong> — My Calls, call queue, log feedback, flag for pastoral<br />
         <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records, visitation view<br />
-        <strong>Soul Care</strong> — Visitation queue, log and edit visit records<br />
+        <strong>Soul Care</strong> — My Visits, visit queue (assigned contacts only), flagged records<br />
+        <strong>Soul Care Admin</strong> — Bulk import contacts, assign visits, view all visits, flagged records, Testimonies<br />
         <strong>Research Team</strong> — View and download service feedback responses (CSV export)<br />
         <strong>Admin</strong> — All of the above + user management + bulk import<br />
         <strong>Experience Admin</strong> — Assign contacts to team members, view call queue and all feedback<br />
       </div>
+
       <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
         onClick={submit} disabled={loading}>
         {loading ? "Saving…" : editUser ? "Update User" : "Create User"}
@@ -5934,6 +6877,7 @@ const FALLBACK_ACCOUNTS = [
   { username: "soulcare1",  password: "soulcare1",  role: "soulcare", display_name: "Soul Care Team"  },
   { username: "research1",  password: "research1",  role: "research", display_name: "Research Team"   },
   { username: "experienceadmin", password: "expadmin1", role: "experienceadmin", display_name: "Experience Admin" },
+  { username: "soulcareadmin",   password: "scadmin1",  role: "soulcareadmin",  display_name: "Soul Care Admin"  },
 ];
 
 function Login({ onLogin }) {
@@ -5989,7 +6933,7 @@ function Login({ onLogin }) {
         </button>
       </div>
     </div>
-  );
+);
 }
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
@@ -6015,10 +6959,11 @@ export default function App() {
   const [showPublic,     setShowPublic]     = useState(false);
   const [mobileOpen,     setMobileOpen]     = useState(false);
   const [flagCount,      setFlagCount]      = useState(0);
-  const [addVisitMode,   setAddVisitMode]   = useState(false);
   const [editWeekTarget,   setEditWeekTarget]   = useState(null); // { person, week }
   const [showCompleted,    setShowCompleted]     = useState(false);
   const [editOverviewTarget, setEditOverviewTarget] = useState(null);
+  const [visitLogTarget,  setVisitLogTarget]  = useState(null); // contact to log a new visit for
+  const [visitEditTarget, setVisitEditTarget] = useState(null); // { contact, visit }
 
   useEffect(() => {
     const p = window.location.pathname;
@@ -6051,9 +6996,10 @@ export default function App() {
 
   const navTo = (v) => {
     setActive(v); setEditTarget(null); setFeedbackTarget(null);
-    setEditUser(null); setEditVisit(null); setAddVisitMode(false);
+    setEditUser(null);
     setEditWeekTarget(null); setShowCompleted(false);
-    setEditOverviewTarget(null);   // ← add this
+    setEditOverviewTarget(null);
+    setVisitLogTarget(null); setVisitEditTarget(null);
     setMobileOpen(false);
   };
 
@@ -6064,101 +7010,130 @@ export default function App() {
   const pageTitle = NAV[role]?.find(n => n.id === active)?.label || "Dashboard";
 
   const renderContent = () => {
-    if (active === "admin_overview") return <AdminOverview setActive={navTo} />;
+    if (active === "admin_overview") {
+      return <AdminOverview setActive={navTo} />;
+    }
+
     if (active === "admin_adduser") {
-      if (editUser) return (
-        <AdminAddUser editUser={editUser}
-          onCancel={() => { setEditUser(null); navTo("admin_users"); }}
-          onSuccess={() => { setEditUser(null); navTo("admin_users"); }} />
-      );
+      if (editUser) {
+        return (
+          <AdminAddUser
+            editUser={editUser}
+            onCancel={() => { setEditUser(null); navTo("admin_users"); }}
+            onSuccess={() => { setEditUser(null); navTo("admin_users"); }}
+          />
+        );
+      }
       return <AdminAddUser onSuccess={() => navTo("admin_users")} onCancel={() => navTo("admin_overview")} />;
     }
+
     if (active === "admin_users") {
-      if (editUser) return (
-        <AdminAddUser editUser={editUser}
-          onCancel={() => setEditUser(null)}
-          onSuccess={() => { setEditUser(null); navTo("admin_users"); }} />
-      );
+      if (editUser) {
+        return (
+          <AdminAddUser
+            editUser={editUser}
+            onCancel={() => setEditUser(null)}
+            onSuccess={() => { setEditUser(null); navTo("admin_users"); }}
+          />
+        );
+      }
       return <AdminUsers onEdit={u => setEditUser(u)} />;
     }
 
-    if (active === "addmember")     return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
-    if (active === "qrcode")        return <QRCodePage />;
-    if (active === "allfeedback")   return <AllFeedback />;
-    if (active === "report")        return <Report />;
-    if (active === "flagged")       return <FlaggedRecords />;
-    if (active === "visitation_tab")return <VisitationTab />;
+    if (active === "addmember") return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
+    if (active === "qrcode") return <QRCodePage />;
+    if (active === "allfeedback") return <AllFeedback />;
+    if (active === "report") return <Report />;
+    if (active === "flagged") return <FlaggedRecords />;
+    if (active === "visitation_tab") return <VisitationTab />;
     if (active === "research_feedback") return <ResearchFeedback />;
 
     if (active === "firsttimers") {
-      if (editTarget) return (
-        <FirstTimerForm editData={editTarget}
-          onCancel={() => setEditTarget(null)}
-          onSuccess={() => { setEditTarget(null); navTo("firsttimers"); }} />
-      );
+      if (editTarget) {
+        return (
+          <FirstTimerForm
+            editData={editTarget}
+            onCancel={() => setEditTarget(null)}
+            onSuccess={() => { setEditTarget(null); navTo("firsttimers"); }}
+          />
+        );
+      }
       return <FirstTimersList onEdit={r => setEditTarget(r)} />;
     }
 
     if (active === "mycalls") {
-      if (editOverviewTarget) return (
-        <PipelineOverviewForm
-          person={editOverviewTarget}
-          callerName={user}
-          onBack={() => setEditOverviewTarget(null)}
-          onDone={() => { setEditOverviewTarget(null); navTo("mycalls"); }}
-        />
-      );
-      if (editWeekTarget) return (
-        <LogFeedback
-          person={editWeekTarget.person}
-          callerName={user}
-          editWeek={editWeekTarget.week}
-          onBack={() => setEditWeekTarget(null)}
-        />
-      );
-      if (feedbackTarget) return (
-        <LogFeedback
-          person={feedbackTarget}
-          callerName={user}
-          onBack={() => setFeedbackTarget(null)}
-        />
-      );
+      if (editOverviewTarget) {
+        return (
+          <PipelineOverviewForm
+            person={editOverviewTarget}
+            callerName={user}
+            onBack={() => setEditOverviewTarget(null)}
+            onDone={() => { setEditOverviewTarget(null); navTo("mycalls"); }}
+          />
+        );
+      }
+      if (editWeekTarget) {
+        return (
+          <LogFeedback
+            person={editWeekTarget.person}
+            callerName={user}
+            editWeek={editWeekTarget.week}
+            onBack={() => setEditWeekTarget(null)}
+          />
+        );
+      }
+      if (feedbackTarget) {
+        return (
+          <LogFeedback
+            person={feedbackTarget}
+            callerName={user}
+            onBack={() => setFeedbackTarget(null)}
+          />
+        );
+      }
       return (
         <MyCallsView
           currentUser={user}
           onLogFeedback={r => setFeedbackTarget(r)}
           onEditWeekFeedback={(person, week) => setEditWeekTarget({ person, week })}
-          onEditOverview={r => setEditOverviewTarget(r)}   // ← now wired up
+          onEditOverview={r => setEditOverviewTarget(r)}
         />
       );
     }
-    if (active === "assign_calls") return (
-      <AssignCallsView
-        currentUser={user}
-        onViewCompleted={() => navTo("completed_pipelines")}
-      />
-    );
 
-    if (active === "completed_pipelines") return (
-      <CompletedPipelines onBack={() => navTo("assign_calls")} />
-    );
+    if (active === "assign_calls") {
+      return (
+        <AssignCallsView
+          currentUser={user}
+          onViewCompleted={() => navTo("completed_pipelines")}
+        />
+      );
+    }
+
+    if (active === "completed_pipelines") {
+      return <CompletedPipelines onBack={() => navTo("assign_calls")} />;
+    }
 
     if (active === "callqueue") {
-      if (editWeekTarget) return (
-        <LogFeedback
-          person={editWeekTarget.person}
-          callerName={user}
-          editWeek={editWeekTarget.week}
-          onBack={() => setEditWeekTarget(null)}
-        />
-      );
-      if (feedbackTarget) return (
-        <LogFeedback
-          person={feedbackTarget}
-          callerName={user}
-          onBack={() => setFeedbackTarget(null)}
-        />
-      );
+      if (editWeekTarget) {
+        return (
+          <LogFeedback
+            person={editWeekTarget.person}
+            callerName={user}
+            editWeek={editWeekTarget.week}
+            onBack={() => setEditWeekTarget(null)}
+          />
+        );
+      }
+      if (feedbackTarget) {
+        return (
+          <LogFeedback
+            person={feedbackTarget}
+            callerName={user}
+            onBack={() => setFeedbackTarget(null)}
+          />
+        );
+      }
       return (
         <CallQueue
           currentUser={user}
@@ -6170,13 +7145,15 @@ export default function App() {
     }
 
     if (active === "callbacks") {
-      if (feedbackTarget) return (
-        <LogFeedback
-          person={feedbackTarget}
-          callerName={user}
-          onBack={() => setFeedbackTarget(null)}
-        />
-      );
+      if (feedbackTarget) {
+        return (
+          <LogFeedback
+            person={feedbackTarget}
+            callerName={user}
+            onBack={() => setFeedbackTarget(null)}
+          />
+        );
+      }
       return (
         <CallBackQueue
           currentUser={user}
@@ -6185,39 +7162,61 @@ export default function App() {
       );
     }
 
-    if (active === "sc_queue" || active === "sc_mine") {
-      if (addVisitMode) return (
-        <SoulCareForm defaultAssignee={user}
-          onSuccess={() => { setAddVisitMode(false); navTo(active); }}
-          onCancel={() => setAddVisitMode(false)} />
-      );
-      if (editVisit) return (
-        <SoulCareForm editData={editVisit}
-          onSuccess={() => { setEditVisit(null); navTo(active); }}
-          onCancel={() => setEditVisit(null)} />
-      );
-      if (active === "sc_queue") return (
-        <SoulCareQueue currentUser={user}
-          onEdit={v => setEditVisit(v)}
-          onAdd={() => setAddVisitMode(true)} />
-      );
+    if (active === "sc_assign") {
+      return <AssignVisitsView currentUser={user} />;
+    }
+
+    if (active === "add_visit") {
+      const backTarget = (role === "soulcareadmin" || role === "admin") ? "sc_queue" : "sc_mine";
       return (
-        <MySoulCareVisits currentUser={user}
-          onEdit={v => setEditVisit(v)}
-          onAdd={() => setAddVisitMode(true)} />
+        <AddVisitPage
+          currentUser={user}
+          onCancel={() => navTo(backTarget)}
+          onLoggingDone={() => navTo(backTarget)}
+        />
       );
     }
 
-    if (active === "sc_add") {
-      if (editVisit) return (
-        <SoulCareForm editData={editVisit}
-          onSuccess={() => { setEditVisit(null); navTo("sc_queue"); }}
-          onCancel={() => setEditVisit(null)} />
-      );
+    if (active === "sc_flagged") return <SoulCareFlagged />;
+    if (active === "sc_testimonies") return <Testimonies />;
+
+    if (active === "sc_queue" || active === "sc_mine") {
+      if (visitEditTarget) {
+        return (
+          <LogVisitForm
+            contact={visitEditTarget.contact}
+            editVisit={visitEditTarget.visit}
+            loggedBy={user}
+            onBack={() => setVisitEditTarget(null)}
+            onDone={() => { setVisitEditTarget(null); navTo(active); }}
+          />
+        );
+      }
+      if (visitLogTarget) {
+        return (
+          <LogVisitForm
+            contact={visitLogTarget}
+            loggedBy={user}
+            onBack={() => setVisitLogTarget(null)}
+            onDone={() => { setVisitLogTarget(null); navTo(active); }}
+          />
+        );
+      }
+      if (active === "sc_queue") {
+        return (
+          <SoulCareQueue
+            currentUser={user}
+            currentUserRole={role}
+            onLogVisit={c => setVisitLogTarget(c)}
+          />
+        );
+      }
       return (
-        <SoulCareForm defaultAssignee={user}
-          onSuccess={() => navTo("sc_queue")}
-          onCancel={() => navTo("sc_queue")} />
+        <MySoulCareVisits
+          currentUser={user}
+          onLogVisit={c => setVisitLogTarget(c)}
+          onEditVisit={(contact, visit) => setVisitEditTarget({ contact, visit })}
+        />
       );
     }
 
