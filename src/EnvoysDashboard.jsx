@@ -321,9 +321,10 @@ const ROLE_META = {
   expteam:  { label: "Experience Team", color: C.green,      bg: C.greenLight   },
   pasteam:  { label: "Pastoral Team",   color: C.goldDark,   bg: C.goldLight    },
   soulcare: { label: "Soul Care",       color: C.soul,       bg: C.soulLight    },
-  research: { label: "Research Team",   color: C.research,   bg: C.researchLight},
-  experienceadmin: { label: "Exp. Admin",      color: C.blue, bg: C.blueLight },
-  soulcareadmin:   { label: "Soul Care Admin", color: C.soul, bg: C.soulLight  },
+  research:      { label: "Research Team",   color: C.research, bg: C.researchLight },
+  experienceadmin: { label: "Exp. Admin",    color: C.blue,     bg: C.blueLight     },
+  soulcareadmin:   { label: "Soul Care Admin", color: C.soul,   bg: C.soulLight     },
+  testimonyteam:   { label: "Testimony Team",  color: C.goldDark, bg: C.goldLight   },
 };
 
 const NAV_ICONS = {
@@ -393,11 +394,11 @@ const NAV = {
     { id: "sc_flagged",    label: "Flagged"       },
     { id: "sc_testimonies",label: "Testimonies"   },
   ],
-  research: [
+  rresearch: [
     { id: "research_feedback", label: "Service Feedback" },
   ],
-  research: [
-    { id: "research_feedback", label: "Service Feedback" },
+  testimonyteam: [
+    { id: "sc_testimonies", label: "Testimonies" },
   ],
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
@@ -1140,7 +1141,7 @@ function PublicForm() {
           <CheckCircle size={32} color={C.green} />
         </div>
         <h2 style={{ color: C.green, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>
-          Thank you for visiting!
+          Thank you for worshipping with us! <br /> We Honour You! You're Amazing!
         </h2>
         <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
           We're glad you joined us today. Our Envoys Experience Team will be in touch shortly.
@@ -6825,14 +6826,15 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
       </div>
       <FieldInput label={editUser ? "New Password (leave blank to keep current)" : "Password"} id="pw"
         type="password" required={!editUser} value={form.password} onChange={set("password")} placeholder="••••••••" />
-      <FieldInput label="Role" id="rl" type="select" required value={form.role} onChange={set("role")}
+     <FieldInput label="Role" id="rl" type="select" required value={form.role} onChange={set("role")}
         options={[
-          { value: "dofficer",  label: "Data Officer"    },
-          { value: "expteam",   label: "Experience Team" },
-          { value: "pasteam",   label: "Pastoral Team"   },
-          { value: "soulcare",  label: "Soul Care"       },
-          { value: "research",  label: "Research Team"   },
-          { value: "admin",     label: "Admin"           },
+          { value: "dofficer",      label: "Data Officer"    },
+          { value: "expteam",       label: "Experience Team" },
+          { value: "pasteam",       label: "Pastoral Team"   },
+          { value: "soulcare",      label: "Soul Care"       },
+          { value: "research",      label: "Research Team"   },
+          { value: "testimonyteam", label: "Testimony Team"  },
+          { value: "admin",         label: "Admin"           },
           { value: "experienceadmin", label: "Experience Admin" },
           { value: "soulcareadmin",   label: "Soul Care Admin"  },
         ]} />
@@ -6847,6 +6849,7 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong>Soul Care</strong> — My Visits, visit queue (assigned contacts only), flagged records<br />
         <strong>Soul Care Admin</strong> — Bulk import contacts, assign visits, view all visits, flagged records, Testimonies<br />
         <strong>Research Team</strong> — View and download service feedback responses (CSV export)<br />
+        <strong>Testimony Team</strong> — View and download Soul Care member testimonies (CSV export)<br />
         <strong>Admin</strong> — All of the above + user management + bulk import<br />
         <strong>Experience Admin</strong> — Assign contacts to team members, view call queue and all feedback<br />
       </div>
@@ -6876,8 +6879,9 @@ const FALLBACK_ACCOUNTS = [
   { username: "pasteam1",   password: "pasteam1",   role: "pasteam",  display_name: "Pastoral Team"   },
   { username: "soulcare1",  password: "soulcare1",  role: "soulcare", display_name: "Soul Care Team"  },
   { username: "research1",  password: "research1",  role: "research", display_name: "Research Team"   },
-  { username: "experienceadmin", password: "expadmin1", role: "experienceadmin", display_name: "Experience Admin" },
-  { username: "soulcareadmin",   password: "scadmin1",  role: "soulcareadmin",  display_name: "Soul Care Admin"  },
+  { username: "experienceadmin", password: "expadmin1",  role: "experienceadmin", display_name: "Experience Admin" },
+  { username: "soulcareadmin",   password: "scadmin1",   role: "soulcareadmin",   display_name: "Soul Care Admin"  },
+  { username: "testimonyteam1",  password: "testimony1", role: "testimonyteam",   display_name: "Testimony Team"   },
 ];
 
 function Login({ onLogin }) {
