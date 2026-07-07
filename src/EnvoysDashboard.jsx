@@ -6926,17 +6926,19 @@ function Login({ onLogin }) {
         </div>
         {CREDS_MISSING && <CredsBanner />}
         <Alert type="error" msg={err} onClose={() => setErr("")} />
-        <FieldInput label="Username" id="lu" value={u}
+        <div onKeyDown={e => e.key === "Enter" && !loading && submit()} >
+          <FieldInput label="Username" id="lu" value={u}
           onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
         <FieldInput label="Password" id="lp" type="password" value={p}
           onChange={e => setP(e.target.value)} placeholder="••••••••" />
         <div style={{ marginBottom: 16 }} onKeyDown={e => e.key === "Enter" && submit()} />
-        <button type="submit" style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
-          onClick={submit} disabled={loading}>
-          {loading ? "Signing in…" : "Sign In"}
+        <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
+        onClick={submit} disabled={loading}> {loading ? "Signing in…" : "Sign In"}
         </button>
+
       </div>
     </div>
+  </div>
 );
 }
 
