@@ -1149,7 +1149,7 @@ function PublicForm() {
       </div>
     </div>
   );
-  return (''
+  return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
@@ -6931,7 +6931,7 @@ function Login({ onLogin }) {
         <FieldInput label="Password" id="lp" type="password" value={p}
           onChange={e => setP(e.target.value)} placeholder="••••••••" />
         <div style={{ marginBottom: 16 }} onKeyDown={e => e.key === "Enter" && submit()} />
-        <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
+        <button type="submit" style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
           onClick={submit} disabled={loading}>
           {loading ? "Signing in…" : "Sign In"}
         </button>
