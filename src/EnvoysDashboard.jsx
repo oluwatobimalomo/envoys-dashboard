@@ -11,7 +11,8 @@ import {
   Flag, QrCode, LogOut, Menu, X, Heart, MapPin, Calendar, ChevronRight,
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
   Star, TrendingUp, Activity, Shield, Eye, Edit3, UserCheck, Layers,
-  FileText, Bell, Filter, Download, ChevronDown, Info, Zap, Camera, Image as ImageIcon,
+  FileText, Bell, Filter, Download, ChevronDown, Info, Zap, Camera, 
+  Image as ImageIcon, MessageCircle,
 } from "lucide-react";
 
 import {
@@ -88,6 +89,65 @@ import {
   `;
   document.head.appendChild(s);
 })();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.7 — Click-to-call
+// normalizePhone(): returns a dialable E.164-ish number.
+//   "0803 123 4567"    -> "+2348031234567"   (Nigerian local format)
+//   "+234 803 123 4567"-> "+2348031234567"
+//   "234803..."        -> "+234803..."
+//   anything else      -> digits as-is (dialer still handles most cases)
+// PhoneLink: renders the number as a tel: link (+ optional WhatsApp chip).
+// stopPropagation is critical — many rows have their own onClick (expand /
+// select), and tapping the number must dial, not toggle the row.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function normalizePhone(raw) {
+  if (!raw) return null;
+  const p = String(raw).replace(/[^\d+]/g, "");
+  if (!p || p.replace(/\D/g, "").length < 7) return null;
+  if (p.startsWith("+"))    return p;
+  if (p.startsWith("234"))  return `+${p}`;
+  if (p.startsWith("0") && p.length === 11) return `+234${p.slice(1)}`;
+  return p;
+}
+
+function PhoneLink({ phone, withWhatsApp = false, size = 12, bold = false, color }) {
+  const tel = normalizePhone(phone);
+  if (!phone) return <span>—</span>;
+  if (!tel)   return <span>{phone}</span>; // not dialable — show as plain text
+
+  const linkColor = color || C.green;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, verticalAlign: "middle" }}>
+      <a href={`tel:${tel}`}
+        onClick={e => e.stopPropagation()}
+        title={`Call ${phone}`}
+        style={{
+          color: linkColor, textDecoration: "none",
+          fontWeight: bold ? 700 : 600,
+          display: "inline-flex", alignItems: "center", gap: 4,
+          borderBottom: `1px dashed ${linkColor}55`,
+        }}>
+        <Phone size={size} style={{ flexShrink: 0 }} />{phone}
+      </a>
+      {withWhatsApp && (
+        <a href={`https://wa.me/${tel.replace("+", "")}`}
+          target="_blank" rel="noreferrer"
+          onClick={e => e.stopPropagation()}
+          title={`WhatsApp ${phone}`}
+          style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 20, height: 20, borderRadius: "50%",
+            background: "#25D36622", color: "#128C4A",
+            flexShrink: 0, textDecoration: "none",
+          }}>
+          <MessageCircle size={12} />
+        </a>
+      )}
+    </span>
+  );
+}
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: GLOBAL STYLES & CSS INJECTION                                 ║
@@ -207,14 +267,20 @@ function useRoleUsers(role) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // v5.5: accepts a single role string OR an array of roles.
+  const roleKey = Array.isArray(role) ? role.join(",") : (role || "");
+
   useEffect(() => {
-    if (!role) { setLoading(false); return; }
+    if (!roleKey) { setLoading(false); return; }
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
+        const roleFilter = roleKey.includes(",")
+          ? `role=in.(${roleKey})`
+          : `role=eq.${roleKey}`;
         const rows = await sb(
-          `app_users?role=eq.${role}&is_active=eq.true&select=display_name,username&order=display_name.asc`
+          `app_users?${roleFilter}&is_active=eq.true&select=display_name,username&order=display_name.asc`
         );
         if (!cancelled) {
           setOptions(
@@ -225,17 +291,16 @@ function useRoleUsers(role) {
           );
         }
       } catch (e) {
-        console.warn(`useRoleUsers(${role}) fetch failed:`, e.message);
+        console.warn(`useRoleUsers(${roleKey}) fetch failed:`, e.message);
         if (!cancelled) setOptions([]);
       }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [role]);
+  }, [roleKey]);
 
   return { options, loading };
 }
-
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: SHARED HOOKS                                                  ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -335,12 +400,16 @@ const NAV_ICONS = {
   sc_queue: Heart, sc_mine: Clipboard,
   visitation_tab: MapPin,
   research_feedback: FileText,
+  general_feedback: MessageSquare,
   assign_calls: UserCheck,
   completed_pipelines: FileText,
   sc_assign: UserCheck,
   sc_flagged: Flag,
   sc_testimonies: Star,
   add_visit: UserPlus,
+  feedback_qr: QrCode,
+  testimony_qr: QrCode,
+  testimony_bank: Star,
 };
 
 const NAV = {
@@ -360,8 +429,12 @@ const NAV = {
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
     { id: "research_feedback", label: "Research"  },
-    { id: "sc_testimonies",   label: "Testimonies" },
+    { id: "general_feedback",  label: "General Feedback" },
+    { id: "feedback_qr",   label: "Feedback QR"   },
+    { id: "sc_testimonies", label: "Testimonies"   },
+    { id: "testimony_qr", label: "Testimony QR"   },
     { id: "qrcode",        label: "QR Code"       },
+    { id: "testimony_bank", label: "Testimony Bank" },
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -388,18 +461,25 @@ const NAV = {
     { id: "sc_flagged", label: "Flagged"     },
   ],
   soulcareadmin: [
-    { id: "sc_assign",     label: "Assign Visits" },
-    { id: "add_visit",     label: "Add Visit"     },
-    { id: "sc_queue",      label: "Visit Queue"   },
-    { id: "sc_flagged",    label: "Flagged"       },
-    { id: "sc_testimonies",label: "Testimonies"   },
+    { id: "sc_assign",           label: "Assign Visits"       },
+    { id: "add_visit",           label: "Add Visit"           },
+    { id: "sc_queue",            label: "Visit Queue"         },
+    { id: "completed_pipelines", label: "Completed Pipelines" },
+    { id: "sc_flagged",          label: "Flagged"             },
+    { id: "sc_testimonies",      label: "Testimonies"         },
   ],
-  rresearch: [
+  
+  research: [
     { id: "research_feedback", label: "Service Feedback" },
+    { id: "feedback_qr",       label: "Feedback QR" },
+    { id: "general_feedback",  label: "General Feedback" },
   ],
   testimonyteam: [
-    { id: "sc_testimonies", label: "Testimonies" },
+    { id: "sc_testimonies", label: "Testimonies"    },
+    { id: "testimony_bank", label: "Testimony Bank" },
+    { id: "testimony_qr",   label: "Testimony QR"   },
   ],
+
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
   { id: "completed_pipelines", label: "Completed Pipelines" },
@@ -408,6 +488,57 @@ const NAV = {
   { id: "flagged",             label: "Flagged"             },
 ],
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.6 — Sidebar grouping. Roles listed here get labelled, collapsible
+// sections; roles not listed keep the flat list. Any NAV item not covered
+// by a group falls into an automatic "Other" section (safety net), so
+// adding new pages to NAV can never make them disappear from the sidebar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NAV_GROUPS = {
+  admin: [
+    { title: "Administration",  ids: ["admin_overview", "admin_users", "admin_adduser"] },
+    { title: "First-Timers",    ids: ["firsttimers", "qrcode"] },
+    { title: "Experience Team", ids: ["assign_calls", "callqueue", "completed_pipelines"] },
+    { title: "Soul Care",       ids: ["sc_assign", "sc_queue", "add_visit", "visitation_tab"] },
+    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
+    { title: "Research",        ids: ["research_feedback", "general_feedback", "feedback_qr"] },
+    { title: "Testimonies",     ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
+  ],
+  soulcareadmin: [
+    { title: "Visits",      ids: ["sc_assign", "sc_queue", "add_visit"] },
+    { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged"] },
+    { title: "Testimonies", ids: ["sc_testimonies"] },
+  ],
+  experienceadmin: [
+    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines"] },
+    { title: "Feedback", ids: ["allfeedback", "flagged"] },
+  ],
+};
+
+function buildNavSections(role) {
+  const items  = NAV[role] || [];
+  const groups = NAV_GROUPS[role];
+  if (!groups) return [{ title: null, items }]; // flat list — unchanged behaviour
+
+  const byId = {};
+  items.forEach(i => { byId[i.id] = i; });
+
+  const used = new Set();
+  const sections = groups
+    .map(g => ({
+      title: g.title,
+      items: g.ids.map(id => byId[id]).filter(Boolean),
+    }))
+    .filter(s => s.items.length > 0);
+
+  sections.forEach(s => s.items.forEach(i => used.add(i.id)));
+  const leftovers = items.filter(i => !used.has(i.id));
+  if (leftovers.length) sections.push({ title: "Other", items: leftovers });
+
+  return sections;
+}
 
 const inputBase = {
   width: "100%", padding: "9px 13px", borderRadius: 8,
@@ -837,6 +968,65 @@ function SH({ title, icon: Icon }) {
 
 function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose, flagCount = 0 }) {
   const ri = ROLE_META[role] || ROLE_META.expteam;
+  const sections  = buildNavSections(role);
+  const isGrouped = sections.length > 0 && sections[0].title !== null;
+
+  const sectionOf = (id) => {
+    const s = sections.find(sec => sec.items.some(i => i.id === id));
+    return s ? s.title : null;
+  };
+
+  // Section containing the active page starts (and stays) expanded.
+  const [openSections, setOpenSections] = useState(() => new Set([sectionOf(active)]));
+
+  useEffect(() => {
+    const t = sectionOf(active);
+    if (t) {
+      setOpenSections(prev => {
+        if (prev.has(t)) return prev;
+        const n = new Set(prev); n.add(t); return n;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, role]);
+
+  const toggleSection = (title) =>
+    setOpenSections(prev => {
+      const n = new Set(prev);
+      n.has(title) ? n.delete(title) : n.add(title);
+      return n;
+    });
+
+  const renderItem = (item) => {
+    const on = active === item.id;
+    const Icon = NAV_ICONS[item.id] || FileText;
+    const isFlag = item.id === "flagged" || item.id === "sc_flagged";
+    return (
+      <button key={item.id} onClick={() => { setActive(item.id); onClose?.(); }}
+        style={{
+          display: "flex", alignItems: "center", gap: 10, width: "100%",
+          padding: isGrouped ? "8px 10px 8px 14px" : "9px 10px",
+          border: "none", cursor: "pointer", borderRadius: 8, marginBottom: 2,
+          background: on ? C.sidebarActive : "transparent",
+          color: on ? C.goldMid : "rgba(255,255,255,.6)",
+          fontSize: 13, fontWeight: on ? 700 : 400, fontFamily: F.body,
+          textAlign: "left", transition: "all .15s",
+        }}
+        onMouseOver={e => !on && (e.currentTarget.style.background = C.sidebarHover)}
+        onMouseOut={e => !on && (e.currentTarget.style.background = "transparent")}>
+        <Icon size={15} strokeWidth={on ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>{item.label}</span>
+        {isFlag && flagCount > 0 && (
+          <span style={{
+            background: C.flag, color: "#fff", borderRadius: 10,
+            fontSize: 10, fontWeight: 700, padding: "1px 7px", lineHeight: 1.6,
+          }}>{flagCount}</span>
+        )}
+        {on && <ChevronRight size={12} style={{ opacity: .5 }} />}
+      </button>
+    );
+  };
+
   return (
     <>
       {mobileOpen && (
@@ -893,35 +1083,43 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
         </div>
 
         {/* Nav */}
-        {/* Nav */}
         <nav style={{ flex: "1 1 auto", minHeight: 0, padding: "10px 8px", overflowY: "auto" }}>
-          {(NAV[role] || []).map(item => {
-            const on = active === item.id;
-            const Icon = NAV_ICONS[item.id] || FileText;
-            const isFlag = item.id === "flagged";
+          {sections.map((sec, idx) => {
+            if (sec.title === null) {
+              // Flat list — roles without grouping
+              return sec.items.map(renderItem);
+            }
+            const isOpen = openSections.has(sec.title);
+            const containsActive = sec.items.some(i => i.id === active);
+            const sectionFlagCount = sec.items.some(i => i.id === "flagged" || i.id === "sc_flagged")
+              ? flagCount : 0;
             return (
-              <button key={item.id} onClick={() => { setActive(item.id); onClose?.(); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, width: "100%",
-                  padding: "9px 10px", border: "none", cursor: "pointer", borderRadius: 8,
-                  marginBottom: 2,
-                  background: on ? C.sidebarActive : "transparent",
-                  color: on ? C.goldMid : "rgba(255,255,255,.6)",
-                  fontSize: 13, fontWeight: on ? 700 : 400, fontFamily: F.body,
-                  textAlign: "left", transition: "all .15s",
-                }}
-                onMouseOver={e => !on && (e.currentTarget.style.background = C.sidebarHover)}
-                onMouseOut={e => !on && (e.currentTarget.style.background = "transparent")}>
-                <Icon size={15} strokeWidth={on ? 2.2 : 1.8} style={{ flexShrink: 0 }} />
-                <span style={{ flex: 1 }}>{item.label}</span>
-                {isFlag && flagCount > 0 && (
-                  <span style={{
-                    background: C.flag, color: "#fff", borderRadius: 10,
-                    fontSize: 10, fontWeight: 700, padding: "1px 7px", lineHeight: 1.6,
-                  }}>{flagCount}</span>
-                )}
-                {on && <ChevronRight size={12} style={{ opacity: .5 }} />}
-              </button>
+              <div key={sec.title} style={{ marginBottom: idx < sections.length - 1 ? 4 : 0 }}>
+                <button onClick={() => toggleSection(sec.title)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, width: "100%",
+                    padding: "8px 10px", border: "none", cursor: "pointer",
+                    borderRadius: 8, background: "transparent",
+                    color: containsActive ? C.goldMid : "rgba(255,255,255,.45)",
+                    fontSize: 10, fontWeight: 700, fontFamily: F.head,
+                    letterSpacing: ".08em", textTransform: "uppercase",
+                    textAlign: "left", transition: "color .15s",
+                  }}
+                  onMouseOver={e => (e.currentTarget.style.color = "rgba(255,255,255,.75)")}
+                  onMouseOut={e => (e.currentTarget.style.color = containsActive ? C.goldMid : "rgba(255,255,255,.45)")}>
+                  <span style={{ flex: 1 }}>{sec.title}</span>
+                  {!isOpen && sectionFlagCount > 0 && (
+                    <span style={{
+                      background: C.flag, color: "#fff", borderRadius: 10,
+                      fontSize: 9, fontWeight: 700, padding: "1px 6px", lineHeight: 1.6,
+                    }}>{sectionFlagCount}</span>
+                  )}
+                  {!isOpen && containsActive && <span style={dot(C.goldMid)} />}
+                  <ChevronDown size={12}
+                    style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+                </button>
+                {isOpen && <div>{sec.items.map(renderItem)}</div>}
+              </div>
             );
           })}
         </nav>
@@ -1312,7 +1510,7 @@ function FirstTimersList({ onEdit }) {
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.gender} · {r.service_date}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
@@ -1957,7 +2155,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
                     <div>
                       {/* ── gender tag in name ── */}
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
                       <div style={{ marginTop: 5 }}><PipelineBar fbRows={r.fbRows} compact /></div>
                     </div>
                   </div>
@@ -2191,7 +2389,7 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
                       {/* ── gender tag in name ── */}
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>
-                        {r.phone} · {r.membership_decision} · {r.service_date}
+                        <PhoneLink phone={r.phone} withWhatsApp /> · {r.membership_decision} · {r.service_date}
                       </div>
                       {r.assignment && (
                         <div style={{ fontSize: 11, color: C.blue, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
@@ -2365,7 +2563,7 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {/* ── gender tag in name ── */}
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
                     {latest?.follow_up_date && (
                       <div style={{ fontSize: 12, color: C.amber, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
                         <Calendar size={11} />Follow-up: {latest.follow_up_date}
@@ -2501,7 +2699,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
                     <div style={{ minWidth: 0 }}>
                       {/* ── gender tag in name ── */}
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{r.phone} · {r.service_date}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
@@ -2841,7 +3039,7 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
             {editWeek ? `Edit Week ${weekToLog}` : `Week ${weekToLog} Call`} — {displayName}
           </h2>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
-            {person.phone} · visited {person.service_date}
+            <PhoneLink phone={person.phone} withWhatsApp size={13} bold /> · visited {person.service_date}
           </p>
         </div>
       </div>
@@ -5016,7 +5214,7 @@ function AssignVisitsView({ currentUser }) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo]     = useState("");
   const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
-  const { options: teamOptions, loading: teamLoading } = useRoleUsers("soulcare");
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers(["soulcare", "soulcareadmin"]);
 
   const [selectedMember, setSelectedMember] = useState("");
   const [search, setSearch]                 = useState("");
@@ -5373,7 +5571,7 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
                     }}>{c.full_name?.charAt(0)}</div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.phone}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} withWhatsApp /></div>
                       {c.assignment && (
                         <div style={{ fontSize: 11, color: C.soul, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
                           <UserCheck size={10} />Assigned to <strong>{c.assignment.assigned_to}</strong>
@@ -5539,7 +5737,7 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
                     }}>{c.full_name?.charAt(0) || "?"}</div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.phone}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} withWhatsApp /></div>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
@@ -5709,7 +5907,9 @@ function LogVisitForm({ contact, editVisit = null, loggedBy = "", onBack, onDone
           <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
             {editVisit ? "Edit Visit" : "Log New Visit"} — {displayName}
           </h2>
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>{contact.phone}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
+            <PhoneLink phone={contact.phone} withWhatsApp size={13} bold />
+          </p>
         </div>
       </div>
 
@@ -6109,6 +6309,276 @@ function Testimonies() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TestimonyBank — v5.5. All testimonies submitted via the public Testimony
+// QR form (public_testimonies table). Category filter sits in front of the
+// date filter. Row-select + CSV export, matching the Testimonies page UX.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TESTIMONY_CATEGORIES = [
+  "General Testimony",
+  "Coronation Service Testimony",
+  "Upgrade Service Testimony",
+];
+
+function TestimonyBank() {
+  const [rows, setRows]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [search, setSearch]     = useState("");
+  const [category, setCategory] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      const data = await sb("public_testimonies?select=*&order=submitted_at.desc&limit=1000");
+      setRows((data || [])
+        .filter(r => r.testimony && r.testimony.trim() !== "")
+        .map(r => ({
+          id:           r.id,
+          display_name: r.name || "Anonymous",
+          category:     r.category || "General Testimony",
+          testimony:    r.testimony,
+          date:         r.submitted_at ? r.submitted_at.slice(0, 10) : "",
+        })));
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter(r => {
+    if (category && r.category !== category) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!r.display_name.toLowerCase().includes(q) && !r.testimony.toLowerCase().includes(q)) return false;
+    }
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo   && r.date > dateTo)   return false;
+    return true;
+  });
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected   = allFilteredIds.some(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+      return n;
+    });
+  };
+  const clearFilters = () => { setDateFrom(""); setDateTo(""); setCategory(""); };
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Name", "Category", "Date Submitted", "Testimony"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [escape(r.display_name), escape(r.category), escape(r.date), escape(r.testimony)].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateLabel = dateFrom || dateTo ? `_${dateFrom || "start"}_to_${dateTo || "end"}` : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href = url; a.download = `envoys_testimony_bank${dateLabel}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  const catBadge = (cat) => {
+    if (cat === "Coronation Service Testimony") return [C.soul,     C.soulLight];
+    if (cat === "Upgrade Service Testimony")    return [C.research, C.researchLight];
+    return [C.goldDark, C.goldLight];
+  };
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Testimony Bank"
+        subtitle={`${rows.length} testimon${rows.length !== 1 ? "ies" : "y"} submitted via the Testimony QR form`}
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
+            <button
+              style={{
+                ...btn("gold"),
+                background: selectedCount > 0 ? C.gold : C.border,
+                color:      selectedCount > 0 ? "#fff" : C.textMuted,
+                cursor:     selectedCount > 0 ? "pointer" : "not-allowed",
+              }}
+              onClick={downloadCSV} disabled={selectedCount === 0}>
+              <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            </button>
+          </div>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Testimonies" value={rows.length}     icon={Star}     accent={C.goldDark} />
+        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}   accent={C.green}    />
+        <StatCard label="Selected"          value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.goldDark : C.textMuted}
+          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+      </div>
+
+      {/* Filter bar — Testimony Type sits IN FRONT of the date filter */}
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.goldLight, borderRadius: 10, border: `1px solid ${C.gold}30`,
+      }}>
+        <Star size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, whiteSpace: "nowrap" }}>
+            Testimony Type:
+          </span>
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            style={{ ...inputBase, width: 210, cursor: "pointer" }}>
+            <option value="">All types</option>
+            {TESTIMONY_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <Calendar size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, whiteSpace: "nowrap" }}>
+          Filter by date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo || category) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearFilters}>
+              <X size={12} />Clear filters
+            </button>
+          )}
+        </div>
+        <div style={{ position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or testimony…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {selectedCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
+          background: `${C.gold}15`, borderRadius: 8, border: `1px solid ${C.gold}40`,
+          fontSize: 13, color: C.goldDark, fontWeight: 600, flexWrap: "wrap", gap: 10,
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CheckCircle size={14} />{selectedCount} testimon{selectedCount !== 1 ? "ies" : "y"} selected
+          </span>
+          <button style={btn("gold", { padding: "6px 14px", fontSize: 12 })} onClick={downloadCSV}>
+            <Download size={13} />Download CSV
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ color: C.textMuted }}>Loading…</p>
+      ) : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Star size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0 ? "No testimonies submitted via the QR form yet." : "No testimonies match your filters."}
+          </div>
+          {rows.length === 0 && (
+            <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+              Share the Testimony QR Code so members can submit their testimonies.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr",
+            padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all visible"}
+                style={{
+                  width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                  border: `2px solid ${someSelected ? C.gold : C.border}`,
+                  background: allSelected ? C.gold : "transparent",
+                  display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: C.gold, borderRadius: 1 }} />}
+              </div>
+            </div>
+            {["Name", "Testimony Type", "Date", "Testimony"].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+            ))}
+          </div>
+
+          {filtered.map((r, i) => {
+            const isChecked = selected.has(r.id);
+            const [cc, cb] = catBadge(r.category);
+            return (
+              <div key={r.id} onClick={() => toggleRow(r.id)}
+                style={{
+                  display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr",
+                  padding: "12px 16px", gap: 10, alignItems: "flex-start",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  background: isChecked ? `${C.gold}0D` : C.surface,
+                  cursor: "pointer", transition: "background .12s",
+                }}
+                onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.goldLight; }}
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.gold}0D` : C.surface; }}>
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    border: `2px solid ${isChecked ? C.gold : C.border}`,
+                    background: isChecked ? C.gold : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
+                </div>
+                <div>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: "50%", background: C.goldLight,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, color: C.goldDark, fontSize: 12, fontFamily: F.head,
+                    marginBottom: 3, border: `1.5px solid ${C.gold}40`,
+                  }}>{(r.display_name.charAt(0) || "?").toUpperCase()}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>{r.display_name}</div>
+                </div>
+                <div style={{ paddingTop: 5 }}>
+                  <span style={badge(cc, cb, { fontSize: 10, whiteSpace: "normal", lineHeight: 1.4 })}>{r.category}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={11} color={C.textMuted} />{r.date || "—"}</div>
+                </div>
+                <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4, wordBreak: "break-word" }}>{r.testimony}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> testimon{rows.length !== 1 ? "ies" : "y"}</span>
+          {selectedCount === 0 && <span style={{ color: C.goldDark, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 // VisitationTab — admin/pasteam oversight view of ALL visits (unchanged nav id)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -6276,102 +6746,326 @@ function DetailBlock({ icon: Icon, label, value, color }) {
 // ║  Includes: ResearchFeedback                                                ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
-function ResearchFeedback() {
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [err, setErr]             = useState("");
-  const [search, setSearch]       = useState("");
-  const [dateFrom, setDateFrom]   = useState("");
-  const [dateTo, setDateTo]       = useState("");
-  const [selected, setSelected]   = useState(new Set());
+function FeedbackQRPage() {
+  const feedbackUrl = window.location.origin + "/feedback";
+  const [custom, setCustom] = useState(feedbackUrl);
+  const [display, setDisplay] = useState(feedbackUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=0E7490&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=0E7490&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+    a.download = "envoys-feedback-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="Feedback QR Code" subtitle="Members scan this to submit anonymous service feedback." />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={{ ...btn("primary", { background: C.research, border: "none" }) }} onClick={download}><Download size={14} />Download PNG</button>
+            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Feedback Form URL</div>
+          <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 14px", lineHeight: 1.6 }}>
+            Auto-set to your live site. Share this link or QR code so members can submit feedback anonymously.
+          </p>
+          <FieldInput label="Feedback URL" id="furl" value={custom} onChange={e => setCustom(e.target.value)} placeholder="https://your-site.vercel.app/feedback" />
+          <button style={{ ...btn("primary", { background: C.research, border: "none" }), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
+          <div style={{ marginTop: 20, padding: 14, background: C.researchLight, borderRadius: 8, fontSize: 12, color: C.textSecondary, lineHeight: 1.7 }}>
+            <strong style={{ color: C.research }}>💡 Tip</strong><br />
+            Members can submit without logging in. Name, gender, and phone are optional — only feedback is required.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true); setErr("");
-      try {
-        const data = await sb(
-          "first_timers?select=id,full_name,service_feedback,service_date&order=service_date.desc&limit=1000"
-        );
-        setRows((data || []).filter(r => r.service_feedback && r.service_feedback.trim() !== ""));
-      } catch (e) { setErr(e.message); }
-      setLoading(false);
-    })();
+function TestimonyQRPage() {
+  const testimonyUrl = window.location.origin + "/testimony";
+  const [custom, setCustom] = useState(testimonyUrl);
+  const [display, setDisplay] = useState(testimonyUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=A66D15&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=A66D15&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+    a.download = "envoys-testimony-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="Testimony QR Code" subtitle="Members scan this to submit their testimony." />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={btn("gold")} onClick={download}><Download size={14} />Download PNG</button>
+            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Testimony Form URL</div>
+          <p style={{ fontSize: 13, color: C.textMuted, margin: "0 0 14px", lineHeight: 1.6 }}>
+            Share this QR code at services or on the church's social channels so members can share testimonies.
+          </p>
+          <FieldInput label="Testimony URL" id="turl" value={custom} onChange={e => setCustom(e.target.value)} placeholder="https://your-site.vercel.app/testimony" />
+          <button style={{ ...btn("gold"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
+          <div style={{ marginTop: 20, padding: 14, background: C.goldLight, borderRadius: 8, fontSize: 12, color: C.textSecondary, lineHeight: 1.7 }}>
+            <strong style={{ color: C.goldDark }}>💡 Tip</strong><br />
+            Submissions can be anonymous. Category options: General, Coronation Service, and Upgrade Service.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicFeedbackForm() {
+  const [form, setForm] = useState({ name: "", gender: "", phone: "", feedback: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [err, setErr]         = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
+
+  const submit = async () => {
+    if (!form.feedback.trim()) { setErr("Feedback is required."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("feedback_submissions", {
+        method: "POST",
+        body: JSON.stringify({
+          name:     form.name.trim()  || null,
+          gender:   form.gender       || null,
+          phone:    form.phone.trim() || null,
+          feedback: form.feedback.trim(),
+        }),
+      });
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.researchLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <CheckCircle size={32} color={C.research} />
+        </div>
+        <h2 style={{ color: C.research, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>Thank you for your feedback!</h2>
+        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
+          Your feedback has been received. We appreciate you taking the time to share your thoughts with us.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
+          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
+            Share Your <span style={{ color: C.research }}>Feedback</span>
+          </h1>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+            Your feedback helps us serve you better. You may submit anonymously.
+          </p>
+        </div>
+        <div style={card}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          <FieldInput label="Your Name" id="pfn" value={form.name} onChange={set("name")}
+            placeholder="Optional — leave blank to submit anonymously" />
+          <FieldInput label="Gender" id="pfg" type="select" value={form.gender} onChange={set("gender")}
+            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+          <FieldInput label="Phone Number" id="pfp" value={form.phone} onChange={set("phone")}
+            placeholder="Optional" />
+          <FieldInput label="Your Feedback" id="pff" type="textarea" required value={form.feedback} onChange={set("feedback")}
+            placeholder="Share your experience, suggestions, or thoughts about our services…" />
+          <button
+            style={{ ...btn("primary", { background: C.research, border: "none" }), width: "100%", padding: 13, fontSize: 15 }}
+            onClick={submit} disabled={loading}>
+            {loading ? "Submitting…" : "Submit Feedback"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PublicTestimonyForm() {
+  const [form, setForm] = useState({ name: "", category: "General Testimony", testimony: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [err, setErr]         = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
+
+  const submit = async () => {
+    if (!form.testimony.trim()) { setErr("Please share your testimony."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("public_testimonies", {
+        method: "POST",
+        body: JSON.stringify({
+          name:      form.name.trim()     || null,
+          category:  form.category        || "General Testimony",
+          testimony: form.testimony.trim(),
+        }),
+      });
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <Star size={32} color={C.goldDark} />
+        </div>
+        <h2 style={{ color: C.goldDark, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>Testimony Received!</h2>
+        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
+          Thank you for sharing what God has done! Your testimony is an encouragement to the whole body.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
+          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
+            Share Your <span style={{ color: C.goldDark }}>Testimony</span>
+          </h1>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+            Tell us what God has done! You may submit anonymously.
+          </p>
+        </div>
+        <div style={card}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          <FieldInput label="Your Name" id="ptn" value={form.name} onChange={set("name")}
+            placeholder="Optional — leave blank to submit anonymously" />
+          <FieldInput label="Testimony Category" id="ptc" type="select" required value={form.category} onChange={set("category")}
+            options={[
+              { value: "General Testimony",             label: "General Testimony"             },
+              { value: "Coronation Service Testimony",  label: "Coronation Service Testimony"  },
+              { value: "Upgrade Service Testimony",     label: "Upgrade Service Testimony"     },
+            ]} />
+          <FieldInput label="Your Testimony" id="ptt" type="textarea" required value={form.testimony} onChange={set("testimony")}
+            placeholder="Share what God has done in your life…" />
+          <button style={{ ...btn("gold"), width: "100%", padding: 13, fontSize: 15 }}
+            onClick={submit} disabled={loading}>
+            {loading ? "Submitting…" : "Share My Testimony"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResearchFeedback() {
+  const [rows, setRows]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [search, setSearch]     = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      const [ftRows, subRows] = await Promise.all([
+        sb("first_timers?select=id,full_name,service_feedback,service_date,gender,phone&order=service_date.desc&limit=1000").catch(() => []),
+        sb("feedback_submissions?select=*&order=submitted_at.desc&limit=1000").catch(() => []),
+      ]);
+
+      const merged = [];
+      (ftRows || []).forEach(r => {
+        if (r.service_feedback && r.service_feedback.trim()) {
+          merged.push({
+            id: `ft-${r.id}`,
+            display_name: r.full_name || "Anonymous",
+            gender: r.gender || null,
+            phone:  r.phone  || null,
+            feedback: r.service_feedback,
+            date: r.service_date || "",
+            source: "First-Timer Form",
+          });
+        }
+      });
+      (subRows || []).forEach(r => {
+        if (r.feedback && r.feedback.trim()) {
+          merged.push({
+            id: `sub-${r.id}`,
+            display_name: r.name || "Anonymous",
+            gender: r.gender || null,
+            phone:  r.phone  || null,
+            feedback: r.feedback,
+            date: r.submitted_at ? r.submitted_at.slice(0, 10) : "",
+            source: "Feedback Form",
+          });
+        }
+      });
+      merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      setRows(merged);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = rows.filter(r => {
     if (search) {
       const q = search.toLowerCase();
-      if (
-        !r.full_name?.toLowerCase().includes(q) &&
-        !r.service_feedback?.toLowerCase().includes(q)
-      ) return false;
+      if (!r.display_name.toLowerCase().includes(q) && !r.feedback.toLowerCase().includes(q)) return false;
     }
-    if (dateFrom && r.service_date < dateFrom) return false;
-    if (dateTo   && r.service_date > dateTo)   return false;
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo   && r.date > dateTo)   return false;
     return true;
   });
 
-  const allFilteredIds  = filtered.map(r => r.id);
-  const allSelected     = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
-  const someSelected    = allFilteredIds.some(id => selected.has(id));
-
-  const toggleRow = (id) => {
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected   = allFilteredIds.some(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => {
     setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+      const n = new Set(prev);
+      allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+      return n;
     });
   };
-
-  const toggleAll = () => {
-    if (allSelected) {
-      setSelected(prev => {
-        const next = new Set(prev);
-        allFilteredIds.forEach(id => next.delete(id));
-        return next;
-      });
-    } else {
-      setSelected(prev => {
-        const next = new Set(prev);
-        allFilteredIds.forEach(id => next.add(id));
-        return next;
-      });
-    }
-  };
-
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
   const downloadCSV = () => {
     const toExport = filtered.filter(r => selected.has(r.id));
-    if (toExport.length === 0) return;
-
+    if (!toExport.length) return;
     const escape = (v) => {
       if (v === null || v === undefined) return "";
       const str = String(v).replace(/"/g, '""');
-      return str.includes(",") || str.includes('"') || str.includes("\n")
-        ? `"${str}"`
-        : str;
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
     };
-
-    const header = ["Name", "Service Date", "Service Feedback"];
+    const header = ["Name", "Gender", "Phone", "Date", "Source", "Feedback"];
     const csvRows = [
       header.join(","),
       ...toExport.map(r => [
-        escape(r.full_name),
-        escape(r.service_date),
-        escape(r.service_feedback),
+        escape(r.display_name), escape(r.gender), escape(r.phone),
+        escape(r.date), escape(r.source), escape(r.feedback),
       ].join(",")),
     ];
-
     const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    const dateLabel = dateFrom || dateTo
-      ? `_${dateFrom || "start"}_to_${dateTo || "end"}`
-      : `_${new Date().toISOString().slice(0, 10)}`;
-    a.href     = url;
-    a.download = `envoys_service_feedback${dateLabel}.csv`;
-    a.click();
+    const dateLabel = dateFrom || dateTo ? `_${dateFrom || "start"}_to_${dateTo || "end"}` : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href = url; a.download = `envoys_service_feedback${dateLabel}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -6383,28 +7077,26 @@ function ResearchFeedback() {
 
       <PageHeader
         title="Service Feedback"
-        subtitle="Envoys VIPs' service feedback"
+        subtitle={`${rows.length} response${rows.length !== 1 ? "s" : ""} from all sources`}
         action={
           <button
             style={{
               ...btn("primary"),
               background: selectedCount > 0 ? C.research : C.border,
-              color: selectedCount > 0 ? "#fff" : C.textMuted,
-              cursor: selectedCount > 0 ? "pointer" : "not-allowed",
+              color:       selectedCount > 0 ? "#fff"      : C.textMuted,
+              cursor:      selectedCount > 0 ? "pointer"   : "not-allowed",
               border: "none",
             }}
-            onClick={downloadCSV}
-            disabled={selectedCount === 0}>
-            <Download size={14} />
-            Download Feedback{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            onClick={downloadCSV} disabled={selectedCount === 0}>
+            <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
           </button>
         }
       />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Responses"   value={rows.length}     icon={FileText}   accent={C.research} />
-        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}     accent={C.green}    />
-        <StatCard label="Selected"          value={selectedCount}   icon={Download}   accent={selectedCount > 0 ? C.research : C.textMuted}
+        <StatCard label="Total Responses" value={rows.length}     icon={FileText} accent={C.research} />
+        <StatCard label="Matching Filter" value={filtered.length} icon={Filter}   accent={C.green}    />
+        <StatCard label="Selected"        value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.research : C.textMuted}
           sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
       </div>
 
@@ -6415,31 +7107,24 @@ function ResearchFeedback() {
       }}>
         <Calendar size={14} color={C.research} style={{ flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
-          Filter by service date:
+          Filter by date:
         </span>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              style={{ ...inputBase, width: 148 }} />
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              style={{ ...inputBase, width: 148 }} />
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
           </div>
           {(dateFrom || dateTo) && (
-            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
-              <X size={12} />Clear
-            </button>
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}><X size={12} />Clear</button>
           )}
         </div>
         <div style={{ position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search name or feedback…"
-            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or feedback…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
         </div>
       </div>
 
@@ -6447,19 +7132,14 @@ function ResearchFeedback() {
 
       {selectedCount > 0 && (
         <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 16px", marginBottom: 12,
-          background: `${C.research}12`, borderRadius: 8,
-          border: `1px solid ${C.research}30`,
-          fontSize: 13, color: C.research, fontWeight: 600,
-          flexWrap: "wrap", gap: 10,
+          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
+          background: `${C.research}12`, borderRadius: 8, border: `1px solid ${C.research}30`,
+          fontSize: 13, color: C.research, fontWeight: 600, flexWrap: "wrap", gap: 10,
         }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <CheckCircle size={14} />
-            {selectedCount} response{selectedCount !== 1 ? "s" : ""} selected
+            <CheckCircle size={14} />{selectedCount} response{selectedCount !== 1 ? "s" : ""} selected
           </span>
-          <button style={{ ...btn("primary", { padding: "6px 14px", fontSize: 12 }), background: C.research }}
-            onClick={downloadCSV}>
+          <button style={{ ...btn("primary", { padding: "6px 14px", fontSize: 12 }), background: C.research }} onClick={downloadCSV}>
             <Download size={13} />Download CSV
           </button>
         </div>
@@ -6471,116 +7151,79 @@ function ResearchFeedback() {
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
           <div style={{ fontWeight: 700, fontFamily: F.head }}>
-            {rows.length === 0
-              ? "No service feedback responses yet."
-              : "No responses match your filters."}
+            {rows.length === 0 ? "No feedback responses yet." : "No responses match your filters."}
           </div>
-          {rows.length > 0 && (
-            <button style={{ ...btn("ghost", { marginTop: 12 }) }} onClick={clearDates}>
-              Clear date filter
-            </button>
+          {rows.length === 0 && (
+            <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+              Use the Feedback QR Code page to share the feedback form link with members.
+            </p>
           )}
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          {/* Table header */}
           <div style={{
-            display: "grid",
-            gridTemplateColumns: "40px 1fr 120px 1fr",
-            padding: "10px 16px",
-            background: C.bg,
-            borderBottom: `1px solid ${C.border}`,
-            gap: 12,
-            alignItems: "center",
+            display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr",
+            padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <div
-                onClick={toggleAll}
-                title={allSelected ? "Deselect all" : "Select all visible"}
-                style={{
-                  width: 18, height: 18, borderRadius: 4, cursor: "pointer", flexShrink: 0,
-                  border: `2px solid ${someSelected ? C.research : C.border}`,
-                  background: allSelected ? C.research : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  transition: "all .15s",
-                }}>
+              <div onClick={toggleAll} style={{
+                width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                border: `2px solid ${someSelected ? C.research : C.border}`,
+                background: allSelected ? C.research : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+              }}>
                 {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
-                {!allSelected && someSelected && (
-                  <div style={{ width: 8, height: 2, background: C.research, borderRadius: 1 }} />
-                )}
+                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: C.research, borderRadius: 1 }} />}
               </div>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
-              Respondent
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
-              Service Date
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>
-              Feedback
-            </div>
+            {["Respondent", "Date", "Gender", "Source", "Feedback"].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+            ))}
           </div>
 
-          {/* Table rows */}
           {filtered.map((r, i) => {
             const isChecked = selected.has(r.id);
             return (
-              <div
-                key={r.id}
-                onClick={() => toggleRow(r.id)}
+              <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "40px 1fr 120px 1fr",
-                  padding: "12px 16px",
-                  gap: 12,
-                  alignItems: "flex-start",
+                  display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr",
+                  padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.research}08` : C.surface,
-                  cursor: "pointer",
-                  transition: "background .12s",
+                  cursor: "pointer", transition: "background .12s",
                 }}
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
                 onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.research}08` : C.surface; }}>
-
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
                   <div style={{
-                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    width: 18, height: 18, borderRadius: 4,
                     border: `2px solid ${isChecked ? C.research : C.border}`,
                     background: isChecked ? C.research : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "all .15s",
-                  }}>
-                    {isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
-                  </div>
+                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
                 </div>
-
                 <div>
                   <div style={{
-                    width: 32, height: 32, borderRadius: "50%", background: C.researchLight,
+                    width: 30, height: 30, borderRadius: "50%", background: C.researchLight,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, color: C.research, fontSize: 13, fontFamily: F.head,
-                    marginBottom: 4, border: `1.5px solid ${C.researchBorder}`,
-                  }}>
-                    {r.full_name?.charAt(0) || "?"}
-                  </div>
-                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>
-                    {r.full_name}
-                  </div>
+                    fontWeight: 800, color: C.research, fontSize: 12, fontFamily: F.head,
+                    marginBottom: 3, border: `1.5px solid ${C.researchBorder}`,
+                  }}>{(r.display_name.charAt(0) || "?").toUpperCase()}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>{r.display_name}</div>
+                  {r.phone && <div style={{ fontSize: 11, color: C.textMuted }}>{r.phone}</div>}
                 </div>
-
-                <div style={{ fontSize: 13, color: C.textSecondary, paddingTop: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <Calendar size={11} color={C.textMuted} />
-                    {r.service_date}
-                  </div>
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={11} color={C.textMuted} />{r.date || "—"}</div>
                 </div>
-
-                <div style={{
-                  fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4,
-                  wordBreak: "break-word",
-                }}>
-                  {r.service_feedback}
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>{r.gender || <span style={{ color: C.textMuted }}>—</span>}</div>
+                <div style={{ paddingTop: 5 }}>
+                  <span style={badge(
+                    r.source === "Feedback Form" ? C.research : C.green,
+                    r.source === "Feedback Form" ? C.researchLight : C.greenLight,
+                    { fontSize: 10 }
+                  )}>{r.source}</span>
                 </div>
+                <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4, wordBreak: "break-word" }}>{r.feedback}</div>
               </div>
             );
           })}
@@ -6588,25 +7231,261 @@ function ResearchFeedback() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div style={{
-          marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right",
-          display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8,
-        }}>
-          <span>
-            Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> response{rows.length !== 1 ? "s" : ""}
-            {(dateFrom || dateTo) && " in date range"}
-          </span>
-          {selectedCount === 0 && filtered.length > 0 && (
-            <span style={{ color: C.research, fontWeight: 600 }}>
-              ☝ Click rows to select, then download as CSV
-            </span>
-          )}
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> response{rows.length !== 1 ? "s" : ""}</span>
+          {selectedCount === 0 && <span style={{ color: C.research, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GeneralFeedback — mirrors ResearchFeedback's UI, but scoped ONLY to
+// responses submitted through the public Feedback QR form
+// (feedback_submissions table). Does NOT merge in first_timers.service_feedback.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function GeneralFeedback() {
+  const [rows, setRows]         = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [search, setSearch]     = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      const subRows = await sb("feedback_submissions?select=*&order=submitted_at.desc&limit=1000").catch(() => []);
+      const mapped = (subRows || [])
+        .filter(r => r.feedback && r.feedback.trim())
+        .map(r => ({
+          id: r.id,
+          display_name: r.name || "Anonymous",
+          gender: r.gender || null,
+          phone: r.phone || null,
+          feedback: r.feedback,
+          date: r.submitted_at ? r.submitted_at.slice(0, 10) : "",
+        }));
+      setRows(mapped);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter(r => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!r.display_name.toLowerCase().includes(q) && !r.feedback.toLowerCase().includes(q)) return false;
+    }
+    if (dateFrom && r.date < dateFrom) return false;
+    if (dateTo   && r.date > dateTo)   return false;
+    return true;
+  });
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected   = allFilteredIds.some(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+      return n;
+    });
+  };
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Name", "Gender", "Phone", "Date", "Feedback"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.display_name), escape(r.gender), escape(r.phone),
+        escape(r.date), escape(r.feedback),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    const dateLabel = dateFrom || dateTo ? `_${dateFrom || "start"}_to_${dateTo || "end"}` : `_${new Date().toISOString().slice(0, 10)}`;
+    a.href = url; a.download = `envoys_general_feedback${dateLabel}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+
+      <PageHeader
+        title="General Feedback"
+        subtitle={`${rows.length} response${rows.length !== 1 ? "s" : ""} submitted via the Feedback QR form`}
+        action={
+          <button
+            style={{
+              ...btn("primary"),
+              background: selectedCount > 0 ? C.research : C.border,
+              color:       selectedCount > 0 ? "#fff"      : C.textMuted,
+              cursor:      selectedCount > 0 ? "pointer"   : "not-allowed",
+              border: "none",
+            }}
+            onClick={downloadCSV} disabled={selectedCount === 0}>
+            <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+          </button>
+        }
+      />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Responses" value={rows.length}     icon={FileText} accent={C.research} />
+        <StatCard label="Matching Filter" value={filtered.length} icon={Filter}   accent={C.green}    />
+        <StatCard label="Selected"        value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.research : C.textMuted}
+          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+      </div>
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.researchLight, borderRadius: 10, border: `1px solid ${C.researchBorder}`,
+      }}>
+        <Calendar size={14} color={C.research} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}><X size={12} />Clear</button>
+          )}
+        </div>
+        <div style={{ position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or feedback…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {selectedCount > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
+          background: `${C.research}12`, borderRadius: 8, border: `1px solid ${C.research}30`,
+          fontSize: 13, color: C.research, fontWeight: 600, flexWrap: "wrap", gap: 10,
+        }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <CheckCircle size={14} />{selectedCount} response{selectedCount !== 1 ? "s" : ""} selected
+          </span>
+          <button style={{ ...btn("primary", { padding: "6px 14px", fontSize: 12 }), background: C.research }} onClick={downloadCSV}>
+            <Download size={13} />Download CSV
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ color: C.textMuted }}>Loading…</p>
+      ) : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0 ? "No feedback responses via the QR form yet." : "No responses match your filters."}
+          </div>
+          {rows.length === 0 && (
+            <p style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+              Use the Feedback QR Code page to share the feedback form link with members.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr",
+            padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+          }}>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <div onClick={toggleAll} style={{
+                width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                border: `2px solid ${someSelected ? C.research : C.border}`,
+                background: allSelected ? C.research : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+              }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: C.research, borderRadius: 1 }} />}
+              </div>
+            </div>
+            {["Respondent", "Date", "Gender", "Feedback"].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+            ))}
+          </div>
+
+          {filtered.map((r, i) => {
+            const isChecked = selected.has(r.id);
+            return (
+              <div key={r.id} onClick={() => toggleRow(r.id)}
+                style={{
+                  display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr",
+                  padding: "12px 16px", gap: 10, alignItems: "flex-start",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  background: isChecked ? `${C.research}08` : C.surface,
+                  cursor: "pointer", transition: "background .12s",
+                }}
+                onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.research}08` : C.surface; }}>
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: 4,
+                    border: `2px solid ${isChecked ? C.research : C.border}`,
+                    background: isChecked ? C.research : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
+                </div>
+                <div>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: "50%", background: C.researchLight,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, color: C.research, fontSize: 12, fontFamily: F.head,
+                    marginBottom: 3, border: `1.5px solid ${C.researchBorder}`,
+                  }}>{(r.display_name.charAt(0) || "?").toUpperCase()}</div>
+                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>{r.display_name}</div>
+                  {r.phone && <div style={{ fontSize: 11, color: C.textMuted }}>{r.phone}</div>}
+                </div>
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={11} color={C.textMuted} />{r.date || "—"}</div>
+                </div>
+                <div style={{ fontSize: 12, color: C.textSecondary, paddingTop: 6 }}>{r.gender || <span style={{ color: C.textMuted }}>—</span>}</div>
+                <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4, wordBreak: "break-word" }}>{r.feedback}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> response{rows.length !== 1 ? "s" : ""}</span>
+          {selectedCount === 0 && <span style={{ color: C.research, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                      ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -6968,13 +7847,17 @@ export default function App() {
   const [editWeekTarget,   setEditWeekTarget]   = useState(null); // { person, week }
   const [showCompleted,    setShowCompleted]     = useState(false);
   const [editOverviewTarget, setEditOverviewTarget] = useState(null);
-  const [visitLogTarget,  setVisitLogTarget]  = useState(null); // contact to log a new visit for
-  const [visitEditTarget, setVisitEditTarget] = useState(null); // { contact, visit }
+  const [visitLogTarget,  setVisitLogTarget]  = useState(null);
+  const [visitEditTarget, setVisitEditTarget] = useState(null);
+  const [showFeedback,    setShowFeedback]    = useState(false);
+  const [showTestimony,   setShowTestimony]   = useState(false);
 
   useEffect(() => {
     const p = window.location.pathname;
     const h = window.location.hash;
-    if (p === "/register" || p === "/register/" || h === "#register") setShowPublic(true);
+    if (p === "/register"  || p === "/register/"  || h === "#register")  setShowPublic(true);
+    if (p === "/feedback"  || p === "/feedback/"  || h === "#feedback")  setShowFeedback(true);
+    if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
   }, []);
 
   useEffect(() => {
@@ -7009,8 +7892,10 @@ export default function App() {
     setMobileOpen(false);
   };
 
-  if (showPublic) return <PublicForm />;
-  if (!session)   return <Login onLogin={login} />;
+  if (showPublic)    return <PublicForm />;
+  if (showFeedback)  return <PublicFeedbackForm />;
+  if (showTestimony) return <PublicTestimonyForm />;
+  if (!session)      return <Login onLogin={login} />;
 
   const { role, user } = session;
   const pageTitle = NAV[role]?.find(n => n.id === active)?.label || "Dashboard";
@@ -7053,6 +7938,9 @@ export default function App() {
     if (active === "flagged") return <FlaggedRecords />;
     if (active === "visitation_tab") return <VisitationTab />;
     if (active === "research_feedback") return <ResearchFeedback />;
+    if (active === "general_feedback")  return <GeneralFeedback />;
+    if (active === "feedback_qr")       return <FeedbackQRPage />;
+    if (active === "testimony_qr")      return <TestimonyQRPage />;
 
     if (active === "firsttimers") {
       if (editTarget) {
@@ -7117,7 +8005,8 @@ export default function App() {
     }
 
     if (active === "completed_pipelines") {
-      return <CompletedPipelines onBack={() => navTo("assign_calls")} />;
+      const cpBackTarget = role === "soulcareadmin" ? "sc_assign" : "assign_calls";
+      return <CompletedPipelines onBack={() => navTo(cpBackTarget)} />;
     }
 
     if (active === "callqueue") {
@@ -7185,6 +8074,7 @@ export default function App() {
 
     if (active === "sc_flagged") return <SoulCareFlagged />;
     if (active === "sc_testimonies") return <Testimonies />;
+    if (active === "testimony_bank") return <TestimonyBank />;
 
     if (active === "sc_queue" || active === "sc_mine") {
       if (visitEditTarget) {
