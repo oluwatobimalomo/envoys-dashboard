@@ -10,9 +10,9 @@ import {
   Home, Users, UserPlus, Phone, RefreshCw, BarChart2, MessageSquare,
   Flag, QrCode, LogOut, Menu, X, Heart, MapPin, Calendar, ChevronRight,
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
-  Star, TrendingUp, Activity, Shield, Eye, Edit3, UserCheck, Layers,
-  FileText, Bell, Filter, Download, ChevronDown, Info, Zap, Camera, 
-  Image as ImageIcon, MessageCircle,
+  Star, TrendingUp, Activity, Shield, Edit3, UserCheck,
+  FileText, Filter, Download, ChevronDown, Info, Zap, Camera,
+  MessageCircle, Gift,
 } from "lucide-react";
 
 import {
@@ -159,6 +159,18 @@ function PhoneLink({ phone, withWhatsApp = false, size = 12, bold = false, color
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.0 — PWA: register the installability service worker (no-op if
+// unsupported, e.g. non-HTTPS contexts).
+// ─────────────────────────────────────────────────────────────────────────────
+
+(function registerServiceWorker() {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+})();
+
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: GLOBAL STYLES & CSS INJECTION                                 ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -233,6 +245,18 @@ async function uploadVisitPhoto(file) {
   return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${objectPath}`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.9 — Password hashing (salted SHA-256 via Web Crypto).
+// Salt = lowercase username, so identical passwords hash differently per user.
+// Matches the SQL migration: digest(lower(username) || ':' || password, 'sha256')
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function hashPassword(username, password) {
+  const salted = `${(username || "").trim().toLowerCase()}:${password}`;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salted));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: SUPABASE CONFIG & API HELPERS                                 ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -243,10 +267,13 @@ async function uploadVisitPhoto(file) {
 // ║  Includes: saveSession(), loadSession(), clearSession()                    ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
-const SESSION_KEY = "envoys_session_v1";
+const SESSION_KEY = "envoys_session_v2";           // v2: bump forces one clean re-login
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000;        // 12 hours
 
 function saveSession(role, user) {
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user })); } catch {}
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user, exp: Date.now() + SESSION_TTL_MS }));
+  } catch {}
 }
 
 function loadSession() {
@@ -254,7 +281,8 @@ function loadSession() {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    if (s && s.role && s.user) return s;
+    if (s && s.role && s.user && (!s.exp || Date.now() < s.exp)) return s;
+    localStorage.removeItem(SESSION_KEY);           // expired or malformed — clear it
     return null;
   } catch { return null; }
 }
@@ -791,7 +819,7 @@ function PhotoUpload({ value, onChange, existingUrl }) {
 
       {preview ? (
         <div style={{ position: "relative", display: "inline-block" }}>
-          <img src={preview} alt="Visit photo"
+          <img src={preview} alt="Upload visit"
             style={{
               width: "100%", maxWidth: 320, height: 200, objectFit: "cover",
               borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block",
@@ -974,6 +1002,64 @@ function SH({ title, icon: Icon }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.0 — InstallBanner: appears only when the browser signals the app is
+// installable (Chrome/Edge/Android). Dismissal is remembered.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function InstallBanner() {
+  const [promptEvt, setPromptEvt] = useState(null);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem("envoys_install_dismissed") === "1"; } catch { return false; }
+  });
+
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setPromptEvt(e); };
+    const onInstalled = () => setPromptEvt(null);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  const dismiss = () => {
+    setDismissed(true);
+    try { localStorage.setItem("envoys_install_dismissed", "1"); } catch {}
+  };
+
+  const install = async () => {
+    if (!promptEvt) return;
+    promptEvt.prompt();
+    await promptEvt.userChoice.catch(() => {});
+    setPromptEvt(null);
+  };
+
+  if (!promptEvt || dismissed) return null;
+
+  return (
+    <div style={{
+      position: "fixed", bottom: 16, right: 16, left: "auto", zIndex: 300,
+      background: C.sidebar, color: "#fff", borderRadius: 12,
+      padding: "12px 16px", boxShadow: SHADOW.md, maxWidth: 320,
+      display: "flex", alignItems: "center", gap: 12,
+    }} className="page-enter">
+      <Download size={18} color={C.goldMid} style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>Install Envoys</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 2 }}>
+          Add to your home screen for one-tap access.
+        </div>
+      </div>
+      <button style={btn("gold", { padding: "6px 12px", fontSize: 12 })} onClick={install}>Install</button>
+      <button onClick={dismiss} style={{
+        background: "none", border: "none", color: "rgba(255,255,255,.5)",
+        cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0,
+      }}>×</button>
+    </div>
+  );
+}
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: SHARED UI PRIMITIVES                                          ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -1102,6 +1188,197 @@ function CountUp({ value, duration = 650 }) {
   if (target === null) return <>{value ?? "—"}</>;
   return <>{n}{isPct ? "%" : ""}</>;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.9 — DueTodayPanel: overdue / due-today follow-ups for the current user.
+// entries: [{ id, row, name, phone, dueDate ("YYYY-MM-DD"), note }]
+// Renders nothing when entries is empty.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DueTodayPanel({ entries, actionLabel = "Log Call", actionIcon: ActionIcon = Phone, onAction }) {
+  if (!entries || entries.length === 0) return null;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const overdueCount = entries.filter(e => e.dueDate < todayStr).length;
+  const todayCount   = entries.length - overdueCount;
+
+  return (
+    <div style={{
+      ...card, marginBottom: 20, padding: "1rem 1.25rem",
+      background: C.amberLight, border: `1px solid ${C.amber}30`,
+      borderLeft: `3px solid ${overdueCount > 0 ? C.danger : C.amber}`,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <Clock size={14} color={C.amber} />
+        <span style={{
+          fontSize: 12, fontWeight: 700, fontFamily: F.head,
+          textTransform: "uppercase", letterSpacing: ".07em", color: C.amber,
+        }}>
+          Follow-ups Due
+        </span>
+        {overdueCount > 0 && (
+          <span style={badge(C.danger, C.dangerLight, { fontSize: 11 })}>
+            <AlertCircle size={10} />{overdueCount} overdue
+          </span>
+        )}
+        {todayCount > 0 && (
+          <span style={badge(C.amber, "#fff", { fontSize: 11 })}>
+            <Calendar size={10} />{todayCount} due today
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: "grid", gap: 6 }}>
+        {entries.map(e => {
+          const isOverdue = e.dueDate < todayStr;
+          const days = isOverdue
+            ? Math.max(1, Math.floor((Date.now() - new Date(e.dueDate).getTime()) / 86400000))
+            : 0;
+          return (
+            <div key={e.id} style={{
+              display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+              background: "#fff", borderRadius: 8, padding: "8px 12px",
+              border: `1px solid ${isOverdue ? C.danger : C.amber}25`,
+            }}>
+              <Avatar name={e.name} size={30} />
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>{e.name}</div>
+                <div style={{ fontSize: 11, color: C.textMuted }}>
+                  <PhoneLink phone={e.phone} />
+                  {e.note ? <> · {e.note.slice(0, 60)}{e.note.length > 60 ? "…" : ""}</> : null}
+                </div>
+              </div>
+              <span style={badge(
+                isOverdue ? C.danger : C.amber,
+                isOverdue ? C.dangerLight : C.amberLight,
+                { fontSize: 11 }
+              )}>
+                <Calendar size={10} />
+                {isOverdue ? `${days}d overdue` : "Due today"}
+              </span>
+              <button style={btn("primary", { padding: "6px 12px", fontSize: 12 })}
+                onClick={() => onAction(e.row)}>
+                <ActionIcon size={11} />{actionLabel}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.0 — Birthdays This Week
+// Reads first_timers.dob (client-side month/day matching — PostgREST can't
+// filter by month/day across years). Feb-29 birthdays celebrate on Feb-28
+// in non-leap years.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+function nextBirthdayInfo(dob) {
+  if (!dob) return null;
+  const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return null;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const occurrence = (yr) => {
+    const day = (m === 2 && d === 29 && !isLeapYear(yr)) ? 28 : d;
+    return new Date(yr, m - 1, day);
+  };
+
+  let next = occurrence(today.getFullYear());
+  if (next < today) next = occurrence(today.getFullYear() + 1);
+
+  return {
+    daysUntil: Math.round((next - today) / 86400000),
+    turning:   next.getFullYear() - y,
+    dateLabel: next.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }),
+  };
+}
+
+function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
+  const [people, setPeople] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await sb(
+          "first_timers?select=id,full_name,phone,dob,gender&dob=not.is.null&limit=2000"
+        );
+        if (cancelled) return;
+        const upcoming = (rows || [])
+          .map(r => {
+            const info = nextBirthdayInfo(r.dob);
+            return info && info.daysUntil < daysAhead ? { ...r, ...info } : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.daysUntil - b.daysUntil || a.full_name.localeCompare(b.full_name));
+        setPeople(upcoming);
+      } catch { if (!cancelled) setPeople([]); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [daysAhead]);
+
+  if (loading) return null;
+  if (people.length === 0 && !showEmpty) return null;
+
+  return (
+    <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: people.length ? 12 : 0 }}>
+        <Gift size={14} color={C.goldDark} />
+        <span style={{
+          fontSize: 12, fontWeight: 700, fontFamily: F.head,
+          textTransform: "uppercase", letterSpacing: ".07em", color: C.goldDark,
+        }}>
+          Birthdays This Week
+        </span>
+        {people.length > 0 && (
+          <span style={badge(C.goldDark, "#fff", { fontSize: 11 })}>{people.length}</span>
+        )}
+        {people.length === 0 && (
+          <span style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
+            None in the next {daysAhead} days
+          </span>
+        )}
+      </div>
+
+      {people.length > 0 && (
+        <div style={{ display: "grid", gap: 6 }}>
+          {people.map(p => {
+            const isToday = p.daysUntil === 0;
+            return (
+              <div key={p.id} style={{
+                display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+                background: "#fff", borderRadius: 8, padding: "8px 12px",
+                border: `1px solid ${isToday ? C.gold : C.border}`,
+              }}>
+                <Avatar name={p.full_name} size={30} />
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>
+                    {isToday ? "🎂 " : ""}{p.full_name}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>
+                    <PhoneLink phone={p.phone} withWhatsApp />
+                  </div>
+                </div>
+                <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
+                  <Gift size={10} />
+                  {isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                             ║
@@ -1638,7 +1915,7 @@ function FirstTimersList({ onEdit }) {
           {filtered.map(r => {
             const [col, bg] = dc[r.membership_decision] || [C.textMuted, C.bg];
             return (
-              <div key={r.id} style={{
+              <div key={r.id} {...lift} style={{
                 ...card, display: "flex", justifyContent: "space-between",
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
               }}>
@@ -1735,7 +2012,7 @@ function CSVImport({ onDone }) {
   const cleanDate = (dateStr) => {
     if (!dateStr) return null;
     const s = dateStr.toString().trim();
-    const parts = s.split(/[\/\-]/);
+    const parts = s.split(/[/-]/);
     if (parts.length === 3) {
       const [a, b, c2] = parts;
       if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
@@ -1942,10 +2219,6 @@ function weeksLogged(fbRows) {
   const weeks = new Set();
   (fbRows || []).forEach(r => { if (r.week_number) weeks.add(r.week_number); });
   return weeks;
-}
-
-function pipelineProgress(fbRows) {
-  return weeksLogged(fbRows).size;
 }
 
 function nextWeek(fbRows) {
@@ -2757,6 +3030,20 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
   const views    = { all: mine, reached, callback, complete, flagged };
   const filtered = views[filter] || mine;
 
+  // v5.9 — follow-ups due today or overdue. A contact is "due" when its
+  // MOST RECENT call log carries a follow_up_date that has arrived, and
+  // the 3-week pipeline isn't complete. Logging a newer call clears it.
+  const dueTodayStr = new Date().toISOString().slice(0, 10);
+  const dueEntries = mine
+    .filter(r => !pipelineComplete(r.fbRows))
+    .map(r => {
+      const last = r.fbRows[r.fbRows.length - 1];
+      if (!last || !last.follow_up_date || last.follow_up_date > dueTodayStr) return null;
+      return { id: r.id, row: r, name: r.full_name, phone: r.phone, dueDate: last.follow_up_date, note: last.notes };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
   const tabs = [
     { k: "all",      label: "All",       count: mine.length,     col: C.textMuted },
     { k: "reached",  label: "Reached",   count: reached.length,  col: C.green     },
@@ -2771,6 +3058,12 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
       <PageHeader
         title="My Calls"
         subtitle={`${mine.length} contact${mine.length !== 1 ? "s" : ""} assigned to you`}
+      />
+
+      <DueTodayPanel
+        entries={dueEntries}
+        actionLabel="Log Call"
+        onAction={r => onLogFeedback(r)}
       />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
@@ -2816,7 +3109,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
             const displayName = `${r.full_name}${genderTag(r)}`;
 
             return (
-              <div key={r.id} style={{
+              <div key={r.id} {...lift} style={{
                 ...card, padding: "14px 16px",
                 borderLeft: `3px solid ${anyFlagged ? C.flag : isComplete ? C.greenMid : sm.color}`,
               }}>
@@ -3047,7 +3340,7 @@ function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
       } catch { /* no existing row */ }
       setFetching(false);
     })();
-  }, [person.id, weekToLog]);
+  }, [person.id, weekToLog, callerName]);
 
   const lsRef = useRef({});
   const lset  = useCallback((key) => {
@@ -4691,6 +4984,8 @@ function Report() {
           sub={stats.flagged > 0 ? "Needs attention" : ""} />
       </div>
 
+      <div style={{ marginBottom: 16 }}><BirthdaysWidget showEmpty={false} /></div>
+
       <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
 
         {/* Membership decision donut — sourced from pipeline_overviews */}
@@ -5279,11 +5574,7 @@ function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
                   alignItems: "center", flexWrap: "wrap", gap: 10,
                 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: "50%", background: C.soulLight,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontWeight: 800, color: C.soul, fontFamily: F.head,
-                    }}>{p.full_name?.charAt(0)}</div>
+                    <Avatar name={p.full_name} size={36} />
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{p.full_name}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}>{p.phone}</div>
@@ -5495,6 +5786,7 @@ function AssignVisitsView({ currentUser }) {
       </div>
 
       <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+      <Alert type="error" msg={err} onClose={() => {}} />
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
         {tabs.map(t => (
@@ -5808,6 +6100,21 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
   const views    = { all: mine, pending, scheduled, completed, flagged };
   const filtered = views[filter] || mine;
 
+  // v5.9 — visits whose latest log requested a follow-up that has arrived.
+  const dueTodayStr = new Date().toISOString().slice(0, 10);
+  const dueVisitEntries = mine
+    .map(c => {
+      const last = scLatestVisit(c.visits);
+      if (!last || !last.follow_up_required || !last.next_follow_up_date || last.next_follow_up_date > dueTodayStr) return null;
+      return {
+        id: c.id, row: c, name: c.full_name, phone: c.phone,
+        dueDate: last.next_follow_up_date,
+        note: last.reason_for_care || last.meeting_notes,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
   const tabs = [
     { k: "all",       label: "All",       count: mine.length,      col: C.textMuted },
     { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold      },
@@ -5820,6 +6127,13 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title="My Visits" subtitle={`${mine.length} contact${mine.length !== 1 ? "s" : ""} assigned to you`} />
+
+      <DueTodayPanel
+        entries={dueVisitEntries}
+        actionLabel="Log Visit"
+        actionIcon={MapPin}
+        onAction={c => onLogVisit(c)}
+      />
 
       <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
         label="Filter by date added to pool:" />
@@ -6826,7 +7140,7 @@ function VisitationTab() {
                         <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 8, display: "flex", alignItems: "center", gap: 4, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
                           <Camera size={11} />Visit Photo
                         </div>
-                        <img src={r.visit_photo_url} alt="Visit photo"
+                        <img src={r.visit_photo_url} alt="From the visit"
                           style={{ width: "100%", maxWidth: 360, height: 220, objectFit: "cover", borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block", cursor: "pointer" }}
                           onClick={() => window.open(r.visit_photo_url, "_blank")} title="Click to open full image" />
                         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Click image to open full size</div>
@@ -7657,6 +7971,8 @@ function AdminOverview({ setActive }) {
         <StatCard label="Flagged"       value={counts.flagged}  icon={Flag}    accent={C.flag}    />
         <StatCard label="System Users"  value={counts.users}   icon={Shield}  accent={C.goldDark}/>
       </div>
+      <div style={{ marginBottom: 24 }}><BirthdaysWidget /></div>
+
       <div style={{
         marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted,
         fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
@@ -7745,13 +8061,7 @@ function AdminUsers({ onEdit }) {
                 opacity: u.is_active ? 1 : .55,
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: "50%", background: C.greenLight,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, color: C.green, fontSize: 15, fontFamily: F.head, flexShrink: 0,
-                  }}>
-                    {(u.display_name || u.username || "?").charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar name={u.display_name || u.username} size={40} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{u.display_name || u.username}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}>@{u.username}</div>
@@ -7803,14 +8113,23 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
   const submit = async () => {
     if (!form.username.trim()) { setErr("Username is required."); return; }
     if (!editUser && !form.password.trim()) { setErr("Password is required for new users."); return; }
+
+    const uname = form.username.trim().toLowerCase();
+    if (editUser && uname !== editUser.username && !form.password.trim()) {
+      setErr("Changing a username requires setting the password again (enter it in the password field).");
+      return;
+    }
+
     setLoading(true); setErr("");
     try {
       const payload = {
-        username:     form.username.trim().toLowerCase(),
+        username:     uname,
         display_name: form.display_name.trim() || form.username.trim(),
         role:         form.role,
         is_active:    form.is_active,
-        ...(form.password.trim() ? { password_hash: form.password.trim() } : {}),
+        ...(form.password.trim()
+          ? { password_hash: await hashPassword(uname, form.password.trim()) }
+          : {}),
       };
       if (editUser?.id) {
         await sb(`app_users?id=eq.${editUser.id}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -7879,21 +8198,8 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
 
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  MODULE: AUTHENTICATION — LOGIN                                            ║
-// ║  Includes: FALLBACK_ACCOUNTS constant, Login component                    ║
+// ║  MODULE: AUTHENTICATION — LOGIN                                                          ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
-
-const FALLBACK_ACCOUNTS = [
-  { username: "admin",      password: "admin1",     role: "admin",    display_name: "Administrator"   },
-  { username: "dofficer1",  password: "dofficer1",  role: "dofficer", display_name: "Data Officer"    },
-  { username: "expteam1",   password: "expteam1",   role: "expteam",  display_name: "Experience Team" },
-  { username: "pasteam1",   password: "pasteam1",   role: "pasteam",  display_name: "Pastoral Team"   },
-  { username: "soulcare1",  password: "soulcare1",  role: "soulcare", display_name: "Soul Care Team"  },
-  { username: "research1",  password: "research1",  role: "research", display_name: "Research Team"   },
-  { username: "experienceadmin", password: "expadmin1",  role: "experienceadmin", display_name: "Experience Admin" },
-  { username: "soulcareadmin",   password: "scadmin1",   role: "soulcareadmin",   display_name: "Soul Care Admin"  },
-  { username: "testimonyteam1",  password: "testimony1", role: "testimonyteam",   display_name: "Testimony Team"   },
-];
 
 function Login({ onLogin }) {
   const [u, setU] = useState("");
@@ -7905,20 +8211,31 @@ function Login({ onLogin }) {
     if (!u.trim() || !p.trim()) { setErr("Enter your username and password."); return; }
     setLoading(true); setErr("");
     try {
-      const rows = await sb(`app_users?username=eq.${u.trim().toLowerCase()}&is_active=eq.true&select=*`);
-      if (rows && rows.length > 0) {
-        const user = rows[0];
-        if (user.password_hash === p.trim()) {
-          onLogin(user.role, user.display_name || user.username);
-          setLoading(false); return;
-        }
-        setErr("Incorrect password.");
+      const uname = u.trim().toLowerCase();
+      const rows = await sb(`app_users?username=eq.${uname}&is_active=eq.true&select=*`);
+      if (!rows || rows.length === 0) {
+        setErr("Invalid username or password.");
         setLoading(false); return;
       }
-    } catch { /* fall through to fallback */ }
-    const match = FALLBACK_ACCOUNTS.find(a => a.username === u.trim() && a.password === p.trim());
-    if (match) { onLogin(match.role, match.display_name); setLoading(false); return; }
-    setErr("Invalid username or password.");
+      const account = rows[0];
+      const hashed = await hashPassword(uname, p.trim());
+
+      if (account.password_hash === hashed) {
+        onLogin(account.role, account.display_name || account.username);
+      } else if (account.password_hash === p.trim()) {
+        // Legacy plaintext row missed by the SQL migration — accept once,
+        // silently upgrade it to the hashed form, then log in.
+        await sb(`app_users?id=eq.${account.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ password_hash: hashed }),
+        }).catch(() => {});
+        onLogin(account.role, account.display_name || account.username);
+      } else {
+        setErr("Incorrect password.");
+      }
+    } catch (e) {
+      setErr(`Login failed: ${e.message}`);
+    }
     setLoading(false);
   };
 
@@ -7972,12 +8289,10 @@ export default function App() {
   const [editTarget,     setEditTarget]     = useState(null);
   const [feedbackTarget, setFeedbackTarget] = useState(null);
   const [editUser,       setEditUser]       = useState(null);
-  const [editVisit,      setEditVisit]      = useState(null);
   const [showPublic,     setShowPublic]     = useState(false);
   const [mobileOpen,     setMobileOpen]     = useState(false);
   const [flagCount,      setFlagCount]      = useState(0);
   const [editWeekTarget,   setEditWeekTarget]   = useState(null); // { person, week }
-  const [showCompleted,    setShowCompleted]     = useState(false);
   const [editOverviewTarget, setEditOverviewTarget] = useState(null);
   const [visitLogTarget,  setVisitLogTarget]  = useState(null);
   const [visitEditTarget, setVisitEditTarget] = useState(null);
@@ -8018,7 +8333,7 @@ export default function App() {
   const navTo = (v) => {
     setActive(v); setEditTarget(null); setFeedbackTarget(null);
     setEditUser(null);
-    setEditWeekTarget(null); setShowCompleted(false);
+    setEditWeekTarget(null);
     setEditOverviewTarget(null);
     setVisitLogTarget(null); setVisitEditTarget(null);
     setMobileOpen(false);
@@ -8262,10 +8577,10 @@ export default function App() {
           {renderContent()}
         </div>
       </div>
+      <InstallBanner />
     </div>
   );
 }
-
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: APP SHELL — ROOT COMPONENT & ROUTING                         ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
