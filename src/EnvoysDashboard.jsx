@@ -274,6 +274,29 @@ async function hashPassword(username, password) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.3 — display-name rename cascade. Assignments & history are keyed by
+// display-name strings, so a rename must propagate or the user's work is
+// orphaned. Failures are swallowed per-table; re-running a rename repairs.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function cascadeRename(oldName, newName) {
+  const enc = encodeURIComponent(oldName);
+  const targets = [
+    ["call_assignments",      "assigned_to"],
+    ["soul_care_assignments", "assigned_to"],
+    ["call_feedback",         "caller_name"],
+    ["soul_care_visits",      "logged_by"],
+    ["pipeline_overviews",    "submitted_by"],
+  ];
+  for (const [table, col] of targets) {
+    await sb(`${table}?${col}=eq.${enc}`, {
+      method: "PATCH",
+      prefer: "return=minimal",
+      body: JSON.stringify({ [col]: newName }),
+    }).catch(() => {});
+  }
+}
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: SUPABASE CONFIG & API HELPERS                                 ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -287,9 +310,9 @@ async function hashPassword(username, password) {
 const SESSION_KEY = "envoys_session_v2";           // v2: bump forces one clean re-login
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;        // 12 hours
 
-function saveSession(role, user) {
+function saveSession(role, user, username) {
   try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user, exp: Date.now() + SESSION_TTL_MS }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user, username: username || null, exp: Date.now() + SESSION_TTL_MS }));
   } catch {}
 }
 
@@ -465,6 +488,7 @@ const NAV_ICONS = {
   feedback_qr: QrCode,
   testimony_qr: QrCode,
   testimony_bank: Star,
+  members_care: Heart,
 };
 
 const NAV = {
@@ -478,6 +502,7 @@ const NAV = {
     { id: "callqueue",           label: "Call Queue"          },
     { id: "sc_assign",     label: "Assign Visits" },
     { id: "sc_queue",      label: "Visit Queue"   },
+    { id: "members_care", label: "Members Care" },
     { id: "add_visit",     label: "Add Visit"     },
     { id: "report",        label: "Report"        },
     { id: "allfeedback",   label: "All Feedback"  },
@@ -511,6 +536,7 @@ const NAV = {
   ],
   soulcare: [
     { id: "sc_queue",   label: "Visit Queue" },
+    { id: "members_care", label: "Members Care" },
     { id: "add_visit",  label: "Add Visit"  },
     { id: "sc_mine",    label: "My Visits"  },
     { id: "sc_flagged", label: "Flagged"     },
@@ -519,6 +545,7 @@ const NAV = {
     { id: "sc_assign",           label: "Assign Visits"       },
     { id: "add_visit",           label: "Add Visit"           },
     { id: "sc_queue",            label: "Visit Queue"         },
+    { id: "members_care", label: "Members Care" },
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "sc_flagged",          label: "Flagged"             },
     { id: "sc_testimonies",      label: "Testimonies"         },
@@ -556,13 +583,13 @@ const NAV_GROUPS = {
     { title: "Administration",  ids: ["admin_overview", "admin_users", "admin_adduser"] },
     { title: "First-Timers",    ids: ["firsttimers", "qrcode"] },
     { title: "Experience Team", ids: ["assign_calls", "callqueue", "completed_pipelines"] },
-    { title: "Soul Care",       ids: ["sc_assign", "sc_queue", "add_visit", "visitation_tab"] },
+    { title: "Soul Care",       ids: ["sc_assign", "sc_queue", "members_care", "add_visit", "visitation_tab"] },
     { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
     { title: "Research",        ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",     ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
   ],
   soulcareadmin: [
-    { title: "Visits",      ids: ["sc_assign", "sc_queue", "add_visit"] },
+    { title: "Visits",      ids: ["sc_assign", "sc_queue", "members_care", "add_visit"] },
     { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged"] },
     { title: "Testimonies", ids: ["sc_testimonies"] },
   ],
@@ -1064,7 +1091,7 @@ function InstallBanner() {
     }} className="page-enter">
       <Download size={18} color={C.goldMid} style={{ flexShrink: 0 }} />
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>Install Envoys Retention</div>
+        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>Install Envoys Retention App</div>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 2 }}>
           Add to your home screen for one-tap access.
         </div>
@@ -1315,6 +1342,27 @@ function nextBirthdayInfo(dob) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.4 — scripture-based birthday message, pre-filled into WhatsApp.
+// WhatsApp allows pre-filling only — the sender taps Send (platform rule).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BIRTHDAY_MESSAGE = (firstName) =>
+`Happy Birthday${firstName ? `, ${firstName}` : ""}! 🎉🎂
+
+"This is the day the LORD has made; we will rejoice and be glad in it." — Psalm 118:24
+
+May the Lord bless you and keep you; may He make His face shine upon you and be gracious to you; may He lift up His countenance upon you and give you peace (Numbers 6:24–26). May this new year of your life overflow with God's goodness, favour and joy.
+
+We thank God for the gift that you are... with love from all of us at RCCG The Envoys. 💚`;
+
+function birthdayWhatsAppLink(name, phone) {
+  const tel = normalizePhone(phone);
+  if (!tel) return null;
+  const first = String(name || "").trim().split(/\s+/)[0] || "";
+  return `https://wa.me/${tel.replace("+", "")}?text=${encodeURIComponent(BIRTHDAY_MESSAGE(first))}`;
+}
+
 function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1323,11 +1371,23 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await sb(
-          "first_timers?select=id,full_name,phone,dob,gender&dob=not.is.null&limit=2000"
-        );
+        const [ftRows, scRows, cmRows] = await Promise.all([
+          sb("first_timers?select=id,full_name,phone,dob&dob=not.is.null&limit=2000").catch(() => []),
+          sb("soul_care_contacts?select=id,full_name,phone,dob&dob=not.is.null&limit=2000").catch(() => []),
+          sb("church_members?select=id,full_name,phone,dob&dob=not.is.null&limit=3000").catch(() => []),
+        ]);
         if (cancelled) return;
-        const upcoming = (rows || [])
+        // Merge all pools, dedupe by normalized phone (first source wins)
+        const seen = new Set();
+        const rows = [];
+        const take = (list, prefix) => (list || []).forEach(r => {
+          const k = phoneKey(r.phone) || `${prefix}-${r.id}`;
+          if (!seen.has(k)) { seen.add(k); rows.push({ ...r, id: `${prefix}-${r.id}` }); }
+        });
+        take(cmRows, "cm");   // members registry first — most authoritative for member care
+        take(scRows, "sc");
+        take(ftRows, "ft");
+        const upcoming = rows
           .map(r => {
             const info = nextBirthdayInfo(r.dob);
             return info && info.daysUntil < daysAhead ? { ...r, ...info } : null;
@@ -1368,6 +1428,7 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
         <div style={{ display: "grid", gap: 6 }}>
           {people.map(p => {
             const isToday = p.daysUntil === 0;
+            const waLink  = birthdayWhatsAppLink(p.full_name, p.phone);
             return (
               <div key={p.id} style={{
                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
@@ -1380,13 +1441,19 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
                     {isToday ? "🎂 " : ""}{p.full_name}
                   </div>
                   <div style={{ fontSize: 11, color: C.textMuted }}>
-                    <PhoneLink phone={p.phone} withWhatsApp />
+                    <PhoneLink phone={p.phone} />
                   </div>
                 </div>
                 <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
                   <Gift size={10} />
                   {isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}
                 </span>
+                {waLink && (
+                  <a href={waLink} target="_blank" rel="noreferrer"
+                    style={{ ...btn("gold", { padding: "6px 12px", fontSize: 12 }), textDecoration: "none" }}>
+                    <MessageCircle size={12} />Send Wishes
+                  </a>
+                )}
               </div>
             );
           })}
@@ -1395,7 +1462,6 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
     </div>
   );
 }
-
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                             ║
@@ -5360,6 +5426,37 @@ function useVisitData(dateFrom, dateTo) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// v6.4 — downloadable CSV templates for bulk imports
+// ─────────────────────────────────────────────────────────────────────────────
+
+function downloadCSVTemplate(filename, headers, example) {
+  const csv = [headers.join(","), example.join(",")].join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+const VISITATION_TEMPLATE_HEADERS = [
+  "full_name", "phone", "email", "gender", "dob",
+  "marital_status", "life_stage", "house_address", "nearest_landmark",
+];
+const VISITATION_TEMPLATE_EXAMPLE = [
+  "Adaeze Okafor", "08031234567", "adaeze@example.com", "Female", "1994-03-12",
+  "Married", "Employee", "12 Palm Street Ikeja", "Near Chevron Roundabout",
+];
+
+const MEMBERS_TEMPLATE_HEADERS = [
+  "full_name", "phone", "email", "gender", "dob", "marital_status", "life_stage",
+  "category", "membership_status", "date_joined", "house_address", "nearest_landmark",
+];
+const MEMBERS_TEMPLATE_EXAMPLE = [
+  "Tunde Adeyemi", "08065554321", "tunde@example.com", "Male", "1988-11-02", "Single", "Business Owner",
+  "Steward", "Active", "2024-06-01", "5 Unity Close Ogba", "Opposite Excel Mall",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SoulCareCSVImport — bulk import of contacts to visit (soulcareadmin only)
 // Columns: full_name, phone, email, gender, house_address, nearest_landmark,
 //          marital_status, life_stage
@@ -5431,6 +5528,14 @@ function SoulCareCSVImport({ currentUser, onDone }) {
           nearest_landmark:  n((r.nearest_landmark || r.landmark || "").toString().trim()),
           marital_status:    sanitizeMaritalStatus(r.marital_status),
           life_stage:        sanitizeLifeStage(r.life_stage),
+          dob:               (() => {
+            const s = (r.dob || r.date_of_birth || "").toString().trim();
+            const parts = s.split(/[/-]/);
+            if (parts.length !== 3) return null;
+            const [a, b, c2] = parts;
+            if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
+            return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+          })(),
           added_by:          currentUser || null,
         }))
         .filter(r => r.full_name && r.phone);
@@ -5464,6 +5569,10 @@ function SoulCareCSVImport({ currentUser, onDone }) {
         <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
         <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => fileRef.current.click()}>
           <Upload size={14} />Choose CSV File
+        </button>
+        <button style={btn("ghost", { fontSize: 12 })}
+          onClick={() => downloadCSVTemplate("envoys_visitation_import_template.csv", VISITATION_TEMPLATE_HEADERS, VISITATION_TEMPLATE_EXAMPLE)}>
+          <Download size={12} />Download Template
         </button>
         {rows.length > 0 && (
           <button style={btn("soul")} onClick={importAll} disabled={loading}>
@@ -5526,7 +5635,7 @@ function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
 
   const [newForm, setNewForm] = useState({
     full_name: "", phone: "", email: "", gender: "",
-    house_address: "", nearest_landmark: "", marital_status: "", life_stage: "",
+    house_address: "", nearest_landmark: "", marital_status: "", life_stage: "", dob: ""
   });
 
   const setRef = useRef({});
@@ -5629,7 +5738,7 @@ function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
           full_name: newForm.full_name.trim(), phone: newForm.phone.trim(),
           email: n(newForm.email), gender: n(newForm.gender),
           house_address: n(newForm.house_address), nearest_landmark: n(newForm.nearest_landmark),
-          marital_status: n(newForm.marital_status), life_stage: n(newForm.life_stage),
+          marital_status: n(newForm.marital_status), life_stage: n(newForm.life_stage), dob: n(newForm.dob),
           added_by: currentUser || null,
         }),
       });
@@ -5731,6 +5840,8 @@ function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
             <FieldInput label="Life Stage" id="nvl" type="select" value={newForm.life_stage} onChange={setField("life_stage")}
               options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
           </div>
+          <FieldInput label="Date of Birth" id="nvd" type="date" value={newForm.dob} onChange={setField("dob")}
+            hint="Optional — powers the Birthdays This Week widget" />
           <FieldInput label="House Address" id="nvh" value={newForm.house_address} onChange={setField("house_address")} placeholder="Street, City" />
           <FieldInput label="Nearest Landmark" id="nvk" value={newForm.nearest_landmark} onChange={setField("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
 
@@ -6014,6 +6125,439 @@ function AssignVisitsView({ currentUser }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// v6.4 — MembersCareCSVImport: bulk import into church_members, with an
+// optional "also add to visit pool" pass (skips phones already in the pool).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function MembersCareCSVImport({ currentUser, onDone }) {
+  const [rows, setRows]       = useState([]);
+  const [alsoPool, setAlsoPool] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState("");
+  const [success, setSuccess] = useState("");
+  const fileRef = useRef();
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      return obj;
+    });
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { setRows(parseCSV(ev.target.result)); setErr(""); setSuccess(""); };
+    reader.readAsText(file);
+  };
+
+  const oneOf = (v, list) => {
+    const c = (v || "").toString().trim().toLowerCase();
+    const hit = list.find(x => x.toLowerCase() === c);
+    return hit || null;
+  };
+  const cleanDate = (raw) => {
+    const s = (raw || "").toString().trim();
+    const parts = s.split(/[/-]/);
+    if (parts.length !== 3) return null;
+    const [a, b, c2] = parts;
+    if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
+    return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+  };
+
+  const importAll = async () => {
+    if (!rows.length) return;
+    setLoading(true); setErr("");
+    try {
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const payload = rows
+        .map(r => ({
+          full_name:         (r.full_name || r.name || "").toString().trim(),
+          phone:             (r.phone || r.phone_number || "").toString().trim(),
+          email:             n(r.email?.toString().trim()),
+          gender:            oneOf(r.gender, ["Male", "Female"]),
+          dob:               cleanDate(r.dob || r.date_of_birth),
+          marital_status:    oneOf(r.marital_status, ["Single", "Married", "Divorced", "Widowed"]),
+          life_stage:        oneOf(r.life_stage, ["Student", "Employee", "Business Owner"]),
+          category:          oneOf(r.category, ["Steward", "Member"]) || "Member",
+          membership_status: oneOf(r.membership_status, ["Active", "Inactive", "Travelled"]) || "Active",
+          date_joined:       cleanDate(r.date_joined || r.joined),
+          house_address:     n((r.house_address || r.address || "").toString().trim()),
+          nearest_landmark:  n((r.nearest_landmark || r.landmark || "").toString().trim()),
+          added_by:          currentUser || null,
+        }))
+        .filter(r => r.full_name && r.phone);
+
+      if (!payload.length) {
+        setErr("No valid rows found. Each row needs at least full_name and phone.");
+        setLoading(false); return;
+      }
+
+      await sb("church_members", { method: "POST", body: JSON.stringify(payload) });
+
+      let pooled = 0;
+      if (alsoPool) {
+        const pool = await sb("soul_care_contacts?select=phone").catch(() => []);
+        const existing = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
+        const poolPayload = payload
+          .filter(m => !existing.has(phoneKey(m.phone)))
+          .map(m => ({
+            full_name: m.full_name, phone: m.phone, email: m.email, gender: m.gender,
+            house_address: m.house_address, nearest_landmark: m.nearest_landmark,
+            marital_status: m.marital_status, life_stage: m.life_stage, dob: m.dob,
+            added_by: currentUser || null,
+          }));
+        for (let i = 0; i < poolPayload.length; i += 50) {
+          await sb("soul_care_contacts", { method: "POST", body: JSON.stringify(poolPayload.slice(i, i + 50)) });
+        }
+        pooled = poolPayload.length;
+      }
+
+      setSuccess(`${payload.length} member${payload.length !== 1 ? "s" : ""} imported${alsoPool ? ` · ${pooled} added to the visit pool (duplicates skipped)` : ""}.`);
+      setRows([]);
+      onDone?.();
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
+      <SH title="Bulk CSV Import — Church Members" icon={Upload} />
+      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
+        Required columns:{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: email, gender, dob,
+        marital_status, life_stage, category (Steward/Member), membership_status (Active/Inactive/Travelled),
+        date_joined, house_address, nearest_landmark.
+      </p>
+      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
+      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
+
+      <FieldInput label="Also add imported members to the Visit Pool (they'll appear as Unassigned in Assign Visits)"
+        id="mc-pool" type="bool-toggle" value={alsoPool} onChange={v => setAlsoPool(!!v)} />
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: rows.length ? 16 : 0 }}>
+        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
+        <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => fileRef.current.click()}>
+          <Upload size={14} />Choose CSV File
+        </button>
+        <button style={btn("ghost", { fontSize: 12 })}
+          onClick={() => downloadCSVTemplate("envoys_members_import_template.csv", MEMBERS_TEMPLATE_HEADERS, MEMBERS_TEMPLATE_EXAMPLE)}>
+          <Download size={12} />Download Template
+        </button>
+        {rows.length > 0 && (
+          <button style={btn("soul")} onClick={importAll} disabled={loading}>
+            {loading ? "Importing…" : `Import ${rows.length} rows`}
+          </button>
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
+            <thead>
+              <tr style={{ background: C.bg }}>
+                {Object.keys(rows[0]).slice(0, 6).map(h => (
+                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: C.textSecondary, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 5).map((r, i) => (
+                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  {Object.values(r).slice(0, 6).map((v, j) => (
+                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
+                  ))}
+                </tr>
+              ))}
+              {rows.length > 5 && (
+                <tr><td colSpan={6} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
+                  …and {rows.length - 5} more rows
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.4 — MembersCare: the full-congregation care registry.
+// Last Visitation is DERIVED: members are matched to the visit pool by
+// normalized phone and the latest logged visit_date is shown.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MC_STATUS_META = {
+  Active:    { color: C.green,  bg: C.greenLight  },
+  Inactive:  { color: C.danger, bg: C.dangerLight },
+  Travelled: { color: C.amber,  bg: C.amberLight  },
+};
+
+function MembersCare({ currentUser, role }) {
+  const isAdmin = role === "soulcareadmin" || role === "admin";
+  const [members, setMembers]           = useState([]);
+  const [poolKeys, setPoolKeys]         = useState(new Set());
+  const [lastVisitByKey, setLastVisit]  = useState({});
+  const [loading, setLoading]           = useState(true);
+  const [err, setErr]                   = useState("");
+  const [msg, setMsg]                   = useState("");
+  const [search, setSearch]             = useState("");
+  const [fStatus, setFStatus]           = useState("");
+  const [fMarital, setFMarital]         = useState("");
+  const [fLife, setFLife]               = useState("");
+  const [showImport, setShowImport]     = useState(false);
+  const [addingId, setAddingId]         = useState(null);
+  const [tick, setTick]                 = useState(0);
+  const reload = () => setTick(t => t + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [cm, pool, visits] = await Promise.all([
+          sb("church_members?select=*&order=full_name.asc&limit=3000"),
+          sb("soul_care_contacts?select=id,phone").catch(() => []),
+          sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
+        ]);
+        if (cancelled) return;
+        const keys = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
+        const contactKey = {};
+        (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
+        const lv = {};
+        (visits || []).forEach(v => {
+          const k = contactKey[v.contact_id];
+          if (k && v.visit_date && (!lv[k] || v.visit_date > lv[k])) lv[k] = v.visit_date;
+        });
+        setMembers(cm || []);
+        setPoolKeys(keys);
+        setLastVisit(lv);
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  const ageOf = (dob) => {
+    if (!dob) return null;
+    const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+    if (!y) return null;
+    const t = new Date();
+    let a = t.getFullYear() - y;
+    if (t.getMonth() + 1 < m || (t.getMonth() + 1 === m && t.getDate() < d)) a--;
+    return a;
+  };
+  const dobDayMonth = (dob) => {
+    if (!dob) return "—";
+    const [, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+    if (!m || !d) return "—";
+    return new Date(2000, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const total        = members.length;
+  const stewards     = members.filter(m => m.category === "Steward").length;
+  const newThisMonth = members.filter(m => ((m.date_joined || (m.created_at || "").slice(0, 10)) >= monthStart)).length;
+  const children     = members.filter(m => { const a = ageOf(m.dob); return a !== null && a < 18; }).length;
+
+  const filtered = members.filter(m => {
+    if (fStatus  && (m.membership_status || "Active") !== fStatus) return false;
+    if (fMarital && m.marital_status !== fMarital) return false;
+    if (fLife    && m.life_stage !== fLife) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!m.full_name?.toLowerCase().includes(q) && !m.phone?.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const addToPool = async (m) => {
+    setAddingId(m.id); setErr("");
+    try {
+      await sb("soul_care_contacts", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: m.full_name, phone: m.phone, email: m.email || null, gender: m.gender || null,
+          house_address: m.house_address || null, nearest_landmark: m.nearest_landmark || null,
+          marital_status: m.marital_status || null, life_stage: m.life_stage || null, dob: m.dob || null,
+          added_by: currentUser || null,
+        }),
+      });
+      setPoolKeys(prev => { const n = new Set(prev); n.add(phoneKey(m.phone)); return n; });
+      setMsg(`${m.full_name} added to the visit pool — find them under Unassigned in Assign Visits.`);
+    } catch (e) { setErr(e.message); }
+    setAddingId(null);
+  };
+
+  const GRID = "minmax(170px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 150px";
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Members Care"
+        subtitle="Full congregation registry for Soul Care follow-up"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {isAdmin && (
+              <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => setShowImport(s => !s)}>
+                <Upload size={14} />{showImport ? "Hide Import" : "Bulk Import"}
+              </button>
+            )}
+            <button style={btn("ghost", { padding: "8px 10px" })} onClick={reload}><RefreshCw size={14} /></button>
+          </div>
+        } />
+
+      {isAdmin && showImport && <MembersCareCSVImport currentUser={currentUser} onDone={reload} />}
+
+      <div style={{ marginBottom: 20 }}><BirthdaysWidget /></div>
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Envoys"           value={total}        icon={Users}    accent={C.soul}     />
+        <StatCard label="Stewards"                value={stewards}     icon={Shield}   accent={C.goldDark} />
+        <StatCard label="New Members This Month"  value={newThisMonth} icon={UserPlus} accent={C.green}    />
+        <StatCard label="Children"                value={children}     icon={Heart}    accent={C.research}
+          sub={children === 0 && total > 0 ? "Counted from recorded DOBs" : ""} />
+      </div>
+
+      {/* Filters */}
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
+      }}>
+        <Filter size={14} color={C.soul} style={{ flexShrink: 0 }} />
+        <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">All statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Travelled">Travelled</option>
+        </select>
+        <select value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">All marital statuses</option>
+          <option value="Single">Single</option>
+          <option value="Married">Married</option>
+          <option value="Divorced">Divorced</option>
+          <option value="Widowed">Widowed</option>
+        </select>
+        <select value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">All life stages</option>
+          <option value="Student">Student</option>
+          <option value="Employee">Employee</option>
+          <option value="Business Owner">Business Owner</option>
+        </select>
+        {(fStatus || fMarital || fLife) && (
+          <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
+            onClick={() => { setFStatus(""); setFMarital(""); setFLife(""); }}>
+            <X size={12} />Clear
+          </button>
+        )}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name…"
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error"   msg={err} onClose={() => setErr("")} />
+      <Alert type="success" msg={msg} onClose={() => setMsg("")} />
+
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Users size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {members.length === 0 ? "No members yet — use Bulk Import to load the congregation." : "No members match your filters."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ ...card, padding: 0, overflow: "hidden", minWidth: 1050 }}>
+            {/* Header */}
+            <div style={{
+              display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
+              padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
+            }}>
+              {["Name", "Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit", "Visit Pool"].map(h => (
+                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+              ))}
+            </div>
+
+            {filtered.map((m, i) => {
+              const k       = phoneKey(m.phone);
+              const inPool  = k && poolKeys.has(k);
+              const lastVis = k ? lastVisitByKey[k] : null;
+              const stm     = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
+              return (
+                <div key={m.id} style={{
+                  display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
+                  padding: "10px 16px",
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <Avatar name={m.full_name} size={30} />
+                    <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.full_name}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
+                  <div style={{ fontSize: 12, color: C.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {m.email || <span style={{ color: C.textMuted }}>—</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
+                  <div>
+                    <span style={badge(
+                      m.category === "Steward" ? C.goldDark : C.soul,
+                      m.category === "Steward" ? C.goldLight : C.soulLight,
+                      { fontSize: 10 }
+                    )}>{m.category || "Member"}</span>
+                  </div>
+                  <div>
+                    <span style={badge(stm.color, stm.bg, { fontSize: 10 })}>
+                      <span style={dot(stm.color)} />{m.membership_status || "Active"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
+                    {lastVis || "Never"}
+                  </div>
+                  <div>
+                    {inPool ? (
+                      <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
+                        <CheckCircle size={10} />In Pool
+                      </span>
+                    ) : (
+                      <button style={btn("soul", { padding: "5px 10px", fontSize: 11 })}
+                        onClick={() => addToPool(m)} disabled={addingId === m.id}>
+                        <UserPlus size={11} />{addingId === m.id ? "Adding…" : "Add to Pool"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
+          Showing <strong>{filtered.length}</strong> of <strong>{members.length}</strong> member{members.length !== 1 ? "s" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SoulCareQueue — role-aware. soulcareadmin/admin see everyone + can expand
 // ─────────────────────────────────────────────────────────────────────────────
 // SoulCareQueue — role-aware. soulcareadmin/admin see everyone + can expand
@@ -6066,6 +6610,8 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
           </div>
         } />
+
+      <div style={{ marginBottom: 16 }}><BirthdaysWidget /></div>
 
       <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
         label="Filter by date added to pool:" />
@@ -8058,19 +8604,157 @@ function GeneralFeedback() {
 // ║  MODULE: ADMIN — USER MANAGEMENT & OVERVIEW                               ║
 // ║  Includes: AdminOverview, AdminUsers, AdminAddUser                        ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.3 — MyProfilePage: self-service display name + password changes.
+// ─────────────────────────────────────────────────────────────────────────────
 
-function AdminOverview({ setActive }) {
-  const [counts, setCounts] = useState({ ft: 0, fb: 0, flagged: 0, users: 0, visits: 0 });
+function MyProfilePage({ currentUser, username, role, onRenamed }) {
+  const ri = ROLE_META[role] || ROLE_META.expteam;
+  const [account, setAccount] = useState(null);
+  const [loadErr, setLoadErr] = useState("");
+
+  const [newName, setNewName]   = useState(currentUser || "");
+  const [namePwd, setNamePwd]   = useState("");
+  const [nameMsg, setNameMsg]   = useState("");
+  const [nameErr, setNameErr]   = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  const [curPwd, setCurPwd]   = useState("");
+  const [newPwd, setNewPwd]   = useState("");
+  const [confPwd, setConfPwd] = useState("");
+  const [pwdMsg, setPwdMsg]   = useState("");
+  const [pwdErr, setPwdErr]   = useState("");
+  const [savingPwd, setSavingPwd] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
-        const [ft, fb, fl, us, vis] = await Promise.all([
+        let rows = [];
+        if (username) {
+          rows = await sb(`app_users?username=eq.${encodeURIComponent(username)}&select=*&limit=1`);
+        }
+        if ((!rows || rows.length === 0) && currentUser) {
+          rows = await sb(`app_users?display_name=eq.${encodeURIComponent(currentUser)}&select=*&limit=2`);
+        }
+        if (rows && rows.length === 1) setAccount(rows[0]);
+        else setLoadErr("Could not uniquely identify your account — please sign out and back in, then retry.");
+      } catch (e) { setLoadErr(e.message); }
+    })();
+  }, [username, currentUser]);
+
+  const verifyCurrent = async (pwd) => {
+    const hashed = await hashPassword(account.username, pwd);
+    return account.password_hash === hashed || account.password_hash === pwd; // second check: legacy plaintext row
+  };
+
+  const saveName = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) { setNameErr("Display name cannot be empty."); return; }
+    if (trimmed === account.display_name) { setNameErr("That's already your display name."); return; }
+    if (!namePwd.trim()) { setNameErr("Enter your current password to confirm."); return; }
+    setSavingName(true); setNameErr(""); setNameMsg("");
+    try {
+      if (!(await verifyCurrent(namePwd.trim()))) {
+        setNameErr("Current password is incorrect."); setSavingName(false); return;
+      }
+      const oldName = account.display_name;
+      await cascadeRename(oldName, trimmed);
+      await sb(`app_users?id=eq.${account.id}`, {
+        method: "PATCH", body: JSON.stringify({ display_name: trimmed }),
+      });
+      setAccount(a => ({ ...a, display_name: trimmed }));
+      setNamePwd("");
+      setNameMsg("Display name updated — your assignments and call history have been carried over.");
+      onRenamed?.(trimmed);
+    } catch (e) { setNameErr(e.message); }
+    setSavingName(false);
+  };
+
+  const savePwd = async () => {
+    if (!curPwd.trim() || !newPwd.trim()) { setPwdErr("Fill in all password fields."); return; }
+    if (newPwd.trim().length < 6) { setPwdErr("New password must be at least 6 characters."); return; }
+    if (newPwd.trim() !== confPwd.trim()) { setPwdErr("New passwords don't match."); return; }
+    setSavingPwd(true); setPwdErr(""); setPwdMsg("");
+    try {
+      if (!(await verifyCurrent(curPwd.trim()))) {
+        setPwdErr("Current password is incorrect."); setSavingPwd(false); return;
+      }
+      await sb(`app_users?id=eq.${account.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ password_hash: await hashPassword(account.username, newPwd.trim()) }),
+      });
+      setCurPwd(""); setNewPwd(""); setConfPwd("");
+      setPwdMsg("Password updated. Use it from your next sign-in.");
+    } catch (e) { setPwdErr(e.message); }
+    setSavingPwd(false);
+  };
+
+  if (loadErr) return <div className="page-enter"><Alert type="error" msg={loadErr} /></div>;
+  if (!account) return <SkeletonList rows={2} />;
+
+  return (
+    <div className="page-enter" style={{ maxWidth: 640 }}>
+      <PageHeader title="My Profile" subtitle="Manage your own account details" />
+
+      {/* Identity card */}
+      <div style={{ ...card, marginBottom: 20, display: "flex", alignItems: "center", gap: 14 }}>
+        <Avatar name={account.display_name || account.username} size={48} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 800, fontSize: 16, fontFamily: F.head }}>{account.display_name}</div>
+          <div style={{ fontSize: 12, color: C.textMuted }}>@{account.username}</div>
+        </div>
+        <span style={badge(ri.color, ri.bg)}>{ri.label}</span>
+      </div>
+
+      {/* Display name */}
+      <div style={{ ...card, marginBottom: 20 }}>
+        <SH title="Change Display Name" icon={Edit3} />
+        <Alert type="error"   msg={nameErr} onClose={() => setNameErr("")} />
+        <Alert type="success" msg={nameMsg} onClose={() => setNameMsg("")} />
+        <FieldInput label="Display Name" id="pf-name" value={newName} onChange={e => setNewName(e.target.value)}
+          hint="Shown across the dashboard. Your assignments and history move with it automatically." />
+        <FieldInput label="Current Password" id="pf-name-pwd" type="password" value={namePwd}
+          onChange={e => setNamePwd(e.target.value)} placeholder="Confirm it's you" />
+        <button style={btn("primary")} onClick={saveName} disabled={savingName}>
+          {savingName ? "Saving…" : "Update Display Name"}
+        </button>
+      </div>
+
+      {/* Password */}
+      <div style={card}>
+        <SH title="Change Password" icon={Shield} />
+        <Alert type="error"   msg={pwdErr} onClose={() => setPwdErr("")} />
+        <Alert type="success" msg={pwdMsg} onClose={() => setPwdMsg("")} />
+        <FieldInput label="Current Password" id="pf-cur" type="password" value={curPwd} onChange={e => setCurPwd(e.target.value)} />
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="New Password" id="pf-new" type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} hint="At least 6 characters" />
+          <FieldInput label="Confirm New Password" id="pf-conf" type="password" value={confPwd} onChange={e => setConfPwd(e.target.value)} />
+        </div>
+        <button style={btn("primary")} onClick={savePwd} disabled={savingPwd}>
+          {savingPwd ? "Saving…" : "Update Password"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AdminOverview({ setActive }) {
+  const [counts, setCounts] = useState({ ft: 0, fb: 0, flagged: 0, users: 0, visits: 0, pending: 0 });
+  useEffect(() => {
+    (async () => {
+      try {
+        const [ft, fb, fl, us, vis, pend] = await Promise.all([
           sb("first_timers?select=id"),
           sb("call_feedback?select=id"),
           sb("call_feedback?flagged_for_pastoral=eq.true&select=id"),
           sb("app_users?select=id"),
           sb("soul_care_visits?select=id").catch(() => []),
+          sb("app_users?is_pending=eq.true&select=id").catch(() => []),
         ]);
+        setCounts({
+          ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length,
+          users: (us||[]).length, visits: (vis||[]).length, pending: (pend||[]).length,
+        });
         setCounts({
           ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length,
           users: (us||[]).length, visits: (vis||[]).length,
@@ -8082,6 +8766,21 @@ function AdminOverview({ setActive }) {
   return (
     <div className="page-enter">
       <PageHeader title="Admin Overview" subtitle="System-wide summary" />
+      {counts.pending > 0 && (
+        <div style={{
+          ...card, marginBottom: 20, padding: "12px 16px",
+          background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}`,
+          display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+        }}>
+          <UserPlus size={16} color={C.goldDark} />
+          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.goldDark }}>
+            {counts.pending} account request{counts.pending !== 1 ? "s" : ""} awaiting your approval
+          </span>
+          <button style={btn("gold", { padding: "6px 14px", fontSize: 12 })} onClick={() => setActive("admin_users")}>
+            Review Requests
+          </button>
+        </div>
+      )}
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
         <StatCard label="First-Timers"  value={counts.ft}      icon={Users}   accent={C.green}   />
         <StatCard label="Calls Logged"  value={counts.fb}      icon={Phone}   accent={C.greenMid}/>
@@ -8161,21 +8860,45 @@ function AdminUsers({ onEdit }) {
     } catch (e) { setErr(e.message); }
   };
 
+  const approve = async (u) => {
+    try {
+      await sb(`app_users?id=eq.${u.id}`, {
+        method: "PATCH", body: JSON.stringify({ is_active: true, is_pending: false }),
+      });
+      setMsg(`${u.display_name || u.username} approved — they can now sign in.`);
+      load();
+    } catch (e) { setErr(e.message); }
+  };
+
+  const reject = async (u) => {
+    if (!window.confirm(`Reject and delete the account request from "${u.display_name || u.username}"?`)) return;
+    try {
+      await sb(`app_users?id=eq.${u.id}`, { method: "DELETE", prefer: "return=minimal" });
+      setMsg("Request rejected.");
+      load();
+    } catch (e) { setErr(e.message); }
+  };
+
+  const pendingCount = users.filter(u => u.is_pending).length;
+  const sorted = [...users].sort((a, b) => (b.is_pending ? 1 : 0) - (a.is_pending ? 1 : 0));
+
   return (
     <div className="page-enter">
-      <PageHeader title="System Users" subtitle={`${users.length} accounts`}
+      <PageHeader title="System Users"
+        subtitle={`${users.length} accounts${pendingCount ? ` · ${pendingCount} pending approval` : ""}`}
         action={<button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>} />
       <Alert type="error"   msg={err} onClose={() => setErr("")} />
       <Alert type="success" msg={msg} onClose={() => setMsg("")} />
-      {loading ? <SkeletonList rows={6} /> : (
+      {loading ? <SkeletonList rows={5} /> : (
         <div style={{ display: "grid", gap: 8 }}>
-          {users.map(u => {
+          {sorted.map(u => {
             const rm = ROLE_META[u.role] || ROLE_META.dofficer;
             return (
               <div key={u.id} style={{
                 ...card, display: "flex", justifyContent: "space-between",
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
-                opacity: u.is_active ? 1 : .55,
+                opacity: u.is_active || u.is_pending ? 1 : .55,
+                borderLeft: u.is_pending ? `3px solid ${C.gold}` : `1px solid ${C.border}`,
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <Avatar name={u.display_name || u.username} size={40} />
@@ -8186,15 +8909,32 @@ function AdminUsers({ onEdit }) {
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <span style={badge(rm.color, rm.bg)}>{rm.label}</span>
-                  {!u.is_active && <span style={badge(C.danger, C.dangerLight)}>Inactive</span>}
-                  <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(u)}>
-                    <Edit3 size={12} />Edit
-                  </button>
-                  <button
-                    style={btn(u.is_active ? "danger" : "ghost", { padding: "6px 12px", fontSize: 12 })}
-                    onClick={() => toggleActive(u)}>
-                    {u.is_active ? "Deactivate" : "Reactivate"}
-                  </button>
+                  {u.is_pending ? (
+                    <>
+                      <span style={badge(C.goldDark, C.goldLight)}><Clock size={11} />Pending Approval</span>
+                      <button style={btn("primary", { padding: "6px 12px", fontSize: 12 })} onClick={() => approve(u)}>
+                        <CheckCircle size={12} />Approve
+                      </button>
+                      <button style={btn("danger", { padding: "6px 12px", fontSize: 12 })} onClick={() => reject(u)}>
+                        <X size={12} />Reject
+                      </button>
+                      <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(u)}>
+                        <Edit3 size={12} />Edit Role
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {!u.is_active && <span style={badge(C.danger, C.dangerLight)}>Inactive</span>}
+                      <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(u)}>
+                        <Edit3 size={12} />Edit
+                      </button>
+                      <button
+                        style={btn(u.is_active ? "danger" : "ghost", { padding: "6px 12px", fontSize: 12 })}
+                        onClick={() => toggleActive(u)}>
+                        {u.is_active ? "Deactivate" : "Reactivate"}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -8318,11 +9058,33 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
 // ║  MODULE: AUTHENTICATION — LOGIN                                                          ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
+const SIGNUP_ROLES = [
+  { value: "expteam",       label: "Experience Team" },
+  { value: "soulcare",      label: "Soul Care"       },
+  { value: "dofficer",      label: "Data Officer"    },
+  { value: "pasteam",       label: "Pastoral Team"   },
+  { value: "research",      label: "Research Team"   },
+  { value: "testimonyteam", label: "Testimony Team"  },
+];
+
 function Login({ onLogin }) {
+  const [mode, setMode] = useState("signin"); // "signin" | "request"
+
+  // sign-in state
   const [u, setU] = useState("");
   const [p, setP] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // request-access state
+  const [rUser, setRUser]   = useState("");
+  const [rName, setRName]   = useState("");
+  const [rRole, setRRole]   = useState("");
+  const [rPwd, setRPwd]     = useState("");
+  const [rConf, setRConf]   = useState("");
+  const [rErr, setRErr]     = useState("");
+  const [rBusy, setRBusy]   = useState(false);
+  const [rDone, setRDone]   = useState(false);
 
   const submit = async () => {
     if (!u.trim() || !p.trim()) { setErr("Enter your username and password."); return; }
@@ -8336,34 +9098,60 @@ function Login({ onLogin }) {
       }
       const account = rows[0];
       const hashed = await hashPassword(uname, p.trim());
-
       if (account.password_hash === hashed) {
-        onLogin(account.role, account.display_name || account.username);
+        onLogin(account.role, account.display_name || account.username, account.username);
       } else if (account.password_hash === p.trim()) {
         await sb(`app_users?id=eq.${account.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ password_hash: hashed }),
+          method: "PATCH", body: JSON.stringify({ password_hash: hashed }),
         }).catch(() => {});
-        onLogin(account.role, account.display_name || account.username);
+        onLogin(account.role, account.display_name || account.username, account.username);
       } else {
         setErr("Incorrect password.");
       }
-    } catch (e) {
-      setErr(`Login failed: ${e.message}`);
-    }
+    } catch (e) { setErr(`Login failed: ${e.message}`); }
     setLoading(false);
   };
+
+  const requestAccess = async () => {
+    const uname = rUser.trim().toLowerCase();
+    if (!/^[a-z0-9_.-]{3,24}$/.test(uname)) { setRErr("Username: 3–24 characters, lowercase letters, numbers, . _ - only."); return; }
+    if (!rRole) { setRErr("Select the team you serve on."); return; }
+    if (rPwd.trim().length < 6) { setRErr("Password must be at least 6 characters."); return; }
+    if (rPwd.trim() !== rConf.trim()) { setRErr("Passwords don't match."); return; }
+    setRBusy(true); setRErr("");
+    try {
+      const existing = await sb(`app_users?username=eq.${encodeURIComponent(uname)}&select=id&limit=1`);
+      if (existing && existing.length > 0) {
+        setRErr("That username is already taken — choose another.");
+        setRBusy(false); return;
+      }
+      await sb("app_users", {
+        method: "POST",
+        body: JSON.stringify({
+          username:      uname,
+          display_name:  rName.trim() || uname,
+          role:          rRole,
+          password_hash: await hashPassword(uname, rPwd.trim()),
+          is_active:     false,
+          is_pending:    true,
+        }),
+      });
+      setRDone(true);
+    } catch (e) { setRErr(e.message); }
+    setRBusy(false);
+  };
+
+  const switchMode = (m) => { setMode(m); setErr(""); setRErr(""); };
 
   return (
     <div className="login-wrap" style={{ background: C.bg, fontFamily: F.body }}>
 
-      {/* ── Brand panel ── */}
+      {/* ── Brand panel (unchanged from v6.2) ── */}
       <div className="login-brand" style={{
         background: "linear-gradient(160deg, #1B3A2D 0%, #143526 55%, #0F5228 100%)",
         position: "relative", overflow: "hidden",
         flexDirection: "column", justifyContent: "center", padding: "3.5rem 3rem",
       }}>
-        {/* decorative glows */}
         <div style={{
           position: "absolute", top: -120, right: -120, width: 320, height: 320, borderRadius: "50%",
           background: "radial-gradient(circle, rgba(212,146,42,.18), transparent 70%)",
@@ -8372,7 +9160,6 @@ function Login({ onLogin }) {
           position: "absolute", bottom: -140, left: -100, width: 380, height: 380, borderRadius: "50%",
           background: "radial-gradient(circle, rgba(255,255,255,.05), transparent 70%)",
         }} />
-
         <div style={{ position: "relative" }}>
           <Logo size={72} />
           <h1 style={{
@@ -8382,21 +9169,19 @@ function Login({ onLogin }) {
             THE <span style={{ color: C.goldMid }}>ENVOYS</span>
           </h1>
           <p style={{ color: "rgba(255,255,255,.7)", fontSize: 14, margin: 0, letterSpacing: ".04em" }}>
-            Membership Retention System
+            Membership Retention Dashboard
           </p>
-
           <div className="login-verse" style={{ marginTop: 44, paddingLeft: 14, borderLeft: `3px solid ${C.gold}` }}>
             <p style={{
               color: "rgba(255,255,255,.85)", fontSize: 15, fontStyle: "italic",
               lineHeight: 1.7, margin: 0, maxWidth: 380,
             }}>
-              "...maintaining an accurate church membership database."
+              "Rejoice with me; for I have found my sheep which was lost."
             </p>
             <p style={{ color: C.goldMid, fontSize: 12, marginTop: 8, letterSpacing: ".1em", fontWeight: 700 }}>
-              RETENTION
+              LUKE 15:6
             </p>
           </div>
-
           <div className="login-verse" style={{ marginTop: 48, color: "rgba(255,255,255,.35)", fontSize: 11, letterSpacing: ".1em" }}>
             ENVOYSBYTE
           </div>
@@ -8406,26 +9191,93 @@ function Login({ onLogin }) {
       {/* ── Form panel ── */}
       <div className="login-panel">
         <div style={{ width: "100%", maxWidth: 380 }}>
-          <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 24 }}>
-            Welcome back
-          </h2>
-          <p style={{ margin: "6px 0 26px", fontSize: 13, color: C.textMuted }}>
-            Sign in to continue to your dashboard
-          </p>
 
-          {CREDS_MISSING && <CredsBanner />}
-          <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-          <div onKeyDown={e => e.key === "Enter" && !loading && submit()}>
-            <FieldInput label="Username" id="lu" value={u}
-              onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
-            <FieldInput label="Password" id="lp" type="password" value={p}
-              onChange={e => setP(e.target.value)} placeholder="••••••••" />
-            <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15, marginTop: 4 }}
-              onClick={submit} disabled={loading}>
-              {loading ? "Signing in…" : "Sign In"}
-            </button>
-          </div>
+          {mode === "signin" ? (
+            <>
+              <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 24 }}>
+                Welcome back
+              </h2>
+              <p style={{ margin: "6px 0 26px", fontSize: 13, color: C.textMuted }}>
+                Sign in to continue to your dashboard
+              </p>
+              {CREDS_MISSING && <CredsBanner />}
+              <Alert type="error" msg={err} onClose={() => setErr("")} />
+              <div onKeyDown={e => e.key === "Enter" && !loading && submit()}>
+                <FieldInput label="Username" id="lu" value={u}
+                  onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
+                <FieldInput label="Password" id="lp" type="password" value={p}
+                  onChange={e => setP(e.target.value)} placeholder="••••••••" />
+                <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15, marginTop: 4 }}
+                  onClick={submit} disabled={loading}>
+                  {loading ? "Signing in…" : "Sign In"}
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: C.textMuted, marginTop: 20, textAlign: "center" }}>
+                New team member?{" "}
+                <button onClick={() => switchMode("request")} style={{
+                  background: "none", border: "none", color: C.green, fontWeight: 700,
+                  cursor: "pointer", fontSize: 13, padding: 0, fontFamily: F.body,
+                }}>Request access</button>
+              </p>
+            </>
+          ) : rDone ? (
+            <div style={{ textAlign: "center" }} className="page-enter">
+              <div style={{
+                width: 64, height: 64, borderRadius: "50%", background: C.greenLight,
+                display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
+              }}>
+                <CheckCircle size={32} color={C.green} />
+              </div>
+              <h2 style={{ margin: "0 0 8px", color: C.green, fontFamily: F.head, fontWeight: 800, fontSize: 22 }}>
+                Request submitted!
+              </h2>
+              <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.7 }}>
+                An admin will review and approve your account. Once approved, sign in with the
+                username and password you chose.
+              </p>
+              <button style={{ ...btn("outline"), marginTop: 16 }} onClick={() => switchMode("signin")}>
+                <ArrowLeft size={14} />Back to Sign In
+              </button>
+            </div>
+          ) : (
+            <>
+              <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 24 }}>
+                Request access
+              </h2>
+              <p style={{ margin: "6px 0 22px", fontSize: 13, color: C.textMuted }}>
+                Create your account — an admin will approve it before you can sign in.
+              </p>
+              <Alert type="error" msg={rErr} onClose={() => setRErr("")} />
+              <div onKeyDown={e => e.key === "Enter" && !rBusy && requestAccess()}>
+                <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                  <FieldInput label="Username" id="ru" required value={rUser}
+                    onChange={e => setRUser(e.target.value)} placeholder="e.g. tunde.a"
+                    hint="Lowercase, no spaces" />
+                  <FieldInput label="Full Name" id="rn" value={rName}
+                    onChange={e => setRName(e.target.value)} placeholder="e.g. Tunde Adeyemi" />
+                </div>
+                <FieldInput label="Which team do you serve on?" id="rr" type="select" required
+                  value={rRole} onChange={e => setRRole(e.target.value)} options={SIGNUP_ROLES} />
+                <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+                  <FieldInput label="Password" id="rp" type="password" required value={rPwd}
+                    onChange={e => setRPwd(e.target.value)} hint="At least 6 characters" />
+                  <FieldInput label="Confirm Password" id="rc" type="password" required value={rConf}
+                    onChange={e => setRConf(e.target.value)} />
+                </div>
+                <button style={{ ...btn("gold"), width: "100%", padding: 13, fontSize: 15, marginTop: 4 }}
+                  onClick={requestAccess} disabled={rBusy}>
+                  {rBusy ? "Submitting…" : "Submit Request"}
+                </button>
+              </div>
+              <p style={{ fontSize: 13, color: C.textMuted, marginTop: 20, textAlign: "center" }}>
+                Already have an account?{" "}
+                <button onClick={() => switchMode("signin")} style={{
+                  background: "none", border: "none", color: C.green, fontWeight: 700,
+                  cursor: "pointer", fontSize: 13, padding: 0, fontFamily: F.body,
+                }}>Sign in</button>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -8478,11 +9330,11 @@ export default function App() {
     })();
   }, [session]);
 
-  const login = (role, user) => {
-    const s = { role, user };
+  const login = (role, user, username) => {
+    const s = { role, user, username };
     setSession(s);
     setActive(NAV[role][0].id);
-    saveSession(role, user);
+    saveSession(role, user, username);
   };
 
   const logout = () => {
@@ -8505,7 +9357,7 @@ export default function App() {
   if (showTestimony) return <PublicTestimonyForm />;
   if (!session)      return <Login onLogin={login} />;
 
-  const { role, user } = session;
+  const { role, user, username } = session;
   const pageTitle = NAV[role]?.find(n => n.id === active)?.label || "Dashboard";
 
   const renderContent = () => {
@@ -8537,6 +9389,21 @@ export default function App() {
         );
       }
       return <AdminUsers onEdit={u => setEditUser(u)} />;
+    }
+
+    if (active === "myprofile") {
+      return (
+        <MyProfilePage
+          currentUser={user}
+          username={username}
+          role={role}
+          onRenamed={(newName) => {
+            const next = { ...session, user: newName };
+            setSession(next);
+            saveSession(next.role, next.user, next.username);
+          }}
+        />
+      );
     }
 
     if (active === "addmember") return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
@@ -8680,6 +9547,7 @@ export default function App() {
       );
     }
 
+    if (active === "members_care") return <MembersCare currentUser={user} role={role} />;
     if (active === "sc_flagged") return <SoulCareFlagged />;
     if (active === "sc_testimonies") return <Testimonies />;
     if (active === "testimony_bank") return <TestimonyBank />;
