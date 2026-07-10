@@ -36,6 +36,11 @@ import {
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #c5d8cb; border-radius: 4px; }
+    /* v6.5 — Members Care table scroller: visible on both axes */
+    .mc-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+    .mc-scroll::-webkit-scrollbar-thumb { background: #a9c4b3; border-radius: 6px; }
+    .mc-scroll::-webkit-scrollbar-thumb:hover { background: #8fb09c; }
+    .mc-scroll { scrollbar-width: thin; scrollbar-color: #a9c4b3 transparent; }
     input, select, textarea, button { font-family: 'Satoshi', sans-serif; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
@@ -1347,14 +1352,21 @@ function nextBirthdayInfo(dob) {
 // WhatsApp allows pre-filling only — the sender taps Send (platform rule).
 // ─────────────────────────────────────────────────────────────────────────────
 
+// v6.5 — emojis as \u{...} escapes: plain-ASCII source, immune to encoding issues.
+const EM = {
+  party: "\u{1F389}",  // 🎉 party popper
+  cake:  "\u{1F382}",  // 🎂 birthday cake
+  heart: "\u{1F49A}",  // 💚 green heart
+};
+
 const BIRTHDAY_MESSAGE = (firstName) =>
-`Happy Birthday${firstName ? `, ${firstName}` : ""}! 🎉🎂
+`Happy Birthday${firstName ? `, ${firstName}` : ""}! ${EM.party}${EM.cake}
 
 "This is the day the LORD has made; we will rejoice and be glad in it." — Psalm 118:24
 
 May the Lord bless you and keep you; may He make His face shine upon you and be gracious to you; may He lift up His countenance upon you and give you peace (Numbers 6:24–26). May this new year of your life overflow with God's goodness, favour and joy.
 
-We thank God for the gift that you are... with love from all of us at RCCG The Envoys. 💚`;
+We thank God for the gift that you are... with love from all of us at RCCG The Envoys. ${EM.heart}`;
 
 function birthdayWhatsAppLink(name, phone) {
   const tel = normalizePhone(phone);
@@ -6398,7 +6410,21 @@ function MembersCare({ currentUser, role }) {
     setAddingId(null);
   };
 
-  const GRID = "minmax(170px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 150px";
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 150px";
+  const headCell = {
+    fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
+    letterSpacing: ".07em", fontFamily: F.head,
+  };
+  const stickyLeft = (bg, z = 2) => ({
+    position: "sticky", left: 0, zIndex: z, background: bg,
+    boxShadow: "2px 0 5px rgba(0,0,0,.06)", paddingLeft: 16,
+    alignSelf: "stretch", display: "flex", alignItems: "center",
+  });
+  const stickyRight = (bg, z = 2) => ({
+    position: "sticky", right: 0, zIndex: z, background: bg,
+    boxShadow: "-2px 0 5px rgba(0,0,0,.06)", paddingRight: 16, paddingLeft: 6,
+    alignSelf: "stretch", display: "flex", alignItems: "center",
+  });
 
   return (
     <div className="page-enter">
@@ -6437,20 +6463,20 @@ function MembersCare({ currentUser, role }) {
       }}>
         <Filter size={14} color={C.soul} style={{ flexShrink: 0 }} />
         <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">All statuses</option>
+          <option value="">Membership Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
           <option value="Travelled">Travelled</option>
         </select>
         <select value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">All marital statuses</option>
+          <option value="">Marital Status</option>
           <option value="Single">Single</option>
           <option value="Married">Married</option>
           <option value="Divorced">Divorced</option>
           <option value="Widowed">Widowed</option>
         </select>
         <select value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">All life stages</option>
+          <option value="">Life Stage</option>
           <option value="Student">Student</option>
           <option value="Employee">Employee</option>
           <option value="Business Owner">Business Owner</option>
@@ -6479,18 +6505,23 @@ function MembersCare({ currentUser, role }) {
           </div>
         </div>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ ...card, padding: 0, overflow: "hidden", minWidth: 1050 }}>
-            {/* Header */}
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600 }}>
+
+            {/* Sticky header */}
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-              padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
+              padding: "10px 0", background: C.bg, borderBottom: `1px solid ${C.border}`,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1050,
             }}>
-              {["Name", "Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit", "Visit Pool"].map(h => (
-                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+              <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
+              {["Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit"].map(h => (
+                <div key={h} style={headCell}>{h}</div>
               ))}
+              <div style={{ ...headCell, ...stickyRight(C.bg, 4) }}>Visit Pool</div>
             </div>
 
+            {/* Rows */}
             {filtered.map((m, i) => {
               const k       = phoneKey(m.phone);
               const inPool  = k && poolKeys.has(k);
@@ -6499,13 +6530,15 @@ function MembersCare({ currentUser, role }) {
               return (
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 16px",
+                  padding: "10px 0", background: C.surface, minWidth: 1050,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <Avatar name={m.full_name} size={30} />
-                    <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.full_name}
+                  <div style={stickyLeft(C.surface)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <Avatar name={m.full_name} size={30} />
+                      <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.full_name}
+                      </div>
                     </div>
                   </div>
                   <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
@@ -6529,7 +6562,7 @@ function MembersCare({ currentUser, role }) {
                   <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
                     {lastVis || "Never"}
                   </div>
-                  <div>
+                  <div style={stickyRight(C.surface)}>
                     {inPool ? (
                       <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
                         <CheckCircle size={10} />In Pool
@@ -6549,8 +6582,13 @@ function MembersCare({ currentUser, role }) {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
-          Showing <strong>{filtered.length}</strong> of <strong>{members.length}</strong> member{members.length !== 1 ? "s" : ""}
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <span>
+            Showing <strong>{filtered.length}</strong> of <strong>{members.length}</strong> member{members.length !== 1 ? "s" : ""}
+          </span>
+          {filtered.length > 10 && (
+            <span>Scroll the table for more · Name and Visit Pool stay pinned</span>
+          )}
         </div>
       )}
     </div>
