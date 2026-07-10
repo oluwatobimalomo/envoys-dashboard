@@ -1,7 +1,7 @@
 {
-  "name": "The Envoys — Retention Dashboard",
-  "short_name": "Envoys",
-  "description": "Membership retention dashboard for The Envoys",
+  "name": "The Envoys Retention App",
+  "short_name": "Envoys Retention",
+  "description": "Membership Retention for The Envoys",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F4F7F5",

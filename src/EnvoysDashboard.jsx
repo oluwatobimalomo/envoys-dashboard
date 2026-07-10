@@ -102,6 +102,17 @@ import {
       .sidebar    { transform: translateX(0) !important; }
       .mob-header { display: none !important; }
     }
+
+    /* ── v6.2: login layout ── */
+    .login-wrap  { display: flex; min-height: 100vh; }
+    .login-brand { flex: 1.15; display: flex; }
+    .login-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+    @media (max-width: 880px) {
+      .login-wrap  { flex-direction: column; }
+      .login-brand { flex: none; padding: 1.75rem 1.5rem !important; }
+      .login-verse { display: none; }
+      .login-panel { align-items: flex-start; padding: 2rem 1.25rem 3rem; }
+    }
   `;
   document.head.appendChild(s);
 })();
@@ -1053,7 +1064,7 @@ function InstallBanner() {
     }} className="page-enter">
       <Download size={18} color={C.goldMid} style={{ flexShrink: 0 }} />
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>Install Envoys</div>
+        <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>Install Envoys Retention</div>
         <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", marginTop: 2 }}>
           Add to your home screen for one-tap access.
         </div>
@@ -1618,6 +1629,30 @@ const AREAS = [
   { value: "indecisive",     label: "Indecisive" },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.2 — duplicate detection helpers
+// phoneKey(): reduces any NG phone format to a comparable 10-digit key.
+//   "0803 123 4567" / "+2348031234567" / "2348031234567" -> "8031234567"
+// findFirstTimerDupes(): all first_timers sharing that key (client-side
+// compare — PostgREST can't normalize formats server-side).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function phoneKey(raw) {
+  let d = String(raw || "").replace(/\D/g, "");
+  if (d.startsWith("234")) d = d.slice(3);
+  else if (d.startsWith("0") && d.length === 11) d = d.slice(1);
+  return d.length >= 7 ? d.slice(-10) : "";
+}
+
+async function findFirstTimerDupes(phone, excludeId) {
+  const key = phoneKey(phone);
+  if (!key) return [];
+  const rows = await sb(
+    "first_timers?select=id,full_name,phone,service_date,membership_decision&limit=3000"
+  ).catch(() => []);
+  return (rows || []).filter(r => r.id !== excludeId && phoneKey(r.phone) === key);
+}
+
 const BLANK_FT = {
   full_name: "", phone: "", gender: "", email: "", dob: "",
   marital_status: "", house_address: "", nearest_landmark: "",
@@ -1626,7 +1661,7 @@ const BLANK_FT = {
   service_date: new Date().toISOString().slice(0, 10),
 };
 
-function FirstTimerForm({ onSuccess, editData, onCancel }) {
+function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
   const [form, setForm] = useState(() =>
     editData
       ? { ...editData, areas_of_interest: parseAreas(editData.areas_of_interest) }
@@ -1646,11 +1681,34 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
     return settersRef.current[key];
   }, []);
 
+  // ── v6.2: live duplicate check on the phone field (600ms debounce) ──
+  const [dupes, setDupes]           = useState([]);
+  const [checkingDupes, setChecking] = useState(false);
+  const [saveAnyway, setSaveAnyway] = useState(false);
+
+  useEffect(() => {
+    setSaveAnyway(false);
+    if (!phoneKey(form.phone)) { setDupes([]); return; }
+    let cancelled = false;
+    setChecking(true);
+    const t = setTimeout(async () => {
+      const found = await findFirstTimerDupes(form.phone, editData?.id || null);
+      if (!cancelled) { setDupes(found); setChecking(false); }
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone, editData?.id]);
+
   const submit = async () => {
     if (!form.full_name.trim() || !form.phone.trim() || !form.gender) {
       setErr("Full name, phone and gender are required.");
       return;
     }
+    if (!editData && !publicMode && dupes.length > 0 && !saveAnyway) {
+      setSaveAnyway(true);
+      setErr("This phone number may already be registered (see the warning below). If this is genuinely a different person, press the button again to save anyway.");
+      return;
+    }
+
     setLoading(true);
     setErr("");
     try {
@@ -1703,6 +1761,52 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
           <FieldInput label="Full Name" id="fn" required value={form.full_name} onChange={set("full_name")} placeholder="e.g. Adaeze Okafor" />
           <FieldInput label="Phone Number" id="ph" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
         </div>
+
+        {checkingDupes && (
+          <div style={{ fontSize: 11, color: C.textMuted, marginTop: -8, marginBottom: 12 }}>
+            Checking for existing records…
+          </div>
+        )}
+        {!checkingDupes && dupes.length > 0 && (
+          publicMode ? (
+            <div style={{
+              background: C.goldLight, border: `1px solid ${C.gold}30`, borderRadius: 8,
+              padding: "10px 14px", fontSize: 13, color: C.goldDark, marginTop: -6, marginBottom: 14,
+              display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.6,
+            }}>
+              <Info size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>It looks like this phone number may already be registered with us — no problem! You can still submit, and our team will make sure your details are up to date.</span>
+            </div>
+          ) : (
+            <div style={{
+              background: C.amberLight, border: `1px solid ${C.amber}35`,
+              borderLeft: `3px solid ${C.amber}`, borderRadius: 8,
+              padding: "10px 14px", marginTop: -6, marginBottom: 14,
+            }}>
+              <div style={{
+                fontSize: 12, fontWeight: 700, color: C.amber, fontFamily: F.head,
+                textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6,
+                display: "flex", alignItems: "center", gap: 5,
+              }}>
+                <AlertCircle size={12} />Possible duplicate — this number is already on record
+              </div>
+              <div style={{ display: "grid", gap: 4 }}>
+                {dupes.slice(0, 3).map(d => (
+                  <div key={d.id} style={{ fontSize: 12, color: C.textSecondary }}>
+                    <strong>{d.full_name}</strong> · {d.phone} · registered {d.service_date || "—"}
+                    {d.membership_decision ? ` · ${d.membership_decision}` : ""}
+                  </div>
+                ))}
+                {dupes.length > 3 && (
+                  <div style={{ fontSize: 11, color: C.textMuted }}>…and {dupes.length - 3} more</div>
+                )}
+              </div>
+              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 6 }}>
+                If this is the same person, edit their existing record from the First-Timers list instead of creating a new one.
+              </div>
+            </div>
+          )
+        )}
         <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
           <FieldInput label="Gender" id="gd" type="select" required value={form.gender} onChange={set("gender")}
             options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
@@ -1740,10 +1844,17 @@ function FirstTimerForm({ onSuccess, editData, onCancel }) {
       </div>
 
       <button
-        style={{ ...btn("primary"), width: "100%", padding: "12px", fontSize: 15 }}
+        style={{
+          ...btn(saveAnyway && dupes.length > 0 ? "amber" : "primary"),
+          width: "100%", padding: "12px", fontSize: 15,
+        }}
         onClick={submit}
         disabled={loading}>
-        {loading ? "Saving…" : editData ? "Update Record" : "Submit"}
+        {loading
+          ? "Saving…"
+          : saveAnyway && dupes.length > 0
+            ? "Save Anyway (Possible Duplicate)"
+            : editData ? "Update Record" : "Submit"}
       </button>
     </div>
   );
@@ -1784,7 +1895,7 @@ function PublicForm() {
             Fill in your details so we can stay connected with you
           </p>
         </div>
-        <FirstTimerForm onSuccess={() => setDone(true)} />
+        <FirstTimerForm onSuccess={() => setDone(true)} publicMode />
       </div>
     </div>
   );
@@ -8229,8 +8340,6 @@ function Login({ onLogin }) {
       if (account.password_hash === hashed) {
         onLogin(account.role, account.display_name || account.username);
       } else if (account.password_hash === p.trim()) {
-        // Legacy plaintext row missed by the SQL migration — accept once,
-        // silently upgrade it to the hashed form, then log in.
         await sb(`app_users?id=eq.${account.id}`, {
           method: "PATCH",
           body: JSON.stringify({ password_hash: hashed }),
@@ -8246,36 +8355,82 @@ function Login({ onLogin }) {
   };
 
   return (
-    <div style={{
-      minHeight: "100vh", background: C.bg, fontFamily: F.body,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem",
-    }}>
-      <div style={{ ...card, width: "100%", maxWidth: 380 }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={68} /></div>
-          <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 22 }}>
-            The Envoys
-          </h2>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: C.textMuted }}>Membership Retention Dashboard</p>
-        </div>
-        {CREDS_MISSING && <CredsBanner />}
-        <Alert type="error" msg={err} onClose={() => setErr("")} />
-        <div onKeyDown={e => e.key === "Enter" && !loading && submit()} >
-          <FieldInput label="Username" id="lu" value={u}
-          onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
-        <FieldInput label="Password" id="lp" type="password" value={p}
-          onChange={e => setP(e.target.value)} placeholder="••••••••" />
-        <div style={{ marginBottom: 16 }} onKeyDown={e => e.key === "Enter" && submit()} />
-        <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
-        onClick={submit} disabled={loading}> {loading ? "Signing in…" : "Sign In"}
-        </button>
+    <div className="login-wrap" style={{ background: C.bg, fontFamily: F.body }}>
 
+      {/* ── Brand panel ── */}
+      <div className="login-brand" style={{
+        background: "linear-gradient(160deg, #1B3A2D 0%, #143526 55%, #0F5228 100%)",
+        position: "relative", overflow: "hidden",
+        flexDirection: "column", justifyContent: "center", padding: "3.5rem 3rem",
+      }}>
+        {/* decorative glows */}
+        <div style={{
+          position: "absolute", top: -120, right: -120, width: 320, height: 320, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(212,146,42,.18), transparent 70%)",
+        }} />
+        <div style={{
+          position: "absolute", bottom: -140, left: -100, width: 380, height: 380, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(255,255,255,.05), transparent 70%)",
+        }} />
+
+        <div style={{ position: "relative" }}>
+          <Logo size={72} />
+          <h1 style={{
+            color: "#fff", fontFamily: F.head, fontWeight: 900, fontSize: 34,
+            margin: "20px 0 6px", letterSpacing: "-.02em", lineHeight: 1.1,
+          }}>
+            THE <span style={{ color: C.goldMid }}>ENVOYS</span>
+          </h1>
+          <p style={{ color: "rgba(255,255,255,.7)", fontSize: 14, margin: 0, letterSpacing: ".04em" }}>
+            Membership Retention System
+          </p>
+
+          <div className="login-verse" style={{ marginTop: 44, paddingLeft: 14, borderLeft: `3px solid ${C.gold}` }}>
+            <p style={{
+              color: "rgba(255,255,255,.85)", fontSize: 15, fontStyle: "italic",
+              lineHeight: 1.7, margin: 0, maxWidth: 380,
+            }}>
+              "...maintaining an accurate church membership database."
+            </p>
+            <p style={{ color: C.goldMid, fontSize: 12, marginTop: 8, letterSpacing: ".1em", fontWeight: 700 }}>
+              RETENTION
+            </p>
+          </div>
+
+          <div className="login-verse" style={{ marginTop: 48, color: "rgba(255,255,255,.35)", fontSize: 11, letterSpacing: ".1em" }}>
+            ENVOYSBYTE
+          </div>
+        </div>
+      </div>
+
+      {/* ── Form panel ── */}
+      <div className="login-panel">
+        <div style={{ width: "100%", maxWidth: 380 }}>
+          <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 24 }}>
+            Welcome back
+          </h2>
+          <p style={{ margin: "6px 0 26px", fontSize: 13, color: C.textMuted }}>
+            Sign in to continue to your dashboard
+          </p>
+
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+          <div onKeyDown={e => e.key === "Enter" && !loading && submit()}>
+            <FieldInput label="Username" id="lu" value={u}
+              onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
+            <FieldInput label="Password" id="lp" type="password" value={p}
+              onChange={e => setP(e.target.value)} placeholder="••••••••" />
+            <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15, marginTop: 4 }}
+              onClick={submit} disabled={loading}>
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 }
-
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: AUTHENTICATION — LOGIN                                        ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
