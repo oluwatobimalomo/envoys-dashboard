@@ -89,7 +89,13 @@ import {
       .g4           { grid-template-columns: 1fr 1fr !important; }
       .greport      { grid-template-columns: 1fr !important; }
       .et-head      { flex-direction: column !important; align-items: stretch !important; }
-      .et-actions   { width: 100% !important; }
+      .et-actions   { width: 100% !important; justify-content: flex-start !important; margin-top: 2px; }
+      /* v6.1 — compact StatCards on mobile */
+      .statcard       { padding: .75rem .85rem !important; gap: 10px !important; }
+      .statcard-icon  { width: 34px !important; height: 34px !important; border-radius: 8px !important; }
+      .statcard-value { font-size: 19px !important; }
+      /* v6.1 — smaller pipeline chips on mobile */
+      .pbar > *       { padding: 3px 8px !important; font-size: 10px !important; }
     }
 
     @media (min-width: 769px) {
@@ -963,7 +969,7 @@ function PageHeader({ title, subtitle, action }) {
 
 function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) {
   return (
-    <div onClick={onClick}
+    <div onClick={onClick} className="statcard"
       style={{
         ...card, padding: "1.1rem 1.25rem", borderLeft: `3px solid ${accent}`,
         cursor: onClick ? "pointer" : "default",
@@ -971,14 +977,14 @@ function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) 
       }}
       onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = SHADOW.md; }}
       onMouseOut={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = SHADOW.xs; }}>
-      <div style={{
+      <div className="statcard-icon" style={{
         width: 44, height: 44, borderRadius: 10, background: `${accent}14`,
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}>
         {Icon && <Icon size={20} color={accent} strokeWidth={1.8} />}
       </div>
-      <div style={{ flex: 1 }}>
-        <div style={{
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="statcard-value" style={{
           fontSize: 26, fontWeight: 800, color: accent, fontFamily: F.head, lineHeight: 1.1,
         }}><CountUp value={value} /></div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{label}</div>
@@ -2270,7 +2276,7 @@ function PipelineBar({ fbRows, compact = false }) {
   }
 
   return (
-    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+    <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       {[1, 2, 3].map(w => {
         const c   = weekColor(w);
         const row = done.has(w) ? (fbRows || []).find(r => r.week_number === w) : null;
@@ -2964,7 +2970,7 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
             const displayName = `${r.full_name}${genderTag(r)}`;
             return (
               <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${C.amber}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                <div className="et-head" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {/* ── gender tag in name ── */}
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
@@ -2981,7 +2987,7 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
                     )}
                     <div style={{ marginTop: 6 }}><PipelineBar fbRows={r.fbRows} /></div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
                     <span style={badge(C.amber, C.amberLight)}><span style={dot(C.amber)} />Call Back</span>
                     <button style={btn("primary", { padding: "7px 14px", fontSize: 13 })}
                       onClick={() => onLogFeedback(r)}>
@@ -3114,7 +3120,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
                 borderLeft: `3px solid ${anyFlagged ? C.flag : isComplete ? C.greenMid : sm.color}`,
               }}>
                 {/* Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+                <div className="et-head" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
                     <div style={{
                       width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
@@ -3127,7 +3133,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
                       <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
                     {anyFlagged && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>}
                     {isComplete ? (
                       <>
@@ -6174,7 +6180,7 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
 
             return (
               <div key={c.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${anyFlagged ? C.flag : sm.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+                <div className="et-head" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
                   <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
                     <div style={{
                       width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
@@ -6186,7 +6192,7 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
                       <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} withWhatsApp /></div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
                     {anyFlagged && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>}
                     <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogVisit(c)}>
                       <MapPin size={13} />Log New Visit
@@ -7124,7 +7130,7 @@ function VisitationTab() {
                       {r.logged_by && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Logged by <strong>{r.logged_by}</strong></div>}
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
                     {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{r.urgency}</span>}
                     {r.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={9} />Escalated</span>}
                     {r.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
