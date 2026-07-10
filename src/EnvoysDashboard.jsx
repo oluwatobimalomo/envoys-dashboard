@@ -41,6 +41,16 @@ import {
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
     .page-enter { animation: fadeIn .2s ease; }
 
+    /* ── v5.8: skeleton shimmer ── */
+    @keyframes shimmer { 0% { background-position: -468px 0 } 100% { background-position: 468px 0 } }
+    .skeleton {
+      background: linear-gradient(90deg, #E3EDE7 8%, #F4FAF6 28%, #E3EDE7 48%);
+      background-size: 936px 100%;
+      animation: shimmer 1.3s linear infinite;
+    }
+    /* ── v5.8: button press feedback ── */
+    button:active:not(:disabled) { transform: scale(.97); }
+
     /* ── Sidebar width as a CSS variable so every breakpoint can reuse it ── */
     :root { --sidebar-w: 224px; }
 
@@ -569,6 +579,14 @@ const btn = (variant = "primary", extra = {}) => ({
 const card = {
   background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`,
   padding: "1.4rem 1.5rem", boxShadow: SHADOW.xs,
+  transition: "transform .15s ease, box-shadow .15s ease",
+};
+
+// v5.8 — spread {...lift} onto any list-row card that has no other
+// onMouseOver/onMouseOut handlers of its own.
+const lift = {
+  onMouseOver: e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = SHADOW.md; },
+  onMouseOut:  e => { e.currentTarget.style.transform = "translateY(0)";    e.currentTarget.style.boxShadow = SHADOW.xs; },
 };
 
 const badge = (color, bg, extra = {}) => ({
@@ -921,10 +939,10 @@ function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) 
       style={{
         ...card, padding: "1.1rem 1.25rem", borderLeft: `3px solid ${accent}`,
         cursor: onClick ? "pointer" : "default",
-        transition: "box-shadow .15s", display: "flex", alignItems: "center", gap: 14,
+        display: "flex", alignItems: "center", gap: 14,
       }}
-      onMouseOver={e => onClick && (e.currentTarget.style.boxShadow = SHADOW.md)}
-      onMouseOut={e => onClick && (e.currentTarget.style.boxShadow = SHADOW.xs)}>
+      onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = SHADOW.md; }}
+      onMouseOut={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = SHADOW.xs; }}>
       <div style={{
         width: 44, height: 44, borderRadius: 10, background: `${accent}14`,
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -934,7 +952,7 @@ function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) 
       <div style={{ flex: 1 }}>
         <div style={{
           fontSize: 26, fontWeight: 800, color: accent, fontFamily: F.head, lineHeight: 1.1,
-        }}>{value ?? "—"}</div>
+        }}><CountUp value={value} /></div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: accent, marginTop: 1 }}>{sub}</div>}
       </div>
@@ -960,6 +978,130 @@ function SH({ title, icon: Icon }) {
 // ║  END MODULE: SHARED UI PRIMITIVES                                          ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.8 — Skeleton loaders
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Skeleton({ w = "100%", h = 14, r = 8, style = {} }) {
+  return <div className="skeleton" style={{ width: w, height: h, borderRadius: r, ...style }} />;
+}
+
+function SkeletonRow() {
+  return (
+    <div style={{ ...card, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <Skeleton w={38} h={38} r="50%" style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Skeleton w="42%" h={13} style={{ marginBottom: 8, maxWidth: 220 }} />
+        <Skeleton w="68%" h={10} style={{ maxWidth: 320 }} />
+      </div>
+      <Skeleton w={90} h={26} r={20} style={{ flexShrink: 0 }} />
+    </div>
+  );
+}
+
+function SkeletonList({ rows = 6 }) {
+  return (
+    <div style={{ display: "grid", gap: 8 }} className="page-enter">
+      {Array.from({ length: rows }).map((_, i) => <SkeletonRow key={i} />)}
+    </div>
+  );
+}
+
+function SkeletonStat() {
+  return (
+    <div style={{ ...card, padding: "1.1rem 1.25rem", display: "flex", gap: 14, alignItems: "center" }}>
+      <Skeleton w={44} h={44} r={10} style={{ flexShrink: 0 }} />
+      <div style={{ flex: 1 }}>
+        <Skeleton w="45%" h={22} style={{ marginBottom: 8, maxWidth: 90 }} />
+        <Skeleton w="70%" h={10} style={{ maxWidth: 140 }} />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonReport() {
+  return (
+    <div className="page-enter">
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        {[0, 1, 2, 3].map(i => <SkeletonStat key={i} />)}
+      </div>
+      <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        {[0, 1].map(i => (
+          <div key={i} style={card}>
+            <Skeleton w="35%" h={11} style={{ marginBottom: 16, maxWidth: 160 }} />
+            <Skeleton h={200} r={10} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.8 — Colorful deterministic avatars
+// Same name → same hue, forever. Hues stay inside the app's palette family.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AVATAR_HUES = [
+  { color: "#1A7A3C", bg: "#E6F2EB" }, // forest green
+  { color: "#A66D15", bg: "#FEF6E4" }, // gold
+  { color: "#0E7490", bg: "#ECFEFF" }, // teal
+  { color: "#5B21B6", bg: "#F5F3FF" }, // violet
+  { color: "#2563EB", bg: "#EFF6FF" }, // blue
+  { color: "#BE185D", bg: "#FDF2F8" }, // rose
+  { color: "#C2410C", bg: "#FFF7ED" }, // rust
+  { color: "#4D7C0F", bg: "#F7FEE7" }, // olive
+];
+
+function avatarHue(name) {
+  const s = (name || "?").toString();
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return AVATAR_HUES[h % AVATAR_HUES.length];
+}
+
+function Avatar({ name, size = 38 }) {
+  const hue = avatarHue(name);
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%", flexShrink: 0,
+      background: hue.bg, border: `1.5px solid ${hue.color}35`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontWeight: 800, color: hue.color,
+      fontSize: Math.round(size * 0.38), fontFamily: F.head,
+    }}>
+      {(name || "?").charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v5.8 — CountUp: eases a number (or "NN%") from 0 to its value in ~650ms.
+// Non-numeric values ("—", null, text) render unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CountUp({ value, duration = 650 }) {
+  const isPct = typeof value === "string" && /^\d+%$/.test(value);
+  const target = typeof value === "number" ? value : isPct ? parseInt(value, 10) : null;
+  const [n, setN] = useState(0);
+
+  useEffect(() => {
+    if (target === null) return;
+    let raf, start;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      setN(Math.round(eased * target));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+
+  if (target === null) return <>{value ?? "—"}</>;
+  return <>{n}{isPct ? "%" : ""}</>;
+}
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                             ║
@@ -1491,7 +1633,7 @@ function FirstTimersList({ onEdit }) {
         </div>
       </div>
       <Alert type="error" msg={err} onClose={() => setErr("")} />
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
             const [col, bg] = dc[r.membership_decision] || [C.textMuted, C.bg];
@@ -1501,13 +1643,7 @@ function FirstTimersList({ onEdit }) {
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    width: 40, height: 40, borderRadius: "50%", background: C.greenLight,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 15, fontWeight: 800, color: C.green, fontFamily: F.head, flexShrink: 0,
-                  }}>
-                    {r.full_name?.charAt(0) || "?"}
-                  </div>
+                  <Avatar name={r.full_name} size={40} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
@@ -2133,7 +2269,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
         <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
       </div>
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
             const complete = pipelineComplete(r.fbRows);
@@ -2147,11 +2283,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
               }}>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                      background: C.greenLight, display: "flex", alignItems: "center",
-                      justifyContent: "center", fontWeight: 800, color: C.green, fontSize: 14, fontFamily: F.head,
-                    }}>{r.full_name?.charAt(0)}</div>
+                    <Avatar name={r.full_name} />
                     <div>
                       {/* ── gender tag in name ── */}
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
@@ -2352,7 +2484,7 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
 
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
             const latestFb   = r.fbRows[r.fbRows.length - 1];
@@ -2550,7 +2682,7 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
         action={<button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>} />
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {callbacks.map(r => {
             const latest = r.fbRows[r.fbRows.length - 1];
@@ -2669,7 +2801,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
 
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map(r => {
             const isComplete  = pipelineComplete(r.fbRows);
@@ -3652,7 +3784,7 @@ function CompletedPipelines({ onBack }) {
       )}
 
       {loading ? (
-        <p style={{ color: C.textMuted }}>Loading…</p>
+        <SkeletonList rows={6} />
       ) : filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
@@ -4249,7 +4381,7 @@ function AllFeedback() {
       </div>
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
             const ft = r.first_timers || {};
@@ -4356,7 +4488,7 @@ function FlaggedRecords() {
           </span>
         )} />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map(r => {
             const ft = r.first_timers || {};
@@ -4499,7 +4631,7 @@ function Report() {
   }, [dateFrom, dateTo]);
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <p style={{ color: C.textMuted }}>Loading report…</p>;
+  if (loading) return <SkeletonReport />;
   if (!stats) return null;
 
   const conversionPct = stats.totalOverviews > 0 ? Math.round((stats.yesCount / stats.totalOverviews) * 100) : 0;
@@ -5386,7 +5518,7 @@ function AssignVisitsView({ currentUser }) {
 
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(c => {
             const pending     = pendingAssign[c.id];
@@ -5406,7 +5538,7 @@ function AssignVisitsView({ currentUser }) {
                     }}>{c.full_name?.charAt(0)}</div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{c.phone} · added {c.created_at?.slice(0, 10)}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} /> · added {c.created_at?.slice(0, 10)}</div>
                       {hasVisits && (
                         <div style={{ fontSize: 11, color: C.green, marginTop: 3 }}>
                           {c.visits.length} visit{c.visits.length !== 1 ? "s" : ""} logged · latest: {scLatestVisit(c.visits)?.visit_status || "—"}
@@ -5547,7 +5679,7 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
 
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(c => {
             const latest = scLatestVisit(c.visits);
@@ -5718,7 +5850,7 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
 
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map(c => {
             const latest      = scLatestVisit(c.visits);
@@ -6058,7 +6190,7 @@ function SoulCareFlagged() {
       <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by date flagged:" />
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map(r => {
             const contact = r.soul_care_contacts || {};
@@ -6235,7 +6367,7 @@ function Testimonies() {
       )}
 
       {loading ? (
-        <p style={{ color: C.textMuted }}>Loading…</p>
+        <SkeletonList rows={6} />
       ) : filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
@@ -6489,7 +6621,7 @@ function TestimonyBank() {
       )}
 
       {loading ? (
-        <p style={{ color: C.textMuted }}>Loading…</p>
+        <SkeletonList rows={6} />
       ) : filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <Star size={32} style={{ marginBottom: 10, opacity: .4 }} />
@@ -6650,7 +6782,7 @@ function VisitationTab() {
         })}
       </div>
 
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(r => {
             const contact = r.soul_care_contacts || {};
@@ -7146,7 +7278,7 @@ function ResearchFeedback() {
       )}
 
       {loading ? (
-        <p style={{ color: C.textMuted }}>Loading…</p>
+        <SkeletonList rows={6} />
       ) : filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
@@ -7400,7 +7532,7 @@ function GeneralFeedback() {
       )}
 
       {loading ? (
-        <p style={{ color: C.textMuted }}>Loading…</p>
+        <SkeletonList rows={6} />
       ) : filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
@@ -7602,7 +7734,7 @@ function AdminUsers({ onEdit }) {
         action={<button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>} />
       <Alert type="error"   msg={err} onClose={() => setErr("")} />
       <Alert type="success" msg={msg} onClose={() => setMsg("")} />
-      {loading ? <p style={{ color: C.textMuted }}>Loading…</p> : (
+      {loading ? <SkeletonList rows={6} /> : (
         <div style={{ display: "grid", gap: 8 }}>
           {users.map(u => {
             const rm = ROLE_META[u.role] || ROLE_META.dofficer;
