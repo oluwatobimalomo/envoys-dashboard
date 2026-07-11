@@ -513,10 +513,10 @@ const NAV = {
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
-    { id: "research_feedback", label: "Research"  },
-    { id: "general_feedback",  label: "General Feedback" },
+    { id: "research_feedback", label: "General Feedback"  },
+    { id: "general_feedback",  label: "VIPs Feedback" },
     { id: "feedback_qr",   label: "Feedback QR"   },
-    { id: "sc_testimonies", label: "Testimonies"   },
+    { id: "sc_testimonies", label: "Visitation Testimony"   },
     { id: "testimony_qr", label: "Testimony QR"   },
     { id: "qrcode",        label: "QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
@@ -9207,17 +9207,17 @@ function Login({ onLogin }) {
             THE <span style={{ color: C.goldMid }}>ENVOYS</span>
           </h1>
           <p style={{ color: "rgba(255,255,255,.7)", fontSize: 14, margin: 0, letterSpacing: ".04em" }}>
-            Membership Retention Dashboard
+            Membership Retention
           </p>
           <div className="login-verse" style={{ marginTop: 44, paddingLeft: 14, borderLeft: `3px solid ${C.gold}` }}>
             <p style={{
               color: "rgba(255,255,255,.85)", fontSize: 15, fontStyle: "italic",
               lineHeight: 1.7, margin: 0, maxWidth: 380,
             }}>
-              "Rejoice with me; for I have found my sheep which was lost."
+              "...turning information into insight and insight into impact."
             </p>
             <p style={{ color: C.goldMid, fontSize: 12, marginTop: 8, letterSpacing: ".1em", fontWeight: 700 }}>
-              LUKE 15:6
+              RETENTION
             </p>
           </div>
           <div className="login-verse" style={{ marginTop: 48, color: "rgba(255,255,255,.35)", fontSize: 11, letterSpacing: ".1em" }}>
