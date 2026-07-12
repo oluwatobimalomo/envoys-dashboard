@@ -1353,6 +1353,7 @@ function nextBirthdayInfo(dob) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // v6.5 — emojis as \u{...} escapes: plain-ASCII source, immune to encoding issues.
+// v6.5 — emojis as \u{...} escapes: plain-ASCII source, immune to encoding issues.
 const EM = {
   party: "\u{1F389}",  // 🎉 party popper
   cake:  "\u{1F382}",  // 🎂 birthday cake
@@ -4282,12 +4283,14 @@ function CompletedPipelines({ onBack }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflowX: "auto" }}>
           {/* Table header */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "40px 1fr 130px 120px 1fr 1fr",
             padding: "10px 16px", background: C.bg,
             borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+            minWidth: 760,
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"}
@@ -4326,6 +4329,7 @@ function CompletedPipelines({ onBack }) {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "40px 1fr 130px 120px 1fr 1fr",
+                  minWidth: 760,
                   padding: "12px 16px", gap: 10,
                   alignItems: "flex-start",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
@@ -4404,6 +4408,7 @@ function CompletedPipelines({ onBack }) {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -6506,19 +6511,19 @@ function MembersCare({ currentUser, role }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600 }}>
+          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
 
             {/* Sticky header */}
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-              padding: "10px 0", background: C.bg, borderBottom: `1px solid ${C.border}`,
+              padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
               position: "sticky", top: 0, zIndex: 3, minWidth: 1050,
             }}>
               <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
               {["Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
-              <div style={{ ...headCell, ...stickyRight(C.bg, 4) }}>Visit Pool</div>
+              <div style={headCell}>Visit Pool</div>
             </div>
 
             {/* Rows */}
@@ -6562,7 +6567,7 @@ function MembersCare({ currentUser, role }) {
                   <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
                     {lastVis || "Never"}
                   </div>
-                  <div style={stickyRight(C.surface)}>
+                  <div style={{ paddingLeft: 6 }}>
                     {inPool ? (
                       <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
                         <CheckCircle size={10} />In Pool
@@ -7392,7 +7397,8 @@ function Testimonies() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 12, alignItems: "center" }}>
+          <div className="mc-scroll" style={{ overflowX: "auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 12, alignItems: "center" }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all visible"}
                 style={{
@@ -7415,7 +7421,7 @@ function Testimonies() {
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
-                  display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", padding: "12px 16px", gap: 12, alignItems: "flex-start",
+                  display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "12px 16px", gap: 12, alignItems: "flex-start",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.soul}08` : C.surface, cursor: "pointer", transition: "background .12s",
                 }}
@@ -7442,6 +7448,7 @@ function Testimonies() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -7651,8 +7658,9 @@ function TestimonyBank() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflowX: "auto" }}>
           <div style={{
-            display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr",
+            display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr", minWidth: 760,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
@@ -7678,7 +7686,7 @@ function TestimonyBank() {
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
-                  display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr",
+                  display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr", minWidth: 760,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.gold}0D` : C.surface,
@@ -7713,6 +7721,7 @@ function TestimonyBank() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -8308,8 +8317,9 @@ function ResearchFeedback() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflowX: "auto" }}>
           <div style={{
-            display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr",
+            display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr", minWidth: 820,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
@@ -8333,7 +8343,7 @@ function ResearchFeedback() {
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
-                  display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr",
+                  display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr", minWidth: 820,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.research}08` : C.surface,
@@ -8374,6 +8384,7 @@ function ResearchFeedback() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
@@ -8562,8 +8573,9 @@ function GeneralFeedback() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflowX: "auto" }}>
           <div style={{
-            display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr",
+            display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr", minWidth: 680,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
@@ -8587,7 +8599,7 @@ function GeneralFeedback() {
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
-                  display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr",
+                  display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr", minWidth: 680,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.research}08` : C.surface,
@@ -8621,6 +8633,7 @@ function GeneralFeedback() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
