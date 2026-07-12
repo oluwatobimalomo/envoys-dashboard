@@ -12,7 +12,7 @@ import {
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
   Star, TrendingUp, Activity, Shield, Edit3, UserCheck,
   FileText, Filter, Download, ChevronDown, Info, Zap, Camera,
-  MessageCircle, Gift,
+  MessageCircle, Gift, Maximize2,
 } from "lucide-react";
 
 import {
@@ -1708,6 +1708,13 @@ const AREAS = [
 // findFirstTimerDupes(): all first_timers sharing that key (client-side
 // compare — PostgREST can't normalize formats server-side).
 // ─────────────────────────────────────────────────────────────────────────────
+
+function generatePresentationSlug() {
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789"; // no ambiguous 0/O, 1/l/I
+  let s = "";
+  for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
 
 function phoneKey(raw) {
   let d = String(raw || "").replace(/\D/g, "");
@@ -7467,7 +7474,286 @@ const TESTIMONY_CATEGORIES = [
   "Upgrade Service Testimony",
 ];
 
-function TestimonyBank() {
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.7 — TestimonyProjector: full-screen pulpit reader.
+// Branding header always shown. When `slug` is provided, every navigation
+// is persisted to the DB via onIndexChange, so a refresh (or opening the
+// same link on a different device) resumes exactly where it left off.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function fontSizeForTestimony(text) {
+  const len = (text || "").length;
+  if (len < 120) return 56;
+  if (len < 260) return 46;
+  if (len < 420) return 37;
+  if (len < 650) return 29;
+  if (len < 900) return 23;
+  return 18;
+}
+
+function TestimonyProjector({ items, initialIndex = 0, slug, shareUrl, onIndexChange, onExit }) {
+  const [index, setIndex] = useState(initialIndex);
+  const [copied, setCopied] = useState(false);
+  const touchStartX = useRef(null);
+
+  const atEnd = index >= items.length;
+  const current = !atEnd ? items[index] : null;
+
+  useEffect(() => { onIndexChange?.(index); /* eslint-disable-next-line */ }, [index]);
+
+  const next = () => setIndex(i => Math.min(i + 1, items.length));
+  const prev = () => setIndex(i => Math.max(i - 1, 0));
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") { onExit(); return; }
+      if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(e.key)) { e.preventDefault(); next(); }
+      if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) { e.preventDefault(); prev(); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [items.length]);
+
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (dx < -50) next();
+    else if (dx > 50) prev();
+    touchStartX.current = null;
+  };
+
+  const catBadge = (cat) => {
+    if (cat === "Coronation Service Testimony") return [C.soul, C.soulLight];
+    if (cat === "Upgrade Service Testimony")    return [C.research, C.researchLight];
+    return [C.goldDark, C.goldLight];
+  };
+
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try { await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { /* clipboard blocked — link is still visible to select manually */ }
+  };
+
+  return (
+    <div
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      style={{
+        position: "fixed", inset: 0, zIndex: 500,
+        background: "#fff", fontFamily: F.body,
+        display: "flex", flexDirection: "column",
+        userSelect: "none",
+      }}>
+
+      {/* Top bar — branding + controls */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 24px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, flexWrap: "wrap", gap: 10,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Logo size={30} />
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.25 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, fontFamily: F.head, color: C.textPrimary, letterSpacing: ".02em" }}>
+              THE ENVOYS
+            </span>
+            <span style={{ fontSize: 10.5, color: C.textMuted, fontStyle: "italic" }}>
+              ...the home of supernatural upgrades
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.textMuted, fontFamily: F.head }}>
+            {atEnd ? "—" : `${index + 1} / ${items.length}`}
+          </div>
+          {shareUrl && (
+            <button onClick={copyLink} style={{
+              background: copied ? C.greenLight : "none", border: `1px solid ${copied ? C.green : C.border}`,
+              borderRadius: 8, padding: "7px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+              fontSize: 12, color: copied ? C.green : C.textSecondary, fontFamily: F.body,
+            }}>
+              {copied ? <CheckCircle size={13} /> : <Download size={13} style={{ transform: "rotate(0deg)" }} />}
+              {copied ? "Link Copied" : "Copy Presentation Link"}
+            </button>
+          )}
+          <button onClick={onExit} style={{
+            background: "none", border: `1px solid ${C.border}`, borderRadius: 8,
+            padding: "7px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+            fontSize: 13, color: C.textSecondary, fontFamily: F.body,
+          }}>
+            <X size={14} />Exit
+          </button>
+        </div>
+      </div>
+
+      {atEnd ? (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, padding: 24 }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Star size={30} color={C.goldDark} />
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: C.textPrimary, fontFamily: F.head }}>
+            That's all {items.length} testimon{items.length !== 1 ? "ies" : "y"}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => setIndex(0)} style={btn("outline")}><RefreshCw size={14} />Start Over</button>
+            <button onClick={onExit} style={btn("primary")}><X size={14} />Exit</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ flex: 1, display: "flex", position: "relative", overflow: "hidden" }}>
+            <div onClick={prev} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "30%", cursor: index > 0 ? "pointer" : "default", zIndex: 2 }} />
+            <div onClick={next} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "30%", cursor: "pointer", zIndex: 2 }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 60px", overflowY: "auto" }}>
+              <div style={{ maxWidth: "min(90vw, 1100px)", textAlign: "center" }}>
+                <div style={{ fontSize: 60, color: C.goldLight, lineHeight: 1, marginBottom: 8, fontFamily: F.head }}>"</div>
+                <div style={{
+                  fontSize: fontSizeForTestimony(current.testimony),
+                  lineHeight: 1.55, color: C.textPrimary, fontWeight: 500,
+                  whiteSpace: "pre-wrap", wordBreak: "break-word",
+                }}>
+                  {current.testimony}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            flexShrink: 0, borderTop: `1px solid ${C.border}`, padding: "18px 24px",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 14, flexWrap: "wrap",
+          }}>
+            <Avatar name={current.display_name} size={40} />
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontWeight: 800, fontSize: 17, fontFamily: F.head, color: C.textPrimary }}>{current.display_name}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+                {(() => { const [cc, cb] = catBadge(current.category); return <span style={badge(cc, cb, { fontSize: 10 })}>{current.category}</span>; })()}
+                {current.date && <span style={{ fontSize: 12, color: C.textMuted }}>{current.date}</span>}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ flexShrink: 0, textAlign: "center", fontSize: 11, color: C.textMuted, padding: "0 0 12px" }}>
+            Swipe, click either side, or use arrow keys / spacebar to advance · Esc to exit
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.7 — PresentationViewer: what opens when someone visits ?present=SLUG.
+// No login required. Fetches the presentation record + full testimony
+// content fresh from the DB every time it mounts — this is what makes a
+// browser refresh (or opening the link on a second device) safe: there is
+// no in-memory state to lose, everything is reloaded from source.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PresentationViewer({ slug }) {
+  const [state, setState] = useState("loading"); // loading | ready | notfound | ended
+  const [items, setItems] = useState([]);
+  const [initialIndex, setInitialIndex] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await sb(`testimony_presentations?slug=eq.${slug}&select=*&limit=1`);
+        if (!rows || rows.length === 0) { if (!cancelled) setState("notfound"); return; }
+        const pres = rows[0];
+
+        const all = await sb("public_testimonies?select=*&limit=2000");
+        const byId = {};
+        (all || []).forEach(r => { byId[String(r.id)] = r; });
+
+        const ordered = (pres.testimony_ids || [])
+          .map(id => byId[String(id)])
+          .filter(Boolean)
+          .map(r => ({
+            id: r.id,
+            display_name: r.name || "Anonymous",
+            category: r.category || "General Testimony",
+            testimony: r.testimony,
+            date: r.submitted_at ? r.submitted_at.slice(0, 10) : "",
+          }));
+
+        if (cancelled) return;
+        if (ordered.length === 0) { setState("notfound"); return; }
+        setItems(ordered);
+        setInitialIndex(Math.min(pres.current_index || 0, ordered.length));
+        setState("ready");
+      } catch {
+        if (!cancelled) setState("notfound");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  const persistIndex = useCallback((idx) => {
+    sb(`testimony_presentations?slug=eq.${slug}`, {
+      method: "PATCH",
+      prefer: "return=minimal",
+      body: JSON.stringify({ current_index: idx, updated_at: new Date().toISOString() }),
+    }).catch(() => {});
+  }, [slug]);
+
+  if (state === "loading") {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, background: "#fff", display: "flex",
+        alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 14,
+      }}>
+        <Logo size={44} />
+        <div style={{ fontSize: 13, color: C.textMuted, fontFamily: F.body }}>Loading presentation…</div>
+      </div>
+    );
+  }
+
+  if (state === "notfound") {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, background: "#fff", display: "flex",
+        alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, padding: 24, textAlign: "center",
+      }}>
+        <Logo size={44} />
+        <div style={{ fontSize: 18, fontWeight: 800, fontFamily: F.head, color: C.textPrimary }}>
+          This presentation link isn't available
+        </div>
+        <div style={{ fontSize: 13, color: C.textMuted, maxWidth: 360 }}>
+          It may have been ended, or the link was mistyped. Please check with whoever shared it with you.
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "ended") {
+    return (
+      <div style={{
+        position: "fixed", inset: 0, background: "#fff", display: "flex",
+        alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12,
+      }}>
+        <Logo size={44} />
+        <div style={{ fontSize: 16, fontWeight: 700, fontFamily: F.head, color: C.textPrimary }}>
+          Presentation ended
+        </div>
+        <div style={{ fontSize: 13, color: C.textMuted }}>You can close this tab now.</div>
+      </div>
+    );
+  }
+
+  return (
+    <TestimonyProjector
+      items={items}
+      initialIndex={initialIndex}
+      slug={slug}
+      onIndexChange={persistIndex}
+      onExit={() => setState("ended")}
+    />
+  );
+}
+
+function TestimonyBank({ currentUser }) {
   const [rows, setRows]         = useState([]);
   const [loading, setLoading]   = useState(true);
   const [err, setErr]           = useState("");
@@ -7476,6 +7762,9 @@ function TestimonyBank() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo]     = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [projectorOpen, setProjectorOpen] = useState(false);
+  const [presentationSlug, setPresentationSlug] = useState(null);
+  const [presentErr, setPresentErr] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true); setErr("");
@@ -7548,6 +7837,60 @@ function TestimonyBank() {
     return [C.goldDark, C.goldLight];
   };
 
+  const updatePresentationIndex = useCallback((idx) => {
+    if (!presentationSlug) return;
+    sb(`testimony_presentations?slug=eq.${presentationSlug}`, {
+      method: "PATCH",
+      prefer: "return=minimal",
+      body: JSON.stringify({ current_index: idx, updated_at: new Date().toISOString() }),
+    }).catch(() => {});
+  }, [presentationSlug]);
+
+  const startPresentation = async () => {
+    const chosen = filtered.filter(r => selected.has(r.id));
+    if (chosen.length === 0) return;
+    setPresentErr("");
+    let slug = generatePresentationSlug();
+    try {
+      let ok = false;
+      for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+        try {
+          await sb("testimony_presentations", {
+            method: "POST",
+            body: JSON.stringify({
+              slug,
+              testimony_ids: chosen.map(r => String(r.id)),
+              current_index: 0,
+              created_by: currentUser || null,
+            }),
+          });
+          ok = true;
+        } catch (e) {
+          if (attempt === 0) slug = generatePresentationSlug();
+          else throw e;
+        }
+      }
+      setPresentationSlug(slug);
+      setProjectorOpen(true);
+    } catch (e) { setPresentErr(`Could not start presentation: ${e.message}`); }
+  };
+
+  if (projectorOpen) {
+    const chosen = filtered.filter(r => selected.has(r.id));
+    const shareUrl = presentationSlug
+      ? `${window.location.origin}${window.location.pathname}?present=${presentationSlug}`
+      : null;
+    return (
+      <TestimonyProjector
+        items={chosen}
+        slug={presentationSlug}
+        shareUrl={shareUrl}
+        onIndexChange={updatePresentationIndex}
+        onExit={() => { setProjectorOpen(false); setPresentationSlug(null); }}
+      />
+    );
+  }
+
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
@@ -7556,6 +7899,18 @@ function TestimonyBank() {
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
+            <button
+              style={{
+                ...btn("primary"),
+                background: selectedCount > 0 ? C.soul : C.border,
+                color:      selectedCount > 0 ? "#fff" : C.textMuted,
+                cursor:     selectedCount > 0 ? "pointer" : "not-allowed",
+                border: "none",
+              }}
+              onClick={startPresentation}
+              disabled={selectedCount === 0}>
+              <Maximize2 size={14} />Project{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            </button>
             <button
               style={{
                 ...btn("gold"),
@@ -7619,6 +7974,7 @@ function TestimonyBank() {
       </div>
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <Alert type="error" msg={presentErr} onClose={() => setPresentErr("")} />
 
       {selectedCount > 0 && (
         <div style={{
@@ -8799,10 +9155,6 @@ function AdminOverview({ setActive }) {
           ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length,
           users: (us||[]).length, visits: (vis||[]).length, pending: (pend||[]).length,
         });
-        setCounts({
-          ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length,
-          users: (us||[]).length, visits: (vis||[]).length,
-        });
       } catch {}
     })();
   }, []);
@@ -9337,7 +9689,7 @@ function Login({ onLogin }) {
 // ║  Includes: App (default export) — manages all state, routing, rendering   ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
-export default function App() {
+function App() {
   const [session, setSession] = useState(() => loadSession());
   const [active, setActive] = useState(() => {
     const s = loadSession();
@@ -9594,7 +9946,7 @@ export default function App() {
     if (active === "members_care") return <MembersCare currentUser={user} role={role} />;
     if (active === "sc_flagged") return <SoulCareFlagged />;
     if (active === "sc_testimonies") return <Testimonies />;
-    if (active === "testimony_bank") return <TestimonyBank />;
+    if (active === "testimony_bank") return <TestimonyBank currentUser={user} />;
 
     if (active === "sc_queue" || active === "sc_mine") {
       if (visitEditTarget) {
@@ -9654,6 +10006,14 @@ export default function App() {
     </div>
   );
 }
+
+function AppRoot() {
+  const presentSlug = new URLSearchParams(window.location.search).get("present");
+  if (presentSlug) return <PresentationViewer slug={presentSlug} />;
+  return <App />;
+}
+
+export default AppRoot;
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: APP SHELL — ROOT COMPONENT & ROUTING                         ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
