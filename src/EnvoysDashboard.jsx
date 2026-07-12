@@ -1353,11 +1353,12 @@ function nextBirthdayInfo(dob) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // v6.5 — emojis as \u{...} escapes: plain-ASCII source, immune to encoding issues.
-// v6.5 — emojis as \u{...} escapes: plain-ASCII source, immune to encoding issues.
+// v6.6 — emojis built via String.fromCodePoint from hex codepoints.
+// No emoji glyphs anywhere in this file — impossible to mangle on save/copy.
 const EM = {
-  party: "\u{1F389}",  // 🎉 party popper
-  cake:  "\u{1F382}",  // 🎂 birthday cake
-  heart: "\u{1F49A}",  // 💚 green heart
+  party: String.fromCodePoint(0x1F389), // 🎉
+  cake:  String.fromCodePoint(0x1F382), // 🎂
+  heart: String.fromCodePoint(0x1F49A), // 💚
 };
 
 const BIRTHDAY_MESSAGE = (firstName) =>
