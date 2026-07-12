@@ -9709,6 +9709,14 @@ function App() {
   const [showTestimony,   setShowTestimony]   = useState(false);
 
   useEffect(() => {
+    const onPopState = (e) => {
+      if (e.state && e.state.active) setActive(e.state.active);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
     const p = window.location.pathname;
     const h = window.location.hash;
     if (p === "/register"  || p === "/register/"  || h === "#register")  setShowPublic(true);
@@ -9730,6 +9738,7 @@ function App() {
     const s = { role, user, username };
     setSession(s);
     setActive(NAV[role][0].id);
+    window.history.replaceState({ active: NAV[role][0].id }, "", window.location.pathname);
     saveSession(role, user, username);
   };
 
@@ -9740,13 +9749,15 @@ function App() {
   };
 
   const navTo = (v) => {
-    setActive(v); setEditTarget(null); setFeedbackTarget(null);
-    setEditUser(null);
-    setEditWeekTarget(null);
-    setEditOverviewTarget(null);
-    setVisitLogTarget(null); setVisitEditTarget(null);
-    setMobileOpen(false);
-  };
+  setActive(v);
+  setEditTarget(null); setFeedbackTarget(null); setEditUser(null);
+  setEditWeekTarget(null); setEditOverviewTarget(null);
+  setVisitLogTarget(null); setVisitEditTarget(null);
+  setMobileOpen(false);
+  if (v !== active) {
+    window.history.pushState({ active: v }, "", window.location.pathname);
+  }
+};
 
   if (showPublic)    return <PublicForm />;
   if (showFeedback)  return <PublicFeedbackForm />;
