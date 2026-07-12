@@ -1353,28 +1353,20 @@ function nextBirthdayInfo(dob) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // v6.5 — emojis as \u{...} escapes: plain-ASCII source, immune to encoding issues.
-// v6.6 — emojis built via String.fromCodePoint from hex codepoints.
-// No emoji glyphs anywhere in this file — impossible to mangle on save/copy.
-const EM = {
-  party: String.fromCodePoint(0x1F389), // 🎉
-  cake:  String.fromCodePoint(0x1F382), // 🎂
-  heart: String.fromCodePoint(0x1F49A), // 💚
-};
-
 const BIRTHDAY_MESSAGE = (firstName) =>
-`Happy Birthday${firstName ? `, ${firstName}` : ""}! ${EM.party}${EM.cake}
+`Happy Birthday${firstName ? `, ${firstName}` : ""}!
 
 "This is the day the LORD has made; we will rejoice and be glad in it." — Psalm 118:24
 
 May the Lord bless you and keep you; may He make His face shine upon you and be gracious to you; may He lift up His countenance upon you and give you peace (Numbers 6:24–26). May this new year of your life overflow with God's goodness, favour and joy.
 
-We thank God for the gift that you are... with love from all of us at RCCG The Envoys. ${EM.heart}`;
+We thank God for the gift that you are... with love from all of us at RCCG The Envoys.`;
 
 function birthdayWhatsAppLink(name, phone) {
   const tel = normalizePhone(phone);
   if (!tel) return null;
   const first = String(name || "").trim().split(/\s+/)[0] || "";
-  return `https://wa.me/${tel.replace("+", "")}?text=${encodeURIComponent(BIRTHDAY_MESSAGE(first))}`;
+  return `https://api.whatsapp.com/send?phone=${tel.replace("+", "")}&text=${encodeURIComponent(BIRTHDAY_MESSAGE(first))}`;
 }
 
 function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
