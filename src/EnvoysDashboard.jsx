@@ -12,7 +12,7 @@ import {
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
   Star, TrendingUp, Activity, Shield, Edit3, UserCheck,
   FileText, Filter, Download, ChevronDown, Info, Zap, Camera,
-  MessageCircle, Gift, Maximize2,
+  MessageCircle, Gift, Maximize2, Bell, 
 } from "lucide-react";
 
 import {
@@ -48,6 +48,9 @@ import {
 
     /* ── v5.8: skeleton shimmer ── */
     @keyframes shimmer { 0% { background-position: -468px 0 } 100% { background-position: 468px 0 } }
+    /* ── v6.8: toast slide-in ── */
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-enter { animation: toastIn .25s ease; }
     .skeleton {
       background: linear-gradient(90deg, #E3EDE7 8%, #F4FAF6 28%, #E3EDE7 48%);
       background-size: 936px 100%;
@@ -101,6 +104,7 @@ import {
       .statcard-value { font-size: 19px !important; }
       /* v6.1 — smaller pipeline chips on mobile */
       .pbar > *       { padding: 3px 8px !important; font-size: 10px !important; }
+      .notif-bell-wrap { top: 64px !important; }
     }
 
     @media (min-width: 769px) {
@@ -1109,6 +1113,241 @@ function InstallBanner() {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.8 — Toast notification bus. No Context/Provider required: any
+// component can call toast.success(...) / toast.error(...) / toast.info(...)
+// once <ToastHost /> is mounted once, anywhere in the tree (see App()).
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _toastListeners = [];
+let _toastIdSeq = 0;
+
+function _pushToast(message, type) {
+  const t = { id: ++_toastIdSeq, message, type };
+  _toastListeners.forEach(fn => fn(t));
+}
+
+const toast = {
+  success: (msg) => _pushToast(msg, "success"),
+  error:   (msg) => _pushToast(msg, "error"),
+  info:    (msg) => _pushToast(msg, "info"),
+};
+
+function ToastHost() {
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    const handle = (t) => {
+      setToasts(prev => [...prev, t]);
+      setTimeout(() => setToasts(prev => prev.filter(x => x.id !== t.id)), 4200);
+    };
+    _toastListeners.push(handle);
+    return () => { _toastListeners = _toastListeners.filter(fn => fn !== handle); };
+  }, []);
+
+  const dismiss = (id) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  const META = {
+    success: { icon: CheckCircle, color: C.green,  bg: C.greenLight  },
+    error:   { icon: AlertCircle, color: C.danger, bg: C.dangerLight },
+    info:    { icon: Info,        color: C.blue,   bg: C.blueLight   },
+  };
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div style={{
+      position: "fixed", bottom: 20, right: 20, zIndex: 700,
+      display: "flex", flexDirection: "column", gap: 10,
+      maxWidth: 360, width: "calc(100vw - 40px)",
+    }}>
+      {toasts.map(t => {
+        const m = META[t.type] || META.info;
+        const Icon = m.icon;
+        return (
+          <div key={t.id} className="toast-enter" style={{
+            display: "flex", alignItems: "flex-start", gap: 10,
+            background: "#fff", borderRadius: 10, boxShadow: SHADOW.md,
+            border: `1px solid ${m.color}30`, borderLeft: `3px solid ${m.color}`,
+            padding: "12px 14px",
+          }}>
+            <Icon size={16} color={m.color} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div style={{ flex: 1, fontSize: 13, color: C.textPrimary, lineHeight: 1.5 }}>{t.message}</div>
+            <button onClick={() => dismiss(t.id)} style={{
+              background: "none", border: "none", cursor: "pointer", color: C.textMuted,
+              padding: 0, lineHeight: 1, fontSize: 16, flexShrink: 0,
+            }}>×</button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v6.8 — Notification Bell: aggregates flagged records, pending account
+// requests (admin only), and due-today follow-ups for the signed-in user.
+//
+// Scoping note: the "due" count here is a fast approximation (queries the
+// user's own call_feedback / soul_care_visits directly) rather than the
+// exact pipeline-aware logic in DueTodayPanel (v5.9) — good enough for a
+// badge count. Clicking through takes you to My Calls / My Visits, where
+// the precise DueTodayPanel logic applies.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useNotificationData(role, user) {
+  const [data, setData] = useState({ flagCount: 0, pendingCount: 0, dueCount: 0, loading: true });
+
+  const load = useCallback(async () => {
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const calls = [
+        sb("call_feedback?flagged_for_pastoral=eq.true&select=id").catch(() => []),
+      ];
+      if (role === "admin") {
+        calls.push(sb("app_users?is_pending=eq.true&select=id").catch(() => []));
+      } else {
+        calls.push(Promise.resolve([]));
+      }
+      if (user && (role === "expteam" || role === "experienceadmin" || role === "admin")) {
+        calls.push(sb(`call_feedback?caller_name=eq.${encodeURIComponent(user)}&follow_up_date=lte.${todayStr}&select=id`).catch(() => []));
+      } else {
+        calls.push(Promise.resolve([]));
+      }
+      if (user && (role === "soulcare" || role === "soulcareadmin" || role === "admin")) {
+        calls.push(sb(`soul_care_visits?logged_by=eq.${encodeURIComponent(user)}&follow_up_required=eq.true&next_follow_up_date=lte.${todayStr}&select=id`).catch(() => []));
+      } else {
+        calls.push(Promise.resolve([]));
+      }
+
+      const [flagged, pending, dueCalls, dueVisits] = await Promise.all(calls);
+      setData({
+        flagCount:    (flagged || []).length,
+        pendingCount: (pending || []).length,
+        dueCount:     (dueCalls || []).length + (dueVisits || []).length,
+        loading: false,
+      });
+    } catch {
+      setData(d => ({ ...d, loading: false }));
+    }
+  }, [role, user]);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 120000); // refresh every 2 minutes
+    return () => clearInterval(interval);
+  }, [load]);
+
+  return { ...data, reload: load };
+}
+
+function NotificationBell({ role, user, setActive }) {
+  const { flagCount, pendingCount, dueCount, loading, reload } = useNotificationData(role, user);
+  const [open, setOpen] = useState(false);
+  const total = flagCount + pendingCount + dueCount;
+
+  const flagTargetId = (NAV[role] || []).some(n => n.id === "flagged") ? "flagged"
+    : (NAV[role] || []).some(n => n.id === "sc_flagged") ? "sc_flagged" : null;
+  const dueTargetId = role === "soulcare" || role === "soulcareadmin" ? "sc_mine"
+    : role === "expteam" || role === "experienceadmin" ? "mycalls" : null;
+
+  const goTo = (id) => { if (id) { setActive(id); setOpen(false); } };
+
+  const items = [];
+  if (flagCount > 0 && flagTargetId) {
+    items.push({
+      key: "flag", color: C.danger, bg: C.dangerLight, icon: Flag,
+      text: `${flagCount} record${flagCount !== 1 ? "s" : ""} flagged for pastoral attention`,
+      onClick: () => goTo(flagTargetId),
+    });
+  }
+  if (pendingCount > 0 && role === "admin") {
+    items.push({
+      key: "pending", color: C.goldDark, bg: C.goldLight, icon: UserPlus,
+      text: `${pendingCount} account request${pendingCount !== 1 ? "s" : ""} awaiting approval`,
+      onClick: () => goTo("admin_users"),
+    });
+  }
+  if (dueCount > 0 && dueTargetId) {
+    items.push({
+      key: "due", color: C.amber, bg: C.amberLight, icon: Clock,
+      text: `${dueCount} follow-up${dueCount !== 1 ? "s" : ""} due today or overdue`,
+      onClick: () => goTo(dueTargetId),
+    });
+  }
+
+  return (
+    <div style={{ position: "fixed", top: 16, right: 16, zIndex: 200 }} className="notif-bell-wrap">
+      <button onClick={() => setOpen(o => !o)} style={{
+        position: "relative", width: 40, height: 40, borderRadius: "50%",
+        background: C.surface, border: `1px solid ${C.border}`, boxShadow: SHADOW.xs,
+        display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+      }}>
+        <Bell size={17} color={total > 0 ? C.textPrimary : C.textMuted} />
+        {total > 0 && (
+          <span style={{
+            position: "absolute", top: -3, right: -3, minWidth: 16, height: 16, borderRadius: 8,
+            background: C.danger, color: "#fff", fontSize: 10, fontWeight: 700,
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px",
+          }}>{total > 9 ? "9+" : total}</span>
+        )}
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: -1 }} />
+          <div style={{
+            position: "absolute", top: 48, right: 0, width: 320, maxWidth: "calc(100vw - 32px)",
+            background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`,
+            boxShadow: SHADOW.md, overflow: "hidden",
+          }}>
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 14px", borderBottom: `1px solid ${C.border}`,
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head }}>Notifications</span>
+              <button onClick={reload} style={{ background: "none", border: "none", cursor: "pointer", color: C.textMuted, padding: 4 }}>
+                <RefreshCw size={13} />
+              </button>
+            </div>
+            <div style={{ maxHeight: 320, overflowY: "auto" }}>
+              {loading ? (
+                <div style={{ padding: 20, textAlign: "center", fontSize: 12, color: C.textMuted }}>Checking…</div>
+              ) : items.length === 0 ? (
+                <div style={{ padding: 24, textAlign: "center" }}>
+                  <CheckCircle size={22} color={C.green} style={{ marginBottom: 6, opacity: .7 }} />
+                  <div style={{ fontSize: 12, color: C.textMuted }}>You're all caught up.</div>
+                </div>
+              ) : (
+                items.map(it => {
+                  const Icon = it.icon;
+                  return (
+                    <button key={it.key} onClick={it.onClick} style={{
+                      display: "flex", alignItems: "flex-start", gap: 10, width: "100%",
+                      padding: "12px 14px", border: "none", borderBottom: `1px solid ${C.border}`,
+                      background: "transparent", cursor: "pointer", textAlign: "left",
+                    }}
+                      onMouseOver={e => e.currentTarget.style.background = C.bg}
+                      onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 8, background: it.bg,
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <Icon size={13} color={it.color} />
+                      </div>
+                      <span style={{ fontSize: 12.5, color: C.textPrimary, lineHeight: 1.5 }}>{it.text}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: SHARED UI PRIMITIVES                                          ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -1285,8 +1524,8 @@ function DueTodayPanel({ entries, actionLabel = "Log Call", actionIcon: ActionIc
           return (
             <div key={e.id} style={{
               display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-              background: "#fff", borderRadius: 8, padding: "8px 12px",
-              border: `1px solid ${isOverdue ? C.danger : C.amber}25`,
+              background: C.surface, borderRadius: 8, padding: "8px 12px",
+              border: `1px solid ${isOverdue ? C.danger : C.amber}`,
             }}>
               <Avatar name={e.name} size={30} />
               <div style={{ flex: 1, minWidth: 140 }}>
@@ -1438,7 +1677,7 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
             return (
               <div key={p.id} style={{
                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-                background: "#fff", borderRadius: 8, padding: "8px 12px",
+                background: C.surface, borderRadius: 8, padding: "8px 12px",
                 border: `1px solid ${isToday ? C.gold : C.border}`,
               }}>
                 <Avatar name={p.full_name} size={30} />
@@ -1714,6 +1953,11 @@ function generatePresentationSlug() {
   let s = "";
   for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
+}
+
+function tint(color, alphaHex) {
+  const pct = Math.round((parseInt(alphaHex, 16) / 255) * 100);
+  return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 }
 
 function phoneKey(raw) {
@@ -2249,6 +2493,7 @@ function CSVImport({ onDone }) {
 
       await sb("first_timers", { method: "POST", body: JSON.stringify(payload) });
       setSuccess(` ${payload.length} records imported successfully.`);
+      toast.success("Import complete.");
       setRows([]);
       onDone?.();
     } catch (e) { setErr(e.message); }
@@ -5564,6 +5809,7 @@ function SoulCareCSVImport({ currentUser, onDone }) {
 
       await sb("soul_care_contacts", { method: "POST", body: JSON.stringify(payload) });
       setSuccess(`${payload.length} contact${payload.length !== 1 ? "s" : ""} imported successfully.`);
+      toast.success("Import complete.");
       setRows([]);
       onDone?.();
     } catch (e) { setErr(e.message); }
@@ -6237,6 +6483,7 @@ function MembersCareCSVImport({ currentUser, onDone }) {
       }
 
       setSuccess(`${payload.length} member${payload.length !== 1 ? "s" : ""} imported${alsoPool ? ` · ${pooled} added to the visit pool (duplicates skipped)` : ""}.`);
+      toast.success("Import complete.");
       setRows([]);
       onDone?.();
     } catch (e) { setErr(e.message); }
@@ -6411,6 +6658,7 @@ function MembersCare({ currentUser, role }) {
       });
       setPoolKeys(prev => { const n = new Set(prev); n.add(phoneKey(m.phone)); return n; });
       setMsg(`${m.full_name} added to the visit pool — find them under Unassigned in Assign Visits.`);
+      toast.success(`${m.full_name} added to the visit pool.`);
     } catch (e) { setErr(e.message); }
     setAddingId(null);
   };
@@ -7407,7 +7655,7 @@ function Testimonies() {
                   display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
                 }}>
                 {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
-                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: C.soul, borderRadius: 1 }} />}
+                {!allSelected && someSelected && <div style= {{ width: 8, height: 2, background: C.soul, borderRadius: 1 }} />}
               </div>
             </div>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Name</div>
@@ -9065,6 +9313,7 @@ function MyProfilePage({ currentUser, username, role, onRenamed }) {
       setAccount(a => ({ ...a, display_name: trimmed }));
       setNamePwd("");
       setNameMsg("Display name updated — your assignments and call history have been carried over.");
+      toast.success("Display name updated.");
       onRenamed?.(trimmed);
     } catch (e) { setNameErr(e.message); }
     setSavingName(false);
@@ -9085,6 +9334,7 @@ function MyProfilePage({ currentUser, username, role, onRenamed }) {
       });
       setCurPwd(""); setNewPwd(""); setConfPwd("");
       setPwdMsg("Password updated. Use it from your next sign-in.");
+      toast.success("Password updated.");
     } catch (e) { setPwdErr(e.message); }
     setSavingPwd(false);
   };
@@ -9184,7 +9434,7 @@ function AdminOverview({ setActive }) {
         <StatCard label="System Users"  value={counts.users}   icon={Shield}  accent={C.goldDark}/>
       </div>
       <div style={{ marginBottom: 24 }}><BirthdaysWidget /></div>
-
+        
       <div style={{
         marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted,
         fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
@@ -9252,6 +9502,7 @@ function AdminUsers({ onEdit }) {
     try {
       await sb(`app_users?id=eq.${u.id}`, { method: "PATCH", body: JSON.stringify({ is_active: !u.is_active }) });
       setMsg(`${u.username} ${u.is_active ? "deactivated" : "reactivated"}.`);
+      toast.success(`${u.username} ${u.is_active ? "deactivated" : "reactivated"}.`);
       load();
     } catch (e) { setErr(e.message); }
   };
@@ -9262,6 +9513,7 @@ function AdminUsers({ onEdit }) {
         method: "PATCH", body: JSON.stringify({ is_active: true, is_pending: false }),
       });
       setMsg(`${u.display_name || u.username} approved — they can now sign in.`);
+      toast.success(`${u.display_name || u.username} approved.`);
       load();
     } catch (e) { setErr(e.message); }
   };
@@ -9271,6 +9523,7 @@ function AdminUsers({ onEdit }) {
     try {
       await sb(`app_users?id=eq.${u.id}`, { method: "DELETE", prefer: "return=minimal" });
       setMsg("Request rejected.");
+      toast.info("Account request rejected.");
       load();
     } catch (e) { setErr(e.message); }
   };
@@ -10014,6 +10267,8 @@ function App() {
         </div>
       </div>
       <InstallBanner />
+      <ToastHost />
+      <NotificationBell role={role} user={user} setActive={navTo} />
     </div>
   );
 }
