@@ -388,6 +388,30 @@ function useRoleUsers(role) {
 
   return { options, loading };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v7.2 — usePagedScroll: caps initial render to `pageSize` rows and reveals
+// `pageSize` more each time the given scroll container nears its bottom.
+// `resetSignal` should be a string/number that changes whenever the
+// underlying result set changes for a reason OTHER than pagination itself
+// (search text, active tab, date range, etc.) — whenever it changes, the
+// count resets back down to `pageSize`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function usePagedScroll(resetSignal, totalLength, pageSize = 10) {
+  const [visibleCount, setVisibleCount] = useState(pageSize);
+
+  useEffect(() => { setVisibleCount(pageSize); }, [resetSignal, pageSize]);
+
+  const onScroll = useCallback((e) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) {
+      setVisibleCount(c => Math.min(c + pageSize, totalLength || 0));
+    }
+  }, [pageSize, totalLength]);
+
+  return { visibleCount, onScroll };
+}
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: SHARED HOOKS                                                  ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -498,6 +522,7 @@ const NAV_ICONS = {
   testimony_qr: QrCode,
   testimony_bank: Star,
   members_care: Heart,
+  vip_contact: MessageCircle,
 };
 
 const NAV = {
@@ -506,6 +531,7 @@ const NAV = {
     { id: "admin_users",    label: "Users"         },
     { id: "admin_adduser",  label: "Add User"      },
     { id: "firsttimers",   label: "First-Timers"  },
+    { id: "vip_contact",   label: "VIP Contact"   },
     { id: "assign_calls",        label: "Assign Calls"        },
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "callqueue",           label: "Call Queue"          },
@@ -527,6 +553,7 @@ const NAV = {
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
+    { id: "vip_contact",   label: "VIP Contact"   },
     { id: "addmember",     label: "Add Record"    },
     { id: "qrcode",        label: "QR Code"       },
   ],
@@ -590,7 +617,7 @@ const NAV = {
 const NAV_GROUPS = {
   admin: [
     { title: "Administration",  ids: ["admin_overview", "admin_users", "admin_adduser"] },
-    { title: "First-Timers",    ids: ["firsttimers", "qrcode"] },
+    { title: "First-Timers",    ids: ["firsttimers", "vip_contact", "qrcode"] },
     { title: "Experience Team", ids: ["assign_calls", "callqueue", "completed_pipelines"] },
     { title: "Soul Care",       ids: ["sc_assign", "sc_queue", "members_care", "add_visit", "visitation_tab"] },
     { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
@@ -2301,6 +2328,9 @@ function FirstTimersList({ onEdit }) {
     r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
   );
 
+  // v7.2 — cap initial render to 10 rows; reveal more as the user scrolls
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+
   const dc = {
     Member:    [C.green,    C.greenLight],
     Visitor:   [C.goldDark, C.goldLight],
@@ -2351,8 +2381,9 @@ function FirstTimersList({ onEdit }) {
       </div>
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => {
+          {filtered.slice(0, visibleCount).map(r => {
             const [col, bg] = dc[r.membership_decision] || [C.textMuted, C.bg];
             return (
               <div key={r.id} {...lift} style={{
@@ -2381,6 +2412,13 @@ function FirstTimersList({ onEdit }) {
               <div style={{ fontWeight: 600, fontFamily: F.head }}>No records found</div>
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> record{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -2560,6 +2598,343 @@ function CSVImport({ onDone }) {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v7.1 — VIP Contact: WhatsApp outreach to first-timers. Mirrors
+// AssignCallsView's structure but swaps the call pipeline for a single
+// WhatsApp welcome message, individually assigned (no bulk-assign), with a
+// Messaged / Not Messaged status instead of pipeline completion.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useVipMessageData(dateFrom, dateTo) {
+  const [data, setData]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+  const [tick, setTick]       = useState(0);
+  const reload = useCallback(() => setTick(t => t + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        let ftQuery = "first_timers?order=created_at.desc&limit=500";
+        if (dateFrom) ftQuery += `&service_date=gte.${dateFrom}`;
+        if (dateTo)   ftQuery += `&service_date=lte.${dateTo}`;
+        const [ftRows, vmRows] = await Promise.all([
+          sb(ftQuery),
+          sb("vip_message_assignments?select=*").catch(() => []),
+        ]);
+        const vmMap = {};
+        (vmRows || []).forEach(v => { vmMap[v.first_timer_id] = v; });
+        if (!cancelled) {
+          setData((ftRows || []).map(r => ({ ...r, vip: vmMap[r.id] || null })));
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick, dateFrom, dateTo]);
+
+  return { data, loading, err, reload };
+}
+
+const VIP_WHATSAPP_TEMPLATE = (firstName, teamFirstName) =>
+`Dearly beloved ${firstName},
+
+On behalf of our lead pastor, Pastor Daniel Olawande and the entire RCCG The Envoys family, we sincerely thank you for worshipping with us on Sunday.
+
+It is not by chance that you came. God ordered your feet here, and we are so glad you obeyed His call to worship with us at The Home of Supernatural Upgrades.
+
+We seam our faith with yours, trusting God for a manifestation of the prophetic words you have received and praying for divine encounters for you and your household.
+Our Experience Team will call to check up on you this week.
+
+We can't wait to welcome you to church next Sunday.
+The Lord bless you!
+
+I honour you and you're super amazing!
+...${teamFirstName} from the EnvoysByte Team`;
+
+function vipWhatsAppLink(fullName, phone, assignedTo, currentUser) {
+  const tel = normalizePhone(phone);
+  if (!tel) return null;
+  const first     = String(fullName   || "").trim().split(/\s+/)[0] || "";
+  const teamFirst = String(assignedTo || currentUser || "").trim().split(/\s+/)[0] || "our team";
+  const msg = VIP_WHATSAPP_TEMPLATE(first, teamFirst);
+  return `https://api.whatsapp.com/send?phone=${tel.replace("+", "")}&text=${encodeURIComponent(msg)}`;
+}
+
+function VipContactView({ currentUser }) {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err, reload } = useVipMessageData(dateFrom, dateTo);
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers("expteam");
+
+  const [search, setSearch]               = useState("");
+  const [filter, setFilter]               = useState("unassigned");
+  const [saving, setSaving]               = useState(false);
+  const [msg, setMsg]                     = useState("");
+  const [msgType, setMsgType]             = useState("success");
+  const [pendingAssign, setPendingAssign] = useState({});
+
+  const filtered = data.filter(r => {
+    const matchSearch = !search ||
+      r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.phone?.includes(search);
+    if (filter === "unassigned")  return matchSearch && !r.vip?.assigned_to;
+    if (filter === "assigned")    return matchSearch && !!r.vip?.assigned_to;
+    if (filter === "messaged")    return matchSearch && !!r.vip?.messaged;
+    if (filter === "notmessaged") return matchSearch && !r.vip?.messaged;
+    return matchSearch;
+  });
+
+  // v7.2 — cap initial render to 10 rows; reveal more as the user scrolls
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
+
+  const assignedCount    = data.filter(r => !!r.vip?.assigned_to).length;
+  const unassignedCount  = data.filter(r => !r.vip?.assigned_to).length;
+  const messagedCount    = data.filter(r => !!r.vip?.messaged).length;
+  const notMessagedCount = data.length - messagedCount;
+
+  const saveAssignment = async (ftId) => {
+    const member = pendingAssign[ftId];
+    if (!member) return;
+    setSaving(true);
+    try {
+      const existing = data.find(r => r.id === ftId)?.vip;
+      if (existing) {
+        await sb(`vip_message_assignments?id=eq.${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
+        });
+      } else {
+        await sb("vip_message_assignments", {
+          method: "POST",
+          body: JSON.stringify({ first_timer_id: ftId, assigned_to: member, assigned_by: currentUser }),
+        });
+      }
+      setPendingAssign(p => { const n = { ...p }; delete n[ftId]; return n; });
+      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const setMessaged = async (r, newVal) => {
+    setSaving(true);
+    try {
+      if (r.vip) {
+        await sb(`vip_message_assignments?id=eq.${r.vip.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            messaged: newVal,
+            messaged_by: newVal ? currentUser : r.vip.messaged_by,
+            messaged_at: newVal ? new Date().toISOString() : r.vip.messaged_at,
+          }),
+        });
+      } else {
+        await sb("vip_message_assignments", {
+          method: "POST",
+          body: JSON.stringify({
+            first_timer_id: r.id,
+            messaged: newVal,
+            messaged_by: newVal ? currentUser : null,
+            messaged_at: newVal ? new Date().toISOString() : null,
+          }),
+        });
+      }
+      reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const sendWhatsApp = (r) => {
+    const link = vipWhatsAppLink(r.full_name, r.phone, r.vip?.assigned_to, currentUser);
+    if (!link) { setMsg("This VIP has no valid phone number to message."); setMsgType("warn"); return; }
+    window.open(link, "_blank");
+    if (!r.vip?.messaged) setMessaged(r, true);
+  };
+
+  const tabs = [
+    { k: "unassigned",  label: "Unassigned",   count: unassignedCount,  col: C.gold      },
+    { k: "assigned",    label: "Assigned",     count: assignedCount,    col: C.blue      },
+    { k: "messaged",    label: "Messaged",     count: messagedCount,    col: C.green     },
+    { k: "notmessaged", label: "Not Messaged", count: notMessagedCount, col: C.amber     },
+    { k: "all",         label: "All",          count: data.length,      col: C.textMuted },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="VIP Contact"
+        subtitle="Send a personal WhatsApp welcome message to every first-timer"
+      />
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.greenXLight, borderRadius: 10, border: `1px solid ${C.greenBorder}`,
+      }}>
+        <Calendar size={14} color={C.green} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by service date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
+              onClick={() => { setDateFrom(""); setDateTo(""); }}>
+              <X size={12} />Clear dates
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total VIPs"   value={data.length}      icon={Users}         accent={C.green} />
+        <StatCard label="Assigned"     value={assignedCount}    icon={UserCheck}     accent={C.blue}  />
+        <StatCard label="Messaged"     value={messagedCount}    icon={MessageCircle} accent={C.green}
+          sub={data.length > 0 ? `${Math.round((messagedCount / data.length) * 100)}% contacted` : ""} />
+        <StatCard label="Not Messaged" value={notMessagedCount} icon={AlertCircle}   accent={C.amber}
+          sub={notMessagedCount > 0 ? "Needs a message" : "All caught up"} />
+      </div>
+
+      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+              cursor: "pointer", fontFamily: F.body, transition: "all .15s",
+              background: filter === t.k ? (t.col || C.green) : C.bg,
+              color: filter === t.k ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === t.k ? (t.col || C.green) : C.border}`,
+            }}>
+            {t.label} ({t.count})
+          </button>
+        ))}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+            style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+        </div>
+        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.slice(0, visibleCount).map(r => {
+            const pending    = pendingAssign[r.id];
+            const isMessaged = !!r.vip?.messaged;
+            return (
+              <div key={r.id} style={{
+                ...card, padding: "12px 16px",
+                borderLeft: `3px solid ${isMessaged ? C.green : r.vip?.assigned_to ? C.blue : C.gold}`,
+              }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
+                    <Avatar name={r.full_name} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} /> · {r.service_date}</div>
+                      {r.vip?.messaged_at && (
+                        <div style={{ fontSize: 11, color: C.green, marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                          <CheckCircle size={10} />Messaged {r.vip.messaged_at.slice(0, 10)}
+                          {r.vip.messaged_by ? ` by ${r.vip.messaged_by}` : ""}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+
+                    {r.vip?.assigned_to && !pending ? (
+                      <span
+                        onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.vip.assigned_to }))}
+                        title="Click to change who's assigned"
+                        style={{ ...badge(C.blue, C.blueLight, { fontSize: 11 }), cursor: "pointer" }}>
+                        <UserCheck size={10} />{r.vip.assigned_to}
+                      </span>
+                    ) : (
+                      <>
+                        {teamLoading ? (
+                          <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span>
+                        ) : (
+                          <select
+                            value={pending ?? ""}
+                            onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
+                            style={{ ...inputBase, width: 170, padding: "6px 10px", fontSize: 13 }}>
+                            <option value="">Select team member</option>
+                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        )}
+                        {pending && (
+                          <>
+                            <button style={btn("primary", { padding: "6px 14px", fontSize: 12, background: C.blue })}
+                              onClick={() => saveAssignment(r.id)} disabled={saving}>
+                              {saving ? "…" : "Save"}
+                            </button>
+                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })}
+                              onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[r.id]; return n; })}>
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                    <button
+                      style={btn("primary", { padding: "7px 14px", fontSize: 13, background: "#25D366", border: "none" })}
+                      onClick={() => sendWhatsApp(r)} disabled={saving}>
+                      <MessageCircle size={13} />Send WhatsApp
+                    </button>
+
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button
+                        style={btn(isMessaged ? "primary" : "ghost", { padding: "6px 12px", fontSize: 11, ...(isMessaged ? { background: C.green, border: "none" } : {}) })}
+                        onClick={() => setMessaged(r, true)} disabled={saving}>
+                        <CheckCircle size={11} />Messaged
+                      </button>
+                      <button
+                        style={btn(!isMessaged ? "primary" : "ghost", { padding: "6px 12px", fontSize: 11, ...(!isMessaged ? { background: C.amber, border: "none" } : {}) })}
+                        onClick={() => setMessaged(r, false)} disabled={saving}>
+                        Not Messaged
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <MessageCircle size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No contacts in this category</div>
+            </div>
+          )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> VIP{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -10068,6 +10443,7 @@ function App() {
 
     if (active === "addmember") return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
     if (active === "qrcode") return <QRCodePage />;
+    if (active === "vip_contact") return <VipContactView currentUser={user} />;
     if (active === "allfeedback") return <AllFeedback />;
     if (active === "report") return <Report />;
     if (active === "flagged") return <FlaggedRecords />;
