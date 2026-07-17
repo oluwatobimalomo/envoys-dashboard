@@ -2858,7 +2858,7 @@ function VipContactView({ currentUser }) {
                 ...card, padding: "12px 16px",
                 borderLeft: `3px solid ${isMessaged ? C.green : r.vip?.assigned_to ? C.blue : C.gold}`,
               }}>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <div className="et-head" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
                     <Avatar name={r.full_name} />
                     <div>
@@ -2873,7 +2873,7 @@ function VipContactView({ currentUser }) {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
 
                     {r.vip?.assigned_to && !pending ? (
                       <span
@@ -2916,7 +2916,7 @@ function VipContactView({ currentUser }) {
                       <MessageCircle size={13} />Send WhatsApp
                     </button>
 
-                    <div style={{ display: "flex", gap: 4 }}>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       <button
                         style={btn(isMessaged ? "primary" : "ghost", { padding: "6px 12px", fontSize: 11, ...(isMessaged ? { background: C.green, border: "none" } : {}) })}
                         onClick={() => setMessaged(r, true)} disabled={saving}>
