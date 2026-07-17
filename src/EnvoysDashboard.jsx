@@ -104,7 +104,7 @@ import {
       .statcard-value { font-size: 19px !important; }
       /* v6.1 — smaller pipeline chips on mobile */
       .pbar > *       { padding: 3px 8px !important; font-size: 10px !important; }
-      .notif-bell-wrap { top: 64px !important; }
+      .notif-bell-wrap { display: none !important; }
     }
 
     @media (min-width: 769px) {
@@ -1269,7 +1269,7 @@ function useNotificationData(role, user) {
   return { ...data, reload: load };
 }
 
-function NotificationBell({ role, user, setActive }) {
+function NotificationBell({ role, user, setActive, inline = false }) {
   const { flagCount, pendingCount, dueCount, loading, reload } = useNotificationData(role, user);
   const [open, setOpen] = useState(false);
   const total = flagCount + pendingCount + dueCount;
@@ -1305,10 +1305,16 @@ function NotificationBell({ role, user, setActive }) {
   }
 
   return (
-    <div style={{ position: "fixed", top: 16, right: 16, zIndex: 200 }} className="notif-bell-wrap">
+    <div
+      style={inline
+        ? { position: "relative", zIndex: 200 }
+        : { position: "fixed", top: 16, right: 16, zIndex: 200 }}
+      className={inline ? undefined : "notif-bell-wrap"}>
       <button onClick={() => setOpen(o => !o)} style={{
-        position: "relative", width: 40, height: 40, borderRadius: "50%",
-        background: C.surface, border: `1px solid ${C.border}`, boxShadow: SHADOW.xs,
+        position: "relative", width: inline ? 32 : 40, height: inline ? 32 : 40, borderRadius: "50%",
+        background: inline ? "rgba(255,255,255,.08)" : C.surface,
+        border: `1px solid ${inline ? "rgba(255,255,255,.15)" : C.border}`,
+        boxShadow: inline ? "none" : SHADOW.xs,
         display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
       }}>
         <Bell size={17} color={total > 0 ? C.textPrimary : C.textMuted} />
@@ -1678,7 +1684,7 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
 
   return (
     <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: people.length ? 12 : 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: people.length ? 12 : 0 }}>
         <Gift size={14} color={C.goldDark} />
         <span style={{
           fontSize: 12, fontWeight: 700, fontFamily: F.head,
@@ -1924,7 +1930,7 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
   );
 }
 
-function MobileHeader({ onMenu, title }) {
+function MobileHeader({ onMenu, title, role, user, setActive }) {
   return (
     <div className="mob-header"
       style={{
@@ -1939,9 +1945,10 @@ function MobileHeader({ onMenu, title }) {
         <Menu size={22} />
       </button>
       <Logo size={26} />
-      <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: F.head }}>
+      <span style={{ color: "#fff", fontWeight: 700, fontSize: 14, fontFamily: F.head, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {title || "The Envoys"}
       </span>
+      {role && <NotificationBell role={role} user={user} setActive={setActive} inline />}
     </div>
   );
 }
@@ -2342,7 +2349,7 @@ function FirstTimersList({ onEdit }) {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title="First-Timers Registry" subtitle={`${data.length} record${data.length !== 1 ? "s" : ""}${(dateFrom || dateTo) ? " in date range" : " total"}`}
         action={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ position: "relative" }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
@@ -2813,6 +2820,10 @@ function VipContactView({ currentUser }) {
           sub={notMessagedCount > 0 ? "Needs a message" : "All caught up"} />
       </div>
 
+      <div className="vip-contact-wrap page-enter">
+        {/* Existing content */}
+      </div>
+
       <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
@@ -2940,6 +2951,29 @@ function VipContactView({ currentUser }) {
     </div>
   );
 }
+
+<style>{`
+  @media (max-width: 768px) {
+    .vip-contact-wrap .g4 {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .vip-contact-wrap .et-head {
+      flex-direction: column !important;
+      align-items: stretch !important;
+    }
+    .vip-contact-wrap .et-actions {
+      width: 100% !important;
+      justify-content: flex-start !important;
+      margin-top: 10px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .vip-contact-wrap .g4 {
+      grid-template-columns: 1fr !important;
+    }
+  }
+`}</style>
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                        ║
@@ -3202,6 +3236,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
     if (filter === "incomplete") return matchSearch && !pipelineComplete(r.fbRows);
     return matchSearch;
   });
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}`, filtered.length, 10);
 
   const assignedCount   = data.filter(r => !!r.assignment).length;
   const unassignedCount = data.filter(r => !r.assignment).length;
@@ -3359,8 +3394,9 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
       </div>
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => {
+          {filtered.slice(0, visibleCount).map(r => {
             const complete = pipelineComplete(r.fbRows);
             const pending  = pendingAssign[r.id];
             // ── v5.6: name + gender + marital + life stage ──
@@ -3452,6 +3488,13 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
             </div>
           )}
         </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
+        </div>
       )}
     </div>
   );
@@ -3503,6 +3546,7 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
   const complete  = visible.filter(r => categorise(r) === "complete");
   const views     = { pending, reached, callback, incorrect, complete, all: visible };
   const filtered  = views[filter] || visible;
+  const { visibleCount, onScroll } = usePagedScroll(`${filter}|${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   const tabs = [
     { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold      },
@@ -3574,8 +3618,9 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
       <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => {
+          {filtered.slice(0, visibleCount).map(r => {
             const latestFb   = r.fbRows[r.fbRows.length - 1];
             const complete   = pipelineComplete(r.fbRows);
             const sm         = latestFb
@@ -3741,6 +3786,13 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
             </div>
           )}
         </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> record{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
+        </div>
       )}
     </div>
   );
@@ -3763,6 +3815,7 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
       r.fbRows.some(f => f.caller_name === currentUser);
     return isCallBack && isMine;
   });
+  const { visibleCount, onScroll } = usePagedScroll("callbacks", callbacks.length, 10);
 
   return (
     <div className="page-enter">
@@ -3772,8 +3825,9 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
       <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {callbacks.map(r => {
+          {callbacks.slice(0, visibleCount).map(r => {
             const latest = r.fbRows[r.fbRows.length - 1];
             const nxt    = nextWeek(r.fbRows);
             // ── v5.5: name with gender tag ──
@@ -3816,11 +3870,17 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
             </div>
           )}
         </div>
+        </div>
+      )}
+      {!loading && callbacks.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, callbacks.length)}</strong> of <strong>{callbacks.length}</strong> call-back{callbacks.length !== 1 ? "s" : ""}
+          {visibleCount < callbacks.length ? " · scroll for more" : ""}
+        </div>
       )}
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // MyCallsView — per-week Edit buttons + assignment guard
 // Change: name shown as "Full Name (M/F)"
@@ -3845,6 +3905,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
 
   const views    = { all: mine, reached, callback, complete, flagged };
   const filtered = views[filter] || mine;
+  const { visibleCount, onScroll } = usePagedScroll(`${filter}`, filtered.length, 10);
 
   // v5.9 — follow-ups due today or overdue. A contact is "due" when its
   // MOST RECENT call log carries a follow_up_date that has arrived, and
@@ -3911,8 +3972,9 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
       <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 10 }}>
-          {filtered.map(r => {
+          {filtered.slice(0, visibleCount).map(r => {
             const isComplete  = pipelineComplete(r.fbRows);
             const nxt         = nextWeek(r.fbRows);
             const lastFb      = r.fbRows[r.fbRows.length - 1];
@@ -4100,6 +4162,13 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
               )}
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -4740,6 +4809,9 @@ function CompletedPipelines({ onBack }) {
     return true;
   });
 
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const pageRows = filtered.slice(0, visibleCount);
+
   const allFilteredIds = filtered.map(r => r.id);
   const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
   const someSelected   = allFilteredIds.some(id => selected.has(id));
@@ -4812,7 +4884,7 @@ function CompletedPipelines({ onBack }) {
         title="Completed Pipelines"
         subtitle="Overview submissions after each 3-week follow-up cycle"
         action={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button style={btn("ghost")} onClick={onBack}><ArrowLeft size={14} />Back</button>
             <button
               style={{
@@ -4903,14 +4975,14 @@ function CompletedPipelines({ onBack }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflowX: "auto" }}>
+          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           {/* Table header */}
           <div style={{
             display: "grid",
             gridTemplateColumns: "40px 1fr 130px 120px 1fr 1fr",
             padding: "10px 16px", background: C.bg,
             borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
-            minWidth: 760,
+            minWidth: 760, position: "sticky", top: 0, zIndex: 2,
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"}
@@ -4935,7 +5007,7 @@ function CompletedPipelines({ onBack }) {
           </div>
 
           {/* Table rows */}
-          {filtered.map((r, i) => {
+          {pageRows.map((r, i) => {
             const ft        = r.first_timers || {};
             const isChecked = selected.has(r.id);
             const groups    = Array.isArray(r.natural_groups)
@@ -4952,7 +5024,7 @@ function CompletedPipelines({ onBack }) {
                   minWidth: 760,
                   padding: "12px 16px", gap: 10,
                   alignItems: "flex-start",
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.blue}08` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
@@ -5038,7 +5110,8 @@ function CompletedPipelines({ onBack }) {
           display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8,
         }}>
           <span>
-            Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> overview{rows.length !== 1 ? "s" : ""}
+            Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> overview{filtered.length !== 1 ? "s" : ""} matching your filters (of {rows.length} total)
+            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
           {selectedCount === 0 && filtered.length > 0 && (
             <span style={{ color: C.blue, fontWeight: 600 }}>
@@ -5289,7 +5362,7 @@ function PasGoldenEnvoys({ rows, dateFrom, dateTo }) {
     <div style={card}>
       {/* Header: download icon sits directly in front of the title */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 8,
+        display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
         marginBottom: 16, paddingBottom: 8, borderBottom: `1.5px solid ${C.greenLight}`,
       }}>
         <button
@@ -5416,6 +5489,7 @@ function AllFeedback() {
 
     return true;
   });
+  const { visibleCount, onScroll } = usePagedScroll(`${filter}|${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
@@ -5495,8 +5569,9 @@ function AllFeedback() {
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => {
+          {filtered.slice(0, visibleCount).map(r => {
             const ft = r.first_timers || {};
             const sm = statusMeta(r.call_status);
             return (
@@ -5557,6 +5632,13 @@ function AllFeedback() {
             </p>
           )}
         </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> entr{filtered.length !== 1 ? "ies" : "y"}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
+        </div>
       )}
     </div>
   );
@@ -5589,6 +5671,7 @@ function FlaggedRecords() {
   };
 
   const agingCount = rows.filter(r => daysOpen(r.created_at) >= 3).length;
+  const { visibleCount, onScroll } = usePagedScroll("flagged", rows.length, 10);
 
   return (
     <div className="page-enter">
@@ -5602,8 +5685,9 @@ function FlaggedRecords() {
         )} />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 10 }}>
-          {rows.map(r => {
+          {rows.slice(0, visibleCount).map(r => {
             const ft = r.first_timers || {};
             const sm = statusMeta(r.call_status);
             const age = daysOpen(r.created_at);
@@ -5650,6 +5734,13 @@ function FlaggedRecords() {
               <div style={{ fontSize: 13, marginTop: 4 }}>Nothing requires pastoral attention right now.</div>
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && rows.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, rows.length)}</strong> of <strong>{rows.length}</strong> record{rows.length !== 1 ? "s" : ""}
+          {visibleCount < rows.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -6483,7 +6574,7 @@ function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
           <FieldInput label="House Address" id="nvh" value={newForm.house_address} onChange={setField("house_address")} placeholder="Street, City" />
           <FieldInput label="Nearest Landmark" id="nvk" value={newForm.nearest_landmark} onChange={setField("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
 
-          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
             <button style={btn("ghost")} onClick={() => setStep("search")}><ArrowLeft size={14} />Back to Search</button>
             <button style={{ ...btn("soul"), flex: 1 }} onClick={createNewAndProceed} disabled={creating}>
               {creating ? "Saving…" : "Save & Log Visit"}
@@ -6523,6 +6614,7 @@ function AssignVisitsView({ currentUser }) {
     if (filter === "visited")    return matchSearch && c.visits.length > 0;
     return matchSearch;
   });
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   const assignedCount   = data.filter(c => !!c.assignment).length;
   const unassignedCount = data.filter(c => !c.assignment).length;
@@ -6677,8 +6769,9 @@ function AssignVisitsView({ currentUser }) {
       <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(c => {
+          {filtered.slice(0, visibleCount).map(c => {
             const pending     = pendingAssign[c.id];
             const displayName = `${c.full_name}${scProfileTag(c)}`;
             const hasVisits   = c.visits.length > 0;
@@ -6756,6 +6849,13 @@ function AssignVisitsView({ currentUser }) {
               <div style={{ fontWeight: 600, fontFamily: F.head }}>No contacts in this category</div>
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -7018,6 +7118,8 @@ function MembersCare({ currentUser, role }) {
     }
     return true;
   });
+  const { visibleCount, onScroll } = usePagedScroll(`${fStatus}|${fMarital}|${fLife}|${search}`, filtered.length, 15);
+  const pageRows = filtered.slice(0, visibleCount);
 
   const addToPool = async (m) => {
     setAddingId(m.id); setErr("");
@@ -7061,7 +7163,7 @@ function MembersCare({ currentUser, role }) {
         title="Members Care"
         subtitle="Full congregation registry for Soul Care follow-up"
         action={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {isAdmin && (
               <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => setShowImport(s => !s)}>
                 <Upload size={14} />{showImport ? "Hide Import" : "Bulk Import"}
@@ -7134,7 +7236,7 @@ function MembersCare({ currentUser, role }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
+          <div className="mc-scroll" onScroll={onScroll} style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
 
             {/* Sticky header */}
             <div style={{
@@ -7150,7 +7252,7 @@ function MembersCare({ currentUser, role }) {
             </div>
 
             {/* Rows */}
-            {filtered.map((m, i) => {
+            {pageRows.map((m, i) => {
               const k       = phoneKey(m.phone);
               const inPool  = k && poolKeys.has(k);
               const lastVis = k ? lastVisitByKey[k] : null;
@@ -7159,7 +7261,7 @@ function MembersCare({ currentUser, role }) {
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
                   padding: "10px 0", background: C.surface, minWidth: 1050,
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div style={stickyLeft(C.surface)}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
@@ -7212,10 +7314,11 @@ function MembersCare({ currentUser, role }) {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span>
-            Showing <strong>{filtered.length}</strong> of <strong>{members.length}</strong> member{members.length !== 1 ? "s" : ""}
+            Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> member{filtered.length !== 1 ? "s" : ""} matching your filters (of {members.length} total)
+            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
           {filtered.length > 10 && (
-            <span>Scroll the table for more · Name and Visit Pool stay pinned</span>
+            <span>Name and Visit Pool columns stay pinned while scrolling</span>
           )}
         </div>
       )}
@@ -7256,6 +7359,7 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
   const unavailable = visible.filter(c => scCategorise(c) === "unavailable");
   const views  = { pending, scheduled, completed, rescheduled, unavailable, all: visible };
   const filtered = views[filter] || visible;
+  const { visibleCount, onScroll } = usePagedScroll(`${filter}|${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   const tabs = [
     { k: "pending",     label: "Pending",       count: pending.length,     col: C.gold      },
@@ -7301,8 +7405,9 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
       <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(c => {
+          {filtered.slice(0, visibleCount).map(c => {
             const latest = scLatestVisit(c.visits);
             const sm     = latest ? (VISIT_STATUS_META[latest.visit_status] || { color: C.gold, bg: C.goldLight }) : { color: C.gold, bg: C.goldLight };
             const isOpen = expanded === c.id;
@@ -7404,6 +7509,13 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
             </div>
           )}
         </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
+        </div>
       )}
     </div>
   );
@@ -7428,6 +7540,7 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
 
   const views    = { all: mine, pending, scheduled, completed, flagged };
   const filtered = views[filter] || mine;
+  const { visibleCount, onScroll } = usePagedScroll(`${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   // v5.9 — visits whose latest log requested a follow-up that has arrived.
   const dueTodayStr = new Date().toISOString().slice(0, 10);
@@ -7494,8 +7607,9 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
       <Alert type="error" msg={err} onClose={() => {}} />
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 10 }}>
-          {filtered.map(c => {
+          {filtered.slice(0, visibleCount).map(c => {
             const latest      = scLatestVisit(c.visits);
             const sm          = latest ? (VISIT_STATUS_META[latest.visit_status] || { color: C.gold, bg: C.goldLight }) : { color: C.gold, bg: C.goldLight };
             const anyFlagged  = c.visits.some(v => v.escalate_to_pastorate);
@@ -7570,6 +7684,13 @@ function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
               {mine.length === 0 && <p style={{ fontSize: 13, marginTop: 6 }}>Ask your Soul Care Admin to assign contacts to you.</p>}
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -7819,6 +7940,7 @@ function SoulCareFlagged() {
     return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
   };
   const agingCount = rows.filter(r => daysOpen(r.created_at) >= 3).length;
+  const { visibleCount, onScroll } = usePagedScroll(`${dateFrom}|${dateTo}`, rows.length, 10);
 
   return (
     <div className="page-enter">
@@ -7834,8 +7956,9 @@ function SoulCareFlagged() {
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 10 }}>
-          {rows.map(r => {
+          {rows.slice(0, visibleCount).map(r => {
             const contact = r.soul_care_contacts || {};
             const age = daysOpen(r.created_at);
             const aging = age >= 3;
@@ -7873,6 +7996,13 @@ function SoulCareFlagged() {
               <div style={{ fontSize: 13, marginTop: 4 }}>Nothing requires pastoral attention right now.</div>
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && rows.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, rows.length)}</strong> of <strong>{rows.length}</strong> record{rows.length !== 1 ? "s" : ""}
+          {visibleCount < rows.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -7915,6 +8045,9 @@ function Testimonies() {
     if (dateTo   && r.visit_date > dateTo)   return false;
     return true;
   });
+
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const pageRows = filtered.slice(0, visibleCount);
 
   const allFilteredIds = filtered.map(r => r.id);
   const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
@@ -8020,8 +8153,8 @@ function Testimonies() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflowX: "auto" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 12, alignItems: "center" }}>
+          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 12, alignItems: "center", position: "sticky", top: 0, zIndex: 2 }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all visible"}
                 style={{
@@ -8038,14 +8171,14 @@ function Testimonies() {
             <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Testimony</div>
           </div>
 
-          {filtered.map((r, i) => {
+          {pageRows.map((r, i) => {
             const isChecked = selected.has(r.id);
             const name = r.soul_care_contacts?.full_name || "—";
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
                   display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "12px 16px", gap: 12, alignItems: "flex-start",
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.soul}08` : C.surface, cursor: "pointer", transition: "background .12s",
                 }}
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.soulLight; }}
@@ -8228,7 +8361,7 @@ function TestimonyProjector({ items, initialIndex = 0, slug, shareUrl, onIndexCh
           <div style={{ flex: 1, display: "flex", position: "relative", overflow: "hidden" }}>
             <div onClick={prev} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "30%", cursor: index > 0 ? "pointer" : "default", zIndex: 2 }} />
             <div onClick={next} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "30%", cursor: "pointer", zIndex: 2 }} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 60px", overflowY: "auto" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px clamp(20px, 6vw, 60px)", overflowY: "auto" }}>
               <div style={{ maxWidth: "min(90vw, 1100px)", textAlign: "center" }}>
                 <div style={{ fontSize: 60, color: C.goldLight, lineHeight: 1, marginBottom: 8, fontFamily: F.head }}>"</div>
                 <div style={{
@@ -8418,6 +8551,9 @@ function TestimonyBank({ currentUser }) {
     return true;
   });
 
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${category}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const pageRows = filtered.slice(0, visibleCount);
+
   const allFilteredIds = filtered.map(r => r.id);
   const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
   const someSelected   = allFilteredIds.some(id => selected.has(id));
@@ -8520,7 +8656,7 @@ function TestimonyBank({ currentUser }) {
       <PageHeader title="Testimony Bank"
         subtitle={`${rows.length} testimon${rows.length !== 1 ? "ies" : "y"} submitted via the Testimony QR form`}
         action={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
             <button
               style={{
@@ -8630,10 +8766,11 @@ function TestimonyBank({ currentUser }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflowX: "auto" }}>
+          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           <div style={{
             display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr", minWidth: 760,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+            position: "sticky", top: 0, zIndex: 2,
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all visible"}
@@ -8652,7 +8789,7 @@ function TestimonyBank({ currentUser }) {
             ))}
           </div>
 
-          {filtered.map((r, i) => {
+          {pageRows.map((r, i) => {
             const isChecked = selected.has(r.id);
             const [cc, cb] = catBadge(r.category);
             return (
@@ -8660,7 +8797,7 @@ function TestimonyBank({ currentUser }) {
                 style={{
                   display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr", minWidth: 760,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.gold}0D` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
@@ -8699,7 +8836,10 @@ function TestimonyBank({ currentUser }) {
 
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> testimon{rows.length !== 1 ? "ies" : "y"}</span>
+          <span>
+            Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> testimon{filtered.length !== 1 ? "ies" : "y"} matching your filters (of {rows.length} total)
+            {visibleCount < filtered.length ? " · scroll for more" : ""}
+          </span>
           {selectedCount === 0 && <span style={{ color: C.goldDark, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
@@ -8738,6 +8878,7 @@ function VisitationTab() {
   const escalated      = data.filter(r => r.escalate_to_pastorate).length;
 
   const filtered = data.filter(r => !statusFilter || r.visit_status === statusFilter);
+  const { visibleCount, onScroll } = usePagedScroll(`${statusFilter}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   return (
     <div className="page-enter">
@@ -8779,8 +8920,9 @@ function VisitationTab() {
       </div>
 
       {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => {
+          {filtered.slice(0, visibleCount).map(r => {
             const contact = r.soul_care_contacts || {};
             const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
             const um = URGENCY_META[r.urgency] || {};
@@ -8848,6 +8990,13 @@ function VisitationTab() {
               <div style={{ fontWeight: 700, fontFamily: F.head }}>No visitation records{dateFrom || dateTo ? " in this date range" : ""}</div>
             </div>
           )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> visit{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -9160,6 +9309,9 @@ function ResearchFeedback() {
     return true;
   });
 
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const pageRows = filtered.slice(0, visibleCount);
+
   const allFilteredIds = filtered.map(r => r.id);
   const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
   const someSelected   = allFilteredIds.some(id => selected.has(id));
@@ -9289,10 +9441,11 @@ function ResearchFeedback() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflowX: "auto" }}>
+          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           <div style={{
             display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr", minWidth: 820,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+            position: "sticky", top: 0, zIndex: 2,
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} style={{
@@ -9310,14 +9463,14 @@ function ResearchFeedback() {
             ))}
           </div>
 
-          {filtered.map((r, i) => {
+          {pageRows.map((r, i) => {
             const isChecked = selected.has(r.id);
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
                   display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr", minWidth: 820,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.research}08` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
@@ -9362,7 +9515,10 @@ function ResearchFeedback() {
 
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> response{rows.length !== 1 ? "s" : ""}</span>
+          <span>
+            Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> response{filtered.length !== 1 ? "s" : ""} matching your filters (of {rows.length} total)
+            {visibleCount < filtered.length ? " · scroll for more" : ""}
+          </span>
           {selectedCount === 0 && <span style={{ color: C.research, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
@@ -9415,6 +9571,9 @@ function GeneralFeedback() {
     if (dateTo   && r.date > dateTo)   return false;
     return true;
   });
+
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const pageRows = filtered.slice(0, visibleCount);
 
   const allFilteredIds = filtered.map(r => r.id);
   const allSelected    = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
@@ -9545,10 +9704,11 @@ function GeneralFeedback() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflowX: "auto" }}>
+          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           <div style={{
             display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr", minWidth: 680,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
+            position: "sticky", top: 0, zIndex: 2,
           }}>
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div onClick={toggleAll} style={{
@@ -9566,14 +9726,14 @@ function GeneralFeedback() {
             ))}
           </div>
 
-          {filtered.map((r, i) => {
+          {pageRows.map((r, i) => {
             const isChecked = selected.has(r.id);
             return (
               <div key={r.id} onClick={() => toggleRow(r.id)}
                 style={{
                   display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr", minWidth: 680,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                   background: isChecked ? `${C.research}08` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
@@ -9611,7 +9771,10 @@ function GeneralFeedback() {
 
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> response{rows.length !== 1 ? "s" : ""}</span>
+          <span>
+            Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> response{filtered.length !== 1 ? "s" : ""} matching your filters (of {rows.length} total)
+            {visibleCount < filtered.length ? " · scroll for more" : ""}
+          </span>
           {selectedCount === 0 && <span style={{ color: C.research, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
@@ -9905,6 +10068,7 @@ function AdminUsers({ onEdit }) {
 
   const pendingCount = users.filter(u => u.is_pending).length;
   const sorted = [...users].sort((a, b) => (b.is_pending ? 1 : 0) - (a.is_pending ? 1 : 0));
+  const { visibleCount, onScroll } = usePagedScroll("users", sorted.length, 10);
 
   return (
     <div className="page-enter">
@@ -9914,8 +10078,9 @@ function AdminUsers({ onEdit }) {
       <Alert type="error"   msg={err} onClose={() => setErr("")} />
       <Alert type="success" msg={msg} onClose={() => setMsg("")} />
       {loading ? <SkeletonList rows={5} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
-          {sorted.map(u => {
+          {sorted.slice(0, visibleCount).map(u => {
             const rm = ROLE_META[u.role] || ROLE_META.dofficer;
             return (
               <div key={u.id} style={{
@@ -9964,6 +10129,7 @@ function AdminUsers({ onEdit }) {
             );
           })}
           {users.length === 0 && <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>No users yet.</p>}
+        </div>
         </div>
       )}
     </div>
@@ -10633,7 +10799,7 @@ function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, color: C.textPrimary }}>
-      <MobileHeader onMenu={() => setMobileOpen(true)} title={pageTitle} />
+      <MobileHeader onMenu={() => setMobileOpen(true)} title={pageTitle} role={role} user={user} setActive={navTo} />
       <Sidebar role={role} active={active} setActive={navTo} user={user}
         onLogout={logout} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)}
         flagCount={flagCount} />
