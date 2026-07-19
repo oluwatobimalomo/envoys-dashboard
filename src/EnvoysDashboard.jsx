@@ -20,6 +20,8 @@ import {
   Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
 } from "recharts";
 
+import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from "@react-pdf/renderer";
+
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: GLOBAL STYLES & CSS INJECTION                                     ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -125,6 +127,66 @@ import {
   `;
   document.head.appendChild(s);
 })();
+
+const pdfStyles = StyleSheet.create({
+  page: { padding: 32, fontSize: 11, fontFamily: "Helvetica" },
+  title: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
+  subtitle: { fontSize: 10, color: "#666", marginBottom: 20 },
+  sectionTitle: { fontSize: 13, fontWeight: 700, marginTop: 18, marginBottom: 8, color: "#1B3A2D" },
+  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  label: { color: "#333" },
+  value: { fontWeight: 700 },
+  aiText: { fontSize: 10, lineHeight: 1.6, marginTop: 6, color: "#222" },
+});
+
+function SoulCareReportPDF({ funnelStats, ncStats, aiSummary, dateFrom, dateTo }) {
+  return (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <Text style={pdfStyles.title}>Soul Care Reporting Dashboard</Text>
+        <Text style={pdfStyles.subtitle}>
+          RCCG The Envoys — {dateFrom || "All time"} to {dateTo || "Present"} — Generated {new Date().toLocaleDateString()}
+        </Text>
+
+        <Text style={pdfStyles.sectionTitle}>VIP → Membership Funnel</Text>
+        {[
+          ["VIP Retention Overviews Submitted", funnelStats?.totalOverviews ?? "—"],
+          ["Recommended for Membership", `${funnelStats?.recommended ?? "—"} (${funnelStats?.recommendationRate ?? 0}%)`],
+          ["Not Recommended (Envoys Visitors)", funnelStats?.declined ?? "—"],
+          ["Potential Envoys — Graduated", funnelStats?.graduated ?? "—"],
+          ["Potential Envoys — Still Active", funnelStats?.stillActivePE ?? "—"],
+          ["Graduation Rate (of Potential Envoys)", `${funnelStats?.graduationRate ?? 0}%`],
+          ["Overall VIP → Member Conversion", `${funnelStats?.overallConversionRate ?? 0}%`],
+        ].map(([label, value]) => (
+          <View style={pdfStyles.row} key={label}>
+            <Text style={pdfStyles.label}>{label}</Text>
+            <Text style={pdfStyles.value}>{String(value)}</Text>
+          </View>
+        ))}
+
+        <Text style={pdfStyles.sectionTitle}>New Converts</Text>
+        {[
+          ["Total New Converts", ncStats?.total ?? "—"],
+          ["Fully Discipled (3 months + training)", ncStats?.completed ?? "—"],
+          ["Retention Rate", `${ncStats?.retentionPct ?? 0}%`],
+          ["Training Completed", ncStats?.trainingDone ?? "—"],
+        ].map(([label, value]) => (
+          <View style={pdfStyles.row} key={label}>
+            <Text style={pdfStyles.label}>{label}</Text>
+            <Text style={pdfStyles.value}>{String(value)}</Text>
+          </View>
+        ))}
+
+        {aiSummary && (
+          <>
+            <Text style={pdfStyles.sectionTitle}>AI-Generated Insight Summary</Text>
+            <Text style={pdfStyles.aiText}>{aiSummary}</Text>
+          </>
+        )}
+      </Page>
+    </Document>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v5.7 — Click-to-call
@@ -523,6 +585,14 @@ const NAV_ICONS = {
   testimony_bank: Star,
   members_care: Heart,
   vip_contact: MessageCircle,
+  envoys_visitors: Users,
+  pe_assign: UserCheck,
+  pe_mine: Clipboard,
+  nc_assign: UserCheck,
+  nc_mine: Clipboard,
+  nc_qr: QrCode,
+  nc_report: TrendingUp,
+  soulcare_dashboard: BarChart2,
 };
 
 const NAV = {
@@ -534,12 +604,16 @@ const NAV = {
     { id: "vip_contact",   label: "VIP Contact"   },
     { id: "assign_calls",        label: "Assign Calls"        },
     { id: "completed_pipelines", label: "Completed Pipelines" },
+    { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "callqueue",           label: "Call Queue"          },
     { id: "sc_assign",     label: "Assign Visits" },
     { id: "sc_queue",      label: "Visit Queue"   },
-    { id: "members_care", label: "Members Care" },
     { id: "add_visit",     label: "Add Visit"     },
+    { id: "pe_assign",     label: "Potential Envoys" },
+    { id: "nc_assign",     label: "New Converts" },
+    { id: "members_care", label: "Members Care" },
     { id: "report",        label: "Report"        },
+    { id: "nc_report",     label: "New Converts Retention" },
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
@@ -550,6 +624,7 @@ const NAV = {
     { id: "testimony_qr", label: "Testimony QR"   },
     { id: "qrcode",        label: "QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
+    { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -569,22 +644,38 @@ const NAV = {
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
+    { id: "report",        label: "Report"        },
+    { id: "nc_report",     label: "New Converts Retention" },
+    { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
   ],
   soulcare: [
-    { id: "sc_queue",   label: "Visit Queue" },
-    { id: "members_care", label: "Members Care" },
-    { id: "add_visit",  label: "Add Visit"  },
-    { id: "sc_mine",    label: "My Visits"  },
-    { id: "sc_flagged", label: "Flagged"     },
+    { id: "sc_queue",         label: "Visit Queue" },
+    { id: "sc_mine",          label: "My Visits"  },
+    { id: "pe_mine",          label: "My Potential Envoys" },
+    { id: "envoys_visitors",  label: "Envoys Visitors" },
+    { id: "members_care",     label: "Members Care" },
+    { id: "sc_flagged",       label: "Flagged"     },
+    { id: "pe_mine",          label: "My Potential Envoys" },
+    { id: "nc_mine",          label: "My New Converts" },
   ],
   soulcareadmin: [
-    { id: "sc_assign",           label: "Assign Visits"       },
     { id: "add_visit",           label: "Add Visit"           },
+    { id: "sc_assign",           label: "Assign Visits"       },
     { id: "sc_queue",            label: "Visit Queue"         },
-    { id: "members_care", label: "Members Care" },
+    { id: "sc_mine",             label: "My Visits"         },
+    { id: "pe_assign",           label: "Potential Envoys"    },
+    { id: "pe_mine",             label: "My Potential Envoys" },
+    { id: "envoys_visitors",     label: "Envoys Visitors"     },
+    { id: "members_care",        label: "Members Care" },
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "sc_flagged",          label: "Flagged"             },
-    { id: "sc_testimonies",      label: "Testimonies"         },
+    { id: "sc_testimonies",      label: "Care Testimonies"    },
+    { id: "pe_mine",             label: "My Potential Envoys" },
+    { id: "nc_assign",           label: "New Converts"        },
+    { id: "nc_mine",             label: "My New Converts"     },
+    { id: "nc_qr",               label: "New Convert QR"      },
+    { id: "nc_report",           label: "New Converts Retention" },
+    { id: "soulcare_dashboard",  label: "Soul Care Dashboard" },
   ],
   
   research: [
@@ -601,6 +692,7 @@ const NAV = {
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
   { id: "completed_pipelines", label: "Completed Pipelines" },
+  { id: "envoys_visitors",     label: "Envoys Visitors"     },
   { id: "callqueue",           label: "Call Queue"          },
   { id: "allfeedback",         label: "All Feedback"        },
   { id: "flagged",             label: "Flagged"             },
@@ -618,15 +710,15 @@ const NAV_GROUPS = {
   admin: [
     { title: "Administration",  ids: ["admin_overview", "admin_users", "admin_adduser"] },
     { title: "First-Timers",    ids: ["firsttimers", "vip_contact", "qrcode"] },
-    { title: "Experience Team", ids: ["assign_calls", "callqueue", "completed_pipelines"] },
-    { title: "Soul Care",       ids: ["sc_assign", "sc_queue", "members_care", "add_visit", "visitation_tab"] },
-    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
+    { title: "Experience Team", ids: ["assign_calls", "callqueue", "completed_pipelines", "envoys_visitors"] },
+    { title: "Soul Care",   ids: ["sc_assign", "sc_queue", "sc_mine", "pe_assign", "pe_mine", "envoys_visitors", "add_visit", "members_care", "visitation_tab", "nc_assign"] },
+    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged", "nc_report", "soulcare_dashboard"] },
     { title: "Research",        ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",     ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
   ],
   soulcareadmin: [
-    { title: "Visits",      ids: ["sc_assign", "sc_queue", "members_care", "add_visit"] },
-    { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged"] },
+    { title: "Soul Care",   ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "pe_assign", "pe_mine", "envoys_visitors", "members_care", "nc_assign", "nc_mine", "nc_qr", "nc_report"] },
+    { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged", "soulcare_dashboard"] },
     { title: "Testimonies", ids: ["sc_testimonies"] },
   ],
   experienceadmin: [
@@ -1975,6 +2067,202 @@ const AREAS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Soul Care Revamp Phase 4 — Reporting Dashboard: VIP funnel aggregation.
+// Deliberately separate from useCallData/usePotentialEnvoyData — this only
+// needs COUNTS for a chosen date range, not full enriched rows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useSoulCareFunnelData(dateFrom, dateTo) {
+  const [stats, setStats]     = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        let ovQ = "pipeline_overviews?select=id,move_to_membership,submitted_at";
+        if (dateFrom) ovQ += `&submitted_at=gte.${dateFrom}`;
+        if (dateTo)   ovQ += `&submitted_at=lte.${dateTo}T23:59:59`;
+
+        let peQ = "potential_envoys?select=id,promoted_to_membership,created_at";
+        if (dateFrom) peQ += `&created_at=gte.${dateFrom}`;
+        if (dateTo)   peQ += `&created_at=lte.${dateTo}T23:59:59`;
+
+        let evQ = "envoys_visitors?select=id,moved_at";
+        if (dateFrom) evQ += `&moved_at=gte.${dateFrom}`;
+        if (dateTo)   evQ += `&moved_at=lte.${dateTo}T23:59:59`;
+
+        const [ovRows, peRows, evRows] = await Promise.all([
+          sb(ovQ).catch(() => []),
+          sb(peQ).catch(() => []),
+          sb(evQ).catch(() => []),
+        ]);
+
+        const totalOverviews = (ovRows || []).length;
+        const recommended    = (ovRows || []).filter(r => r.move_to_membership).length;
+        const declined        = (ovRows || []).filter(r => !r.move_to_membership).length;
+        const totalPE         = (peRows || []).length;
+        const graduated       = (peRows || []).filter(r => r.promoted_to_membership).length;
+        const stillActivePE   = totalPE - graduated;
+
+        if (!cancelled) {
+          setStats({
+            totalOverviews, recommended, declined,
+            recommendationRate: totalOverviews > 0 ? Math.round((recommended / totalOverviews) * 100) : 0,
+            totalPE, graduated, stillActivePE,
+            graduationRate: totalPE > 0 ? Math.round((graduated / totalPE) * 100) : 0,
+            overallConversionRate: totalOverviews > 0 ? Math.round((graduated / totalOverviews) * 100) : 0,
+            envoysVisitorsArchived: (evRows || []).length,
+          });
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [dateFrom, dateTo]);
+
+  return { stats, loading, err };
+}
+
+function AISummaryPanel({ statsPayload }) {
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr]         = useState("");
+  const [shown, setShown]     = useState(false);
+
+  const generate = async () => {
+    setLoading(true); setErr(""); setShown(true);
+    try {
+      const res = await fetch("/api/generate-insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stats: statsPayload }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+      setSummary(data.summary || "No summary returned.");
+    } catch (e) {
+      setErr(`Couldn't generate a summary: ${e.message}. Confirm ANTHROPIC_API_KEY is set in Vercel and api/generate-insight.js is deployed.`);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30` }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: shown ? 14 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Zap size={15} color={C.goldDark} />
+          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head, color: C.goldDark }}>AI Insight Summary</span>
+        </div>
+        <button style={btn("gold", { padding: "8px 16px", fontSize: 13 })} onClick={generate} disabled={loading}>
+          {loading ? "Generating…" : shown ? "Regenerate" : "Generate AI Summary"}
+        </button>
+      </div>
+      {shown && (
+        <>
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          {loading ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.textMuted, fontSize: 13 }}>
+              <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />Thinking this through…
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            </div>
+          ) : summary && (
+            <div style={{ fontSize: 14, color: C.textPrimary, lineHeight: 1.75, whiteSpace: "pre-wrap", background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${C.gold}20` }}>
+              {summary}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SoulCareReportingDashboard() {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { stats: funnelStats, loading: funnelLoading, err: funnelErr } = useSoulCareFunnelData(dateFrom, dateTo);
+  const { data: ncData, loading: ncLoading } = useNewConvertData(dateFrom, dateTo);
+  const [aiSummaryForPdf, setAiSummaryForPdf] = useState("");
+
+  const ncTotal     = ncData.length;
+  const ncCompleted = ncData.filter(r => ncComplete(r.fbRows) && r.envoys_training_completed).length;
+  const ncTraining  = ncData.filter(r => r.envoys_training_completed).length;
+  const ncRetentionPct = ncTotal > 0 ? Math.round((ncCompleted / ncTotal) * 100) : 0;
+  const ncStats = { total: ncTotal, completed: ncCompleted, trainingDone: ncTraining, retentionPct: ncRetentionPct };
+
+  const statsPayload = { period: { from: dateFrom || "all-time", to: dateTo || "present" }, vipFunnel: funnelStats, newConverts: ncStats };
+  const loading = funnelLoading || ncLoading;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Soul Care Reporting Dashboard"
+        subtitle="Turning information into insight and insight into impact"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 140 }} />
+            {!loading && (
+              <PDFDownloadLink
+                document={<SoulCareReportPDF funnelStats={funnelStats} ncStats={ncStats} aiSummary={aiSummaryForPdf} dateFrom={dateFrom} dateTo={dateTo} />}
+                fileName={`soul_care_report_${new Date().toISOString().slice(0, 10)}.pdf`}
+                style={{ textDecoration: "none" }}>
+                {({ loading: pdfLoading }) => (
+                  <button style={btn("primary")} disabled={pdfLoading}>
+                    <Download size={14} />{pdfLoading ? "Preparing…" : "Download PDF"}
+                  </button>
+                )}
+              </PDFDownloadLink>
+            )}
+          </div>
+        }
+      />
+
+      <Alert type="error" msg={funnelErr} onClose={() => {}} />
+
+      {loading ? <SkeletonReport /> : (
+        <>
+          <div style={{ marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+            VIP → Membership Funnel
+          </div>
+          <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+            <StatCard label="Overviews Submitted"  value={funnelStats?.totalOverviews ?? 0} icon={FileText} accent={C.blue} />
+            <StatCard label="Recommended (Yes)"     value={funnelStats?.recommended ?? 0}    icon={CheckCircle} accent={C.green}
+              sub={`${funnelStats?.recommendationRate ?? 0}% of overviews`} />
+            <StatCard label="Potential Envoys Graduated" value={funnelStats?.graduated ?? 0} icon={Star} accent={C.goldDark}
+              sub={`${funnelStats?.graduationRate ?? 0}% graduation rate`} />
+            <StatCard label="Overall VIP → Member"   value={`${funnelStats?.overallConversionRate ?? 0}%`} icon={TrendingUp} accent={C.soul}
+              sub="End-to-end conversion" />
+          </div>
+
+          <div style={{ marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+            New Converts
+          </div>
+          <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+            <StatCard label="Total New Converts" value={ncStats.total}        icon={Heart}      accent={C.soul}  />
+            <StatCard label="Fully Discipled"     value={ncStats.completed}    icon={CheckCircle} accent={C.green} />
+            <StatCard label="Training Completed"  value={ncStats.trainingDone} icon={Star}       accent={C.goldDark} />
+            <StatCard label="Retention Rate"      value={`${ncStats.retentionPct}%`} icon={TrendingUp} accent={C.soul} />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <AISummaryPanel statsPayload={statsPayload} />
+          </div>
+
+          <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6 }}>
+            For the detailed weekly call-outcome breakdown, see <strong>Pastoral Report</strong>. For a full monthly
+            reach breakdown of New Converts, see <strong>New Converts Retention</strong>.
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // v6.2 — duplicate detection helpers
 // phoneKey(): reduces any NG phone format to a comparable 10-digit key.
 //   "0803 123 4567" / "+2348031234567" / "2348031234567" -> "8031234567"
@@ -2630,7 +2918,7 @@ function useVipMessageData(dateFrom, dateTo) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        let ftQuery = "first_timers?order=created_at.desc&limit=500";
+        let ftQuery = "first_timers?is_active=eq.true&order=created_at.desc&limit=500";
         if (dateFrom) ftQuery += `&service_date=gte.${dateFrom}`;
         if (dateTo)   ftQuery += `&service_date=lte.${dateTo}`;
         const [ftRows, vmRows] = await Promise.all([
@@ -4761,6 +5049,1613 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
           : isEditing
             ? "Save Changes to Overview"
             : "Submit VIP Retention Overview"}
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Soul Care Revamp Phase 1 — Envoys Visitors: read-only archive of
+// first-timers not recommended for membership at the end of the 3-week
+// pipeline. Rows are auto-populated by a DB trigger, never written here.
+// Same scroll/pin pattern as Members Care: ~10 rows visible with an
+// internal scrollbar, ONLY the Full Name column pinned while the rest
+// scrolls horizontally.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EnvoysVisitors() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      setRows((await sb("envoys_visitors?select=*&order=moved_at.desc&limit=3000")) || []);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = rows.filter(r => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return r.full_name?.toLowerCase().includes(q) || r.phone?.includes(search);
+  });
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected = allFilteredIds.some(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Service Date","Membership Decision","House Address","Nearest Landmark","Service Feedback","Connect Center","Natural Groups","Moved At"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name), escape(r.phone), escape(r.gender), escape(r.dob),
+        escape(r.marital_status), escape(r.life_stage), escape(r.service_date),
+        escape(r.membership_decision), escape(r.house_address), escape(r.nearest_landmark),
+        escape(r.service_feedback), escape(r.connect_center),
+        escape(Array.isArray(r.natural_groups) ? r.natural_groups.join("; ") : (r.natural_groups || "")),
+        escape(r.moved_at ? r.moved_at.slice(0, 10) : ""),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `envoys_visitors_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+  const GRID = "40px minmax(170px,1.2fr) 150px 90px 90px 130px 130px 130px 140px 1.4fr";
+  const headCell = { fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head };
+  const stickyLeft = (bg, z = 2) => ({
+    position: "sticky", left: 0, zIndex: z, background: bg,
+    boxShadow: "2px 0 5px rgba(0,0,0,.06)", paddingLeft: 16,
+    alignSelf: "stretch", display: "flex", alignItems: "center",
+  });
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Envoys Visitors"
+        subtitle="First-timers not recommended for membership — kept for reference and export"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
+            <button
+              style={{
+                ...btn("primary"),
+                background: selectedCount > 0 ? C.textSecondary : C.border,
+                color: "#fff",
+                cursor: selectedCount > 0 ? "pointer" : "not-allowed",
+                border: "none",
+              }}
+              onClick={downloadCSV} disabled={selectedCount === 0}>
+              <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            </button>
+          </div>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
+        <StatCard label="Total Visitors"   value={rows.length}     icon={Users}    accent={C.textSecondary} />
+        <StatCard label="Matching Search"  value={filtered.length} icon={Filter}   accent={C.green} />
+        <StatCard label="Selected"         value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.blue : C.textMuted} />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+        <div style={{ position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 220, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Users size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0 ? "No one has been archived here yet." : "No results match your search."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
+              padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1180,
+            }}>
+              <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"} style={{
+                width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                border: `2px solid ${someSelected ? C.textSecondary : C.border}`,
+                background: allSelected ? C.textSecondary : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: "#fff", borderRadius: 1 }} />}
+              </div>
+              <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Full Name</div>
+              {["Phone", "Gender", "DOB", "Marital Status", "Life Stage", "Service Date", "Decision", "Moved", "Feedback"].map(h => (
+                <div key={h} style={headCell}>{h}</div>
+              ))}
+            </div>
+
+            {filtered.map((r, i) => {
+              const isChecked = selected.has(r.id);
+              return (
+                <div key={r.id} style={{
+                  display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
+                  padding: "10px 16px", minWidth: 1180,
+                  background: isChecked ? `${C.textSecondary}10` : C.surface,
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                }}>
+                  <div onClick={() => toggleRow(r.id)} style={{
+                    width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                    border: `2px solid ${isChecked ? C.textSecondary : C.border}`,
+                    background: isChecked ? C.textSecondary : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
+
+                  <div style={stickyLeft(C.surface)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <Avatar name={r.full_name} size={30} />
+                      <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.full_name}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12 }}><PhoneLink phone={r.phone} withWhatsApp /></div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.gender || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.dob || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.marital_status || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.life_stage || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.service_date || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.membership_decision || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}>{r.moved_at ? r.moved_at.slice(0, 10) : "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.5 }}>{r.service_feedback || "—"}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
+          Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> archived visitor{rows.length !== 1 ? "s" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Soul Care Revamp Phase 3 — New Converts: 3 MONTHLY check-ins (not weekly),
+// mirroring the VIP/Potential Envoys pipeline pattern at a slower cadence.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ncCheckinsLogged(fbRows) {
+  const done = new Set();
+  (fbRows || []).forEach(r => { if (r.checkin_number) done.add(r.checkin_number); });
+  return done;
+}
+function ncNextCheckin(fbRows) {
+  const done = ncCheckinsLogged(fbRows);
+  for (let m = 1; m <= 3; m++) { if (!done.has(m)) return m; }
+  return null;
+}
+function ncComplete(fbRows) {
+  return ncNextCheckin(fbRows) === null;
+}
+
+function NCPipelineBar({ fbRows, trainingCompleted }) {
+  const done = ncCheckinsLogged(fbRows);
+  const complete = ncComplete(fbRows);
+  const monthColor = (m) => {
+    if (!done.has(m)) return { bg: C.border, text: C.textMuted };
+    const row = (fbRows || []).find(r => r.checkin_number === m);
+    const norm = normaliseStatus(row?.call_status);
+    if (norm === "Reached")           return { bg: C.green,  text: "#fff" };
+    if (norm === "Call Back")         return { bg: C.amber,  text: "#fff" };
+    if (norm === "Incorrect Contact") return { bg: C.danger, text: "#fff" };
+    return { bg: C.greenMid, text: "#fff" };
+  };
+  return (
+    <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+      {[1, 2, 3].map(m => {
+        const c = monthColor(m);
+        return (
+          <div key={m} style={{
+            padding: "4px 10px", borderRadius: 6, background: c.bg, color: c.text,
+            fontSize: 11, fontWeight: 700, fontFamily: F.head,
+            border: `1.5px solid ${done.has(m) ? "transparent" : C.border}`,
+          }}>Month {m}</div>
+        );
+      })}
+      <span style={{ ...badge(trainingCompleted ? C.green : C.gold, trainingCompleted ? C.greenLight : C.goldLight, { fontSize: 11 }), marginLeft: 4 }}>
+        {trainingCompleted ? <CheckCircle size={10} /> : <Clock size={10} />}
+        Training {trainingCompleted ? "Complete" : "Pending"}
+      </span>
+      {complete
+        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />3 months complete</span>
+        : <span style={{ fontSize: 11, color: C.textMuted }}>Next: Month {ncNextCheckin(fbRows)}</span>
+      }
+    </div>
+  );
+}
+
+function useNewConvertData(dateFrom, dateTo) {
+  const [data, setData]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+  const [tick, setTick]       = useState(0);
+  const reload = useCallback(() => setTick(t => t + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        let ncQuery = "new_converts?order=created_at.desc&limit=1000";
+        if (dateFrom) ncQuery += `&conversion_date=gte.${dateFrom}`;
+        if (dateTo)   ncQuery += `&conversion_date=lte.${dateTo}`;
+
+        const [ncRows, ciRows, asgRows] = await Promise.all([
+          sb(ncQuery),
+          sb("new_converts_checkins?select=*&order=created_at.asc"),
+          sb("new_converts_assignments?select=*").catch(() => []),
+        ]);
+        const ciMap = {};
+        (ciRows || []).forEach(c => {
+          if (!ciMap[c.new_convert_id]) ciMap[c.new_convert_id] = [];
+          ciMap[c.new_convert_id].push(c);
+        });
+        const asgMap = {};
+        (asgRows || []).forEach(a => { asgMap[a.new_convert_id] = a; });
+
+        if (!cancelled) {
+          setData((ncRows || []).map(r => ({
+            ...r,
+            fbRows:     ciMap[r.id]  || [],
+            assignment: asgMap[r.id] || null,
+          })));
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick, dateFrom, dateTo]);
+
+  return { data, loading, err, reload };
+}
+
+// Reuses the phoneKey() normalization already established in v6.2
+async function findNewConvertDupes(phone) {
+  const key = phoneKey(phone);
+  if (!key) return [];
+  const rows = await sb("new_converts?select=id,full_name,phone,conversion_date&limit=2000").catch(() => []);
+  return (rows || []).filter(r => phoneKey(r.phone) === key);
+}
+
+function PublicNewConvertForm() {
+  const [form, setForm] = useState({ full_name: "", phone: "", gender: "", conversion_type: "New Salvation" });
+  const [dupes, setDupes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
+
+  useEffect(() => {
+    if (!phoneKey(form.phone)) { setDupes([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const found = await findNewConvertDupes(form.phone);
+      if (!cancelled) setDupes(found);
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone]);
+
+  const submit = async () => {
+    if (!form.full_name.trim() || !form.phone.trim()) { setErr("Full name and phone are required."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("new_converts", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: form.full_name.trim(), phone: form.phone.trim(),
+          gender: form.gender || null, conversion_type: form.conversion_type,
+          source: "QR",
+        }),
+      });
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.soulLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <Heart size={32} color={C.soul} />
+        </div>
+        <h2 style={{ color: C.soul, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>Welcome to the Family!</h2>
+        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
+          We're so glad you took this step! Our Soul Care team will reach out to walk this journey with you.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
+          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
+            Welcome to <span style={{ color: C.soul }}>New Life</span>
+          </h1>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+            Tell us a little about yourself so our team can support you.
+          </p>
+        </div>
+        <div style={card}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          <FieldInput label="Full Name" id="ncn" required value={form.full_name} onChange={set("full_name")} />
+          <FieldInput label="Phone Number" id="ncp" required value={form.phone} onChange={set("phone")} />
+          {dupes.length > 0 && (
+            <div style={{ background: C.soulLight, border: `1px solid ${C.soul}30`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.soul, marginBottom: 14, display: "flex", gap: 8 }}>
+              <Info size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>Looks like we may already have your details — no problem, go ahead and submit and our team will make sure everything's up to date.</span>
+            </div>
+          )}
+          <FieldInput label="Gender" id="ncg" type="select" value={form.gender} onChange={set("gender")}
+            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+          <FieldInput label="This was my…" id="nct" type="select" value={form.conversion_type} onChange={set("conversion_type")}
+            options={[{ value: "New Salvation", label: "First time giving my life to Christ" }, { value: "Rededication", label: "Rededication of my life to Christ" }]} />
+          <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
+            {loading ? "Submitting…" : "Submit"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NewConvertQRPage() {
+  const ncUrl = window.location.origin + "/new-convert";
+  const [custom, setCustom] = useState(ncUrl);
+  const [display, setDisplay] = useState(ncUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=5B21B6&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=5B21B6&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+    a.download = "envoys-new-convert-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="New Convert QR Code" subtitle="Display at the altar call station — new believers scan this to connect with Soul Care." />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={btn("soul")} onClick={download}><Download size={14} />Download PNG</button>
+            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
+          <FieldInput label="New Convert URL" id="ncurl" value={custom} onChange={e => setCustom(e.target.value)} />
+          <button style={{ ...btn("soul"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddNewConvertPage({ currentUser, onCancel, onDone }) {
+  const [form, setForm] = useState({ full_name: "", phone: "", gender: "", conversion_type: "New Salvation", conversion_date: new Date().toISOString().slice(0, 10) });
+  const [dupes, setDupes] = useState([]);
+  const [saveAnyway, setSaveAnyway] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
+
+  useEffect(() => {
+    setSaveAnyway(false);
+    if (!phoneKey(form.phone)) { setDupes([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const found = await findNewConvertDupes(form.phone);
+      if (!cancelled) setDupes(found);
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone]);
+
+  const submit = async () => {
+    if (!form.full_name.trim() || !form.phone.trim()) { setErr("Full name and phone are required."); return; }
+    if (dupes.length > 0 && !saveAnyway) {
+      setSaveAnyway(true);
+      setErr("This phone number may already be on record — press the button again to save anyway if this is genuinely a new person.");
+      return;
+    }
+    setLoading(true); setErr("");
+    try {
+      await sb("new_converts", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: form.full_name.trim(), phone: form.phone.trim(),
+          gender: form.gender || null, conversion_type: form.conversion_type,
+          conversion_date: form.conversion_date, source: "Manual", added_by: currentUser || null,
+        }),
+      });
+      toast.success("New Convert added.");
+      onDone?.();
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={card} className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Add New Convert" subtitle="Log someone who gave their life to Christ or rededicated at a service"
+        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <FieldInput label="Full Name" id="ancn" required value={form.full_name} onChange={set("full_name")} />
+        <FieldInput label="Phone Number" id="ancp" required value={form.phone} onChange={set("phone")} />
+      </div>
+      {dupes.length > 0 && (
+        <div style={{ background: C.amberLight, border: `1px solid ${C.amber}35`, borderLeft: `3px solid ${C.amber}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: C.amber, marginBottom: 6 }}>Possible duplicate</div>
+          {dupes.slice(0, 3).map(d => (
+            <div key={d.id} style={{ fontSize: 12, color: C.textSecondary }}>
+              <strong>{d.full_name}</strong> · {d.phone} · {d.conversion_date}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <FieldInput label="Gender" id="ancg" type="select" value={form.gender} onChange={set("gender")}
+          options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+        <FieldInput label="Conversion Date" id="ancd" type="date" value={form.conversion_date} onChange={set("conversion_date")} />
+      </div>
+      <FieldInput label="Type" id="anct" type="select" value={form.conversion_type} onChange={set("conversion_type")}
+        options={[{ value: "New Salvation", label: "New Salvation" }, { value: "Rededication", label: "Rededication" }]} />
+      <button style={{
+        ...btn(saveAnyway && dupes.length > 0 ? "amber" : "soul"), width: "100%", padding: 12, fontSize: 15,
+      }} onClick={submit} disabled={loading}>
+        {loading ? "Saving…" : saveAnyway && dupes.length > 0 ? "Save Anyway" : "Add New Convert"}
+      </button>
+    </div>
+  );
+}
+
+function NewConvertsAssignView({ currentUser }) {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err, reload } = useNewConvertData(dateFrom, dateTo);
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers(["soulcare", "soulcareadmin"]);
+
+  const [selectedMember, setSelectedMember] = useState("");
+  const [search, setSearch]                 = useState("");
+  const [filter, setFilter]                 = useState("unassigned");
+  const [saving, setSaving]                 = useState(false);
+  const [msg, setMsg]                       = useState("");
+  const [msgType, setMsgType]               = useState("success");
+  const [pendingAssign, setPendingAssign]   = useState({});
+  const [showAdd, setShowAdd]               = useState(false);
+
+  const filtered = data.filter(r => {
+    const matchSearch = !search || r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search);
+    if (filter === "unassigned") return matchSearch && !r.assignment;
+    if (filter === "assigned")   return matchSearch && !!r.assignment;
+    if (filter === "completed")  return matchSearch && ncComplete(r.fbRows) && r.envoys_training_completed;
+    return matchSearch;
+  });
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
+
+  const assignedCount   = data.filter(r => !!r.assignment).length;
+  const unassignedCount = data.filter(r => !r.assignment).length;
+  const completedCount  = data.filter(r => ncComplete(r.fbRows) && r.envoys_training_completed).length;
+
+  const bulkAssign = async () => {
+    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
+    const targets = data.filter(r => !r.assignment);
+    if (!targets.length) { setMsg("No unassigned New Converts to assign."); setMsgType("warn"); return; }
+    setSaving(true); setMsg("");
+    try {
+      const payload = targets.map(r => ({ new_convert_id: r.id, assigned_to: selectedMember, assigned_by: currentUser }));
+      for (let i = 0; i < payload.length; i += 50) {
+        await sb("new_converts_assignments", {
+          method: "POST", prefer: "resolution=merge-duplicates,return=representation",
+          body: JSON.stringify(payload.slice(i, i + 50)),
+        });
+      }
+      setMsg(`${targets.length} assigned to ${selectedMember}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const saveAssignment = async (ncId) => {
+    const member = pendingAssign[ncId];
+    if (!member) return;
+    setSaving(true);
+    try {
+      const existing = data.find(r => r.id === ncId)?.assignment;
+      if (existing) {
+        await sb(`new_converts_assignments?id=eq.${existing.id}`, { method: "PATCH", body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }) });
+      } else {
+        await sb("new_converts_assignments", { method: "POST", body: JSON.stringify({ new_convert_id: ncId, assigned_to: member, assigned_by: currentUser }) });
+      }
+      setPendingAssign(p => { const n = { ...p }; delete n[ncId]; return n; });
+      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const removeAssignment = async (asgId) => {
+    setSaving(true);
+    try {
+      await sb(`new_converts_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
+      setMsg("Assignment removed."); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const tabs = [
+    { k: "unassigned", label: "Unassigned", count: unassignedCount, col: C.gold      },
+    { k: "assigned",   label: "Assigned",   count: assignedCount,   col: C.soul      },
+    { k: "completed",  label: "Completed",  count: completedCount,  col: C.green     },
+    { k: "all",        label: "All",        count: data.length,     col: C.textMuted },
+  ];
+
+  if (showAdd) {
+    return <AddNewConvertPage currentUser={currentUser} onCancel={() => setShowAdd(false)} onDone={() => { setShowAdd(false); reload(); }} />;
+  }
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="New Converts" subtitle="3-month discipleship follow-up + Envoys Training"
+        action={<button style={btn("soul")} onClick={() => setShowAdd(true)}><UserPlus size={14} />Add New Convert</button>} />
+
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by conversion date:" />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total"      value={data.length}      icon={Heart}       accent={C.soul}  />
+        <StatCard label="Assigned"   value={assignedCount}    icon={UserCheck}   accent={C.green} />
+        <StatCard label="Unassigned" value={unassignedCount}  icon={AlertCircle} accent={C.gold}  />
+        <StatCard label="Completed"  value={completedCount}   icon={Star}        accent={C.goldDark} sub="3 months + training" />
+      </div>
+
+      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>Bulk Assignment</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>Assign all <strong>{unassignedCount}</strong> unassigned to:</div>
+            {teamLoading ? <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div> : (
+              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
+                <option value="">Select team member</option>
+                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            )}
+          </div>
+          <button style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
+            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
+            <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount}`}
+          </button>
+        </div>
+      </div>
+
+      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+        </div>
+        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.slice(0, visibleCount).map(r => {
+            const complete = ncComplete(r.fbRows) && r.envoys_training_completed;
+            const pending  = pendingAssign[r.id];
+            return (
+              <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${complete ? C.green : r.assignment ? C.soul : C.gold}` }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
+                    <Avatar name={r.full_name} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>
+                        <PhoneLink phone={r.phone} withWhatsApp /> · {r.conversion_type} · {r.conversion_date}
+                        {r.source === "QR" && <span style={{ marginLeft: 6 }}>· via QR</span>}
+                      </div>
+                      <div style={{ marginTop: 5 }}><NCPipelineBar fbRows={r.fbRows} trainingCompleted={r.envoys_training_completed} /></div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                    {r.assignment && !pending ? (
+                      <>
+                        <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><UserCheck size={10} />{r.assignment.assigned_to}</span>
+                        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.assignment.assigned_to }))}>
+                          <Edit3 size={10} />Reassign
+                        </button>
+                        <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })} onClick={() => removeAssignment(r.assignment.id)} disabled={saving}>
+                          <X size={10} />Unassign
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {teamLoading ? <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span> : (
+                          <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))} style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
+                            <option value="">Select follower-upper</option>
+                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        )}
+                        {pending && (
+                          <>
+                            <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => saveAssignment(r.id)} disabled={saving}>{saving ? "…" : "Save"}</button>
+                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })} onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[r.id]; return n; })}><X size={12} /></button>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Heart size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No New Converts in this category</div>
+            </div>
+          )}
+        </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NCTrainingBlock({ nc, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [completed, setCompleted] = useState(nc.envoys_training_completed);
+  const [date, setDate] = useState(nc.envoys_training_completed_date || new Date().toISOString().slice(0, 10));
+  const [scheduled, setScheduled] = useState(nc.training_scheduled_date || "");
+  const [trainer, setTrainer] = useState(nc.trainer_name || "");
+  const [notes, setNotes] = useState(nc.envoys_training_notes || "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    setSaving(true); setErr("");
+    try {
+      await sb(`new_converts?id=eq.${nc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          envoys_training_completed: completed,
+          envoys_training_completed_date: completed ? date : null,
+          training_scheduled_date: scheduled || null,
+          trainer_name: trainer || null,
+          envoys_training_notes: notes || null,
+        }),
+      });
+      toast.success("Training status updated.");
+      setEditing(false);
+      onSaved?.();
+    } catch (e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  if (!editing) {
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 12px",
+        background: nc.envoys_training_completed ? C.greenXLight : C.goldLight, borderRadius: 8,
+        border: `1px solid ${nc.envoys_training_completed ? C.greenBorder : C.gold}30`,
+      }}>
+        {nc.envoys_training_completed ? <CheckCircle size={13} color={C.green} /> : <Clock size={13} color={C.goldDark} />}
+        <span style={{ fontSize: 12, color: C.textSecondary, flex: 1 }}>
+          Envoys Training: <strong>{nc.envoys_training_completed ? `Completed ${nc.envoys_training_completed_date || ""}` : (nc.training_scheduled_date ? `Scheduled ${nc.training_scheduled_date}` : "Not yet scheduled")}</strong>
+        </span>
+        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => setEditing(true)}>
+          <Edit3 size={10} />{nc.envoys_training_completed ? "Edit" : "Update"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8, padding: "12px 14px", background: C.goldLight, borderRadius: 8, border: `1px solid ${C.gold}30` }}>
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <FieldInput label="Scheduled Training Date" id={`ncsd-${nc.id}`} type="date" value={scheduled} onChange={e => setScheduled(e.target.value)}
+          hint="Coordinate with the Training Department" />
+        <FieldInput label="Trainer / Facilitator" id={`nctr-${nc.id}`} value={trainer} onChange={e => setTrainer(e.target.value)} />
+      </div>
+      <FieldInput label="Envoys Training Completed" id={`nctc-${nc.id}`} type="bool-toggle" value={completed} onChange={setCompleted} />
+      {completed && <FieldInput label="Date Completed" id={`nctd-${nc.id}`} type="date" value={date} onChange={e => setDate(e.target.value)} />}
+      <FieldInput label="Notes" id={`ncnn-${nc.id}`} type="textarea" value={notes} onChange={e => setNotes(e.target.value)} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button style={btn("gold", { padding: "7px 14px", fontSize: 13 })} onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</button>
+        <button style={btn("ghost", { padding: "7px 14px", fontSize: 13 })} onClick={() => setEditing(false)}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function MyNewConverts({ currentUser, onLogCheckin }) {
+  const { data, loading, err, reload } = useNewConvertData();
+  const [filter, setFilter] = useState("active");
+
+  const mine = data.filter(r => r.assignment?.assigned_to === currentUser);
+  const active    = mine.filter(r => !(ncComplete(r.fbRows) && r.envoys_training_completed));
+  const completed = mine.filter(r => ncComplete(r.fbRows) && r.envoys_training_completed);
+  const flagged   = mine.filter(r => r.fbRows.some(f => f.flagged_for_pastoral));
+  const views    = { active, completed, flagged, all: mine };
+  const filtered = views[filter] || mine;
+
+  const dueTodayStr = new Date().toISOString().slice(0, 10);
+  const dueEntries = active
+    .map(r => {
+      const last = r.fbRows[r.fbRows.length - 1];
+      if (!last || !last.follow_up_date || last.follow_up_date > dueTodayStr) return null;
+      return { id: r.id, row: r, name: r.full_name, phone: r.phone, dueDate: last.follow_up_date, note: last.notes };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  const tabs = [
+    { k: "active",    label: "Active",    count: active.length,    col: C.soul      },
+    { k: "completed", label: "Completed", count: completed.length, col: C.green     },
+    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
+    { k: "all",       label: "All",       count: mine.length,      col: C.textMuted },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="My New Converts" subtitle={`${mine.length} assigned to you`} />
+      <DueTodayPanel entries={dueEntries} actionLabel="Log Check-In" onAction={r => onLogCheckin(r)} />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Assigned to Me" value={mine.length}      icon={Heart}  accent={C.soul}  />
+        <StatCard label="Completed"      value={completed.length} icon={Star}   accent={C.green} />
+        <StatCard label="Flagged"        value={flagged.length}   icon={Flag}   accent={C.flag} sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {filtered.map(r => {
+            const nxt = ncNextCheckin(r.fbRows);
+            const isComplete = ncComplete(r.fbRows);
+            const fullyDone = isComplete && r.envoys_training_completed;
+            return (
+              <div key={r.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${fullyDone ? C.green : C.soul}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                    <Avatar name={r.full_name} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>
+                        {r.full_name}{fullyDone && <span style={{ marginLeft: 6 }}>🎉</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.conversion_type}</div>
+                    </div>
+                  </div>
+                  {!isComplete && (
+                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogCheckin(r)}>
+                      <Phone size={13} />Log Month {nxt}
+                    </button>
+                  )}
+                  {fullyDone && <span style={badge(C.green, C.greenLight, { fontSize: 12 })}><Star size={11} />Fully Discipled</span>}
+                </div>
+                <div style={{ marginTop: 10 }}><NCPipelineBar fbRows={r.fbRows} trainingCompleted={r.envoys_training_completed} /></div>
+                <NCTrainingBlock nc={r} onSaved={reload} />
+                {r.fbRows.length > 0 && (
+                  <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                    {r.fbRows.map(fb => {
+                      const fsm = statusMeta(fb.call_status);
+                      return (
+                        <div key={fb.id} style={{ background: C.bg, borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.border}` }}>
+                          <span style={badge(fsm.color, fsm.bg, { fontSize: 10, fontFamily: F.head })}>Month {fb.checkin_number} · {fsm.label}</span>
+                          {fb.notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>{fb.notes}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {!loading && filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>{mine.length === 0 ? "No New Converts assigned to you yet." : "Nothing in this category."}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogNewConvertCheckin({ person, callerName, onBack }) {
+  const nxt = ncNextCheckin(person.fbRows);
+  const [form, setForm] = useState({ call_status: "", notes: "", follow_up_date: "", flagged_for_pastoral: false, flag_reason: "" });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e && e.target !== undefined ? e.target.value : e }));
+
+  const submit = async () => {
+    if (!form.call_status) { setErr("Status is required."); return; }
+    if (form.flagged_for_pastoral && !form.flag_reason.trim()) { setErr("Describe the reason for flagging."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("new_converts_checkins", {
+        method: "POST",
+        body: JSON.stringify({
+          new_convert_id: person.id, checkin_number: nxt, call_status: form.call_status,
+          notes: form.notes || null, follow_up_date: form.follow_up_date || null, caller_name: callerName,
+          flagged_for_pastoral: !!form.flagged_for_pastoral, flag_reason: form.flagged_for_pastoral ? form.flag_reason : null,
+        }),
+      });
+      toast.success(`Month ${nxt} logged.`);
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
+      <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
+      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>Month {nxt} logged for {person.full_name}</h3>
+      <button style={{ ...btn("outline"), marginTop: 12 }} onClick={onBack}><ArrowLeft size={14} />Back</button>
+    </div>
+  );
+
+  return (
+    <div style={card} className="page-enter">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>Month {nxt} Check-In — {person.full_name}</h2>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}><PhoneLink phone={person.phone} withWhatsApp size={13} bold /></p>
+        </div>
+      </div>
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <FieldInput label="Status" id="nccs" type="select" required value={form.call_status} onChange={set("call_status")} options={CALL_STATUS_OPTIONS} />
+      {form.call_status && form.call_status !== "Reached" && (
+        <FieldInput label="Follow-Up Date" id="ncfd" type="date" value={form.follow_up_date} onChange={set("follow_up_date")} />
+      )}
+      <FieldInput label="Notes" id="ncnt" type="textarea" value={form.notes} onChange={set("notes")}
+        placeholder="How is their walk with Christ progressing? Any questions, struggles, or victories shared…" />
+      <div style={{ background: C.flagLight, border: "1px solid #FECACA", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: C.flag, marginBottom: 10 }}><Flag size={13} style={{ verticalAlign: "middle", marginRight: 6 }} />Flag for Pastoral Team</div>
+        <FieldInput label="Flag this person for pastoral attention" id="ncfl" type="toggle" value={form.flagged_for_pastoral} onChange={set("flagged_for_pastoral")} />
+        {form.flagged_for_pastoral && <FieldInput label="Reason" id="ncfr" type="textarea" required value={form.flag_reason} onChange={set("flag_reason")} />}
+      </div>
+      <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
+        {loading ? "Saving…" : `Save Month ${nxt}`}
+      </button>
+    </div>
+  );
+}
+
+function NewConvertsRetentionReport() {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { data, loading, err } = useNewConvertData(dateFrom, dateTo);
+
+  const total       = data.length;
+  const completed   = data.filter(r => ncComplete(r.fbRows) && r.envoys_training_completed).length;
+  const trainingDone = data.filter(r => r.envoys_training_completed).length;
+  const retentionPct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  const byType = { "New Salvation": 0, "Rededication": 0 };
+  data.forEach(r => { if (byType[r.conversion_type] !== undefined) byType[r.conversion_type]++; });
+  const typeDonut = Object.entries(byType).map(([k, v]) => ({ name: k, value: v, color: k === "New Salvation" ? C.soul : C.gold }));
+
+  const monthDropoff = [1, 2, 3].map(m => ({
+    name: `Month ${m}`,
+    value: data.filter(r => ncCheckinsLogged(r.fbRows).has(m)).length,
+    color: C.soul,
+  }));
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="New Converts Retention" subtitle="3-month discipleship + training completion analytics"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 140 }} />
+          </div>
+        } />
+
+      {loading ? <SkeletonReport /> : (
+        <>
+          <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+            <StatCard label="Total New Converts"  value={total}         icon={Heart}      accent={C.soul}  />
+            <StatCard label="Retention Rate"       value={`${retentionPct}%`} icon={TrendingUp} accent={C.goldDark}
+              sub={`${completed} of ${total} completed both requirements`} />
+            <StatCard label="Training Completed"   value={trainingDone} icon={Star}       accent={C.green} />
+            <StatCard label="Fully Discipled"      value={completed}    icon={CheckCircle} accent={C.green} />
+          </div>
+          <Alert type="error" msg={err} onClose={() => {}} />
+          <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={card}>
+              <SH title="New Salvation vs Rededication" icon={Heart} />
+              <PasDonut data={typeDonut} centerValue={total} centerLabel="New Converts" />
+            </div>
+            <div style={card}>
+              <SH title="Check-In Reach by Month" icon={Activity} />
+              <PasOutcomeBars data={monthDropoff} />
+              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
+                A drop from Month 1 to Month 3 shows where people are disengaging from follow-up.
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Soul Care Revamp Phase 2 — Potential Envoys: shared helpers, data hook,
+// and pipeline bar. Mirrors useCallData / PipelineBar / weeksLogged /
+// nextWeek / pipelineComplete from the Experience Team module, but for the
+// 5-week potential_envoys_feedback pipeline — kept as separate functions
+// rather than generalizing the originals, since those are load-bearing
+// elsewhere and shouldn't be touched.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function peWeeksLogged(fbRows) {
+  const weeks = new Set();
+  (fbRows || []).forEach(r => { if (r.week_number) weeks.add(r.week_number); });
+  return weeks;
+}
+function peNextWeek(fbRows) {
+  const done = peWeeksLogged(fbRows);
+  for (let w = 1; w <= 5; w++) { if (!done.has(w)) return w; }
+  return null;
+}
+function pePipelineComplete(fbRows) {
+  return peNextWeek(fbRows) === null;
+}
+
+function PEPipelineBar({ fbRows, trainingCompleted }) {
+  const done = peWeeksLogged(fbRows);
+  const complete = pePipelineComplete(fbRows);
+  const weekColor = (w) => {
+    if (!done.has(w)) return { bg: C.border, text: C.textMuted };
+    const row = (fbRows || []).find(r => r.week_number === w);
+    const norm = normaliseStatus(row?.call_status);
+    if (norm === "Reached")           return { bg: C.green,  text: "#fff" };
+    if (norm === "Call Back")         return { bg: C.amber,  text: "#fff" };
+    if (norm === "Incorrect Contact") return { bg: C.danger, text: "#fff" };
+    return { bg: C.greenMid, text: "#fff" };
+  };
+  return (
+    <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+      {[1, 2, 3, 4, 5].map(w => {
+        const c = weekColor(w);
+        return (
+          <div key={w} style={{
+            padding: "4px 9px", borderRadius: 6, background: c.bg, color: c.text,
+            fontSize: 11, fontWeight: 700, fontFamily: F.head,
+            border: `1.5px solid ${done.has(w) ? "transparent" : C.border}`,
+          }}>W{w}</div>
+        );
+      })}
+      <span style={{
+        ...badge(trainingCompleted ? C.green : C.gold, trainingCompleted ? C.greenLight : C.goldLight, { fontSize: 11 }),
+        marginLeft: 4,
+      }}>
+        {trainingCompleted ? <CheckCircle size={10} /> : <Clock size={10} />}
+        Training {trainingCompleted ? "Complete" : "Pending"}
+      </span>
+      {complete
+        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />5 weeks complete</span>
+        : <span style={{ fontSize: 11, color: C.textMuted }}>Next: Week {peNextWeek(fbRows)}</span>
+      }
+    </div>
+  );
+}
+
+function usePotentialEnvoyData() {
+  const [data, setData]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+  const [tick, setTick]       = useState(0);
+  const reload = useCallback(() => setTick(t => t + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [peRows, fbRows, asgRows] = await Promise.all([
+          sb("potential_envoys?order=created_at.desc&limit=500"),
+          sb("potential_envoys_feedback?select=*&order=created_at.asc"),
+          sb("potential_envoys_assignments?select=*").catch(() => []),
+        ]);
+        const fbMap = {};
+        (fbRows || []).forEach(f => {
+          if (!fbMap[f.potential_envoy_id]) fbMap[f.potential_envoy_id] = [];
+          fbMap[f.potential_envoy_id].push(f);
+        });
+        const asgMap = {};
+        (asgRows || []).forEach(a => { asgMap[a.potential_envoy_id] = a; });
+
+        if (!cancelled) {
+          setData((peRows || []).map(r => ({
+            ...r,
+            fbRows:     fbMap[r.id]  || [],
+            assignment: asgMap[r.id] || null,
+          })));
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  return { data, loading, err, reload };
+}
+
+function PotentialEnvoysAssignView({ currentUser }) {
+  const { data, loading, err, reload } = usePotentialEnvoyData();
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers(["soulcare", "soulcareadmin"]);
+
+  const [selectedMember, setSelectedMember] = useState("");
+  const [search, setSearch]                 = useState("");
+  const [filter, setFilter]                 = useState("unassigned");
+  const [saving, setSaving]                 = useState(false);
+  const [msg, setMsg]                       = useState("");
+  const [msgType, setMsgType]               = useState("success");
+  const [pendingAssign, setPendingAssign]   = useState({});
+
+  const filtered = data.filter(r => {
+    const matchSearch = !search ||
+      r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.phone?.includes(search);
+    if (filter === "unassigned") return matchSearch && !r.assignment;
+    if (filter === "assigned")   return matchSearch && !!r.assignment;
+    if (filter === "graduated")  return matchSearch && r.promoted_to_membership;
+    if (filter === "active")     return matchSearch && !r.promoted_to_membership;
+    return matchSearch;
+  });
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}`, filtered.length, 10);
+
+  const assignedCount   = data.filter(r => !!r.assignment).length;
+  const unassignedCount = data.filter(r => !r.assignment).length;
+  const graduatedCount  = data.filter(r => r.promoted_to_membership).length;
+
+  const bulkAssign = async () => {
+    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
+    const targets = data.filter(r => !r.assignment);
+    if (!targets.length) { setMsg("No unassigned Potential Envoys to assign."); setMsgType("warn"); return; }
+    setSaving(true); setMsg("");
+    try {
+      const payload = targets.map(r => ({
+        potential_envoy_id: r.id, assigned_to: selectedMember, assigned_by: currentUser,
+      }));
+      for (let i = 0; i < payload.length; i += 50) {
+        await sb("potential_envoys_assignments", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=representation",
+          body: JSON.stringify(payload.slice(i, i + 50)),
+        });
+      }
+      setMsg(`${targets.length} assigned to ${selectedMember}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const saveAssignment = async (peId) => {
+    const member = pendingAssign[peId];
+    if (!member) return;
+    setSaving(true);
+    try {
+      const existing = data.find(r => r.id === peId)?.assignment;
+      if (existing) {
+        await sb(`potential_envoys_assignments?id=eq.${existing.id}`, {
+          method: "PATCH", body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
+        });
+      } else {
+        await sb("potential_envoys_assignments", {
+          method: "POST",
+          body: JSON.stringify({ potential_envoy_id: peId, assigned_to: member, assigned_by: currentUser }),
+        });
+      }
+      setPendingAssign(p => { const n = { ...p }; delete n[peId]; return n; });
+      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const removeAssignment = async (asgId) => {
+    setSaving(true);
+    try {
+      await sb(`potential_envoys_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
+      setMsg("Assignment removed."); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const tabs = [
+    { k: "unassigned", label: "Unassigned", count: unassignedCount, col: C.gold      },
+    { k: "assigned",   label: "Assigned",   count: assignedCount,   col: C.soul      },
+    { k: "graduated",  label: "Graduated",  count: graduatedCount,  col: C.green     },
+    { k: "all",        label: "All",        count: data.length,     col: C.textMuted },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Potential Envoys"
+        subtitle="VIPs recommended for membership — 5-week Soul Care follow-up + training before graduation" />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total"      value={data.length}      icon={Users}       accent={C.soul}  />
+        <StatCard label="Assigned"   value={assignedCount}    icon={UserCheck}   accent={C.green} />
+        <StatCard label="Unassigned" value={unassignedCount}  icon={AlertCircle} accent={C.gold}
+          sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
+        <StatCard label="Graduated"  value={graduatedCount}   icon={Star}        accent={C.goldDark}
+          sub="Completed 5 weeks + training" />
+      </div>
+
+      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em", display: "flex", alignItems: "center", gap: 5 }}>
+          <Zap size={11} />Bulk Assignment
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+              Assign all <strong>{unassignedCount}</strong> unassigned to:
+            </div>
+            {teamLoading ? (
+              <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div>
+            ) : (
+              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
+                <option value="">Select team member</option>
+                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            )}
+          </div>
+          <button style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
+            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
+            <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount}`}
+          </button>
+        </div>
+      </div>
+
+      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            fontFamily: F.body, transition: "all .15s",
+            background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+        </div>
+        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.slice(0, visibleCount).map(r => {
+            const complete = r.promoted_to_membership;
+            const pending  = pendingAssign[r.id];
+            return (
+              <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${complete ? C.green : r.assignment ? C.soul : C.gold}` }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
+                    <Avatar name={r.full_name} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.connect_center || "—"}</div>
+                      <div style={{ marginTop: 5 }}><PEPipelineBar fbRows={r.fbRows} trainingCompleted={r.training_completed} /></div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                    {complete && <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><Star size={10} />Graduated to Membership</span>}
+                    {r.assignment && !pending ? (
+                      <>
+                        <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><UserCheck size={10} />{r.assignment.assigned_to}</span>
+                        {!complete && (
+                          <>
+                            <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
+                              onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.assignment.assigned_to }))}>
+                              <Edit3 size={10} />Reassign
+                            </button>
+                            <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
+                              onClick={() => removeAssignment(r.assignment.id)} disabled={saving}>
+                              <X size={10} />Unassign
+                            </button>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {teamLoading ? (
+                          <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span>
+                        ) : (
+                          <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
+                            style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
+                            <option value="">Select follower-upper</option>
+                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                          </select>
+                        )}
+                        {pending && (
+                          <>
+                            <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => saveAssignment(r.id)} disabled={saving}>
+                              {saving ? "…" : "Save"}
+                            </button>
+                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })}
+                              onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[r.id]; return n; })}>
+                              <X size={12} />
+                            </button>
+                          </>
+                        )}
+                        {!pending && !r.assignment && <span style={badge(C.gold, C.goldLight, { fontSize: 11 })}>Unassigned</span>}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <UserCheck size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No Potential Envoys in this category</div>
+            </div>
+          )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong>
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PETrainingBlock({ pe, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [completed, setCompleted] = useState(pe.training_completed);
+  const [date, setDate] = useState(pe.training_completed_date || new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState(pe.training_notes || "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const save = async () => {
+    setSaving(true); setErr("");
+    try {
+      await sb(`potential_envoys?id=eq.${pe.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          training_completed: completed,
+          training_completed_date: completed ? date : null,
+          training_notes: notes || null,
+        }),
+      });
+      toast.success(completed ? "Training marked complete." : "Training status updated.");
+      setEditing(false);
+      onSaved?.();
+    } catch (e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  if (!editing) {
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 12px",
+        background: pe.training_completed ? C.greenXLight : C.goldLight, borderRadius: 8,
+        border: `1px solid ${pe.training_completed ? C.greenBorder : C.gold}30`,
+      }}>
+        {pe.training_completed
+          ? <CheckCircle size={13} color={C.green} />
+          : <Clock size={13} color={C.goldDark} />}
+        <span style={{ fontSize: 12, color: C.textSecondary, flex: 1 }}>
+          Envoys Membership Training: <strong>{pe.training_completed ? `Completed ${pe.training_completed_date || ""}` : "Not yet completed"}</strong>
+        </span>
+        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => setEditing(true)}>
+          <Edit3 size={10} />{pe.training_completed ? "Edit" : "Mark Complete"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 8, padding: "12px 14px", background: C.goldLight, borderRadius: 8, border: `1px solid ${C.gold}30` }}>
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <FieldInput label="Envoys Membership Training Completed" id={`tr-${pe.id}`} type="bool-toggle"
+        value={completed} onChange={setCompleted} />
+      {completed && (
+        <FieldInput label="Date Completed" id={`trd-${pe.id}`} type="date" value={date}
+          onChange={e => setDate(e.target.value)} />
+      )}
+      <FieldInput label="Notes" id={`trn-${pe.id}`} type="textarea" value={notes}
+        onChange={e => setNotes(e.target.value)} placeholder="Which session/cohort, facilitator notes, etc." />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button style={btn("gold", { padding: "7px 14px", fontSize: 13 })} onClick={save} disabled={saving}>
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button style={btn("ghost", { padding: "7px 14px", fontSize: 13 })} onClick={() => setEditing(false)}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function MyPotentialEnvoys({ currentUser, onLogFeedback }) {
+  const { data, loading, err, reload } = usePotentialEnvoyData();
+  const [filter, setFilter] = useState("active");
+
+  const mine = data.filter(r => r.assignment?.assigned_to === currentUser);
+  const active     = mine.filter(r => !r.promoted_to_membership);
+  const graduated  = mine.filter(r => r.promoted_to_membership);
+  const flagged    = mine.filter(r => r.fbRows.some(f => f.flagged_for_pastoral));
+  const views    = { active, graduated, flagged, all: mine };
+  const filtered = views[filter] || mine;
+
+  const dueTodayStr = new Date().toISOString().slice(0, 10);
+  const dueEntries = active
+    .map(r => {
+      const last = r.fbRows[r.fbRows.length - 1];
+      if (!last || !last.follow_up_date || last.follow_up_date > dueTodayStr) return null;
+      return { id: r.id, row: r, name: r.full_name, phone: r.phone, dueDate: last.follow_up_date, note: last.notes };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+  const tabs = [
+    { k: "active",    label: "Active",    count: active.length,    col: C.soul      },
+    { k: "graduated", label: "Graduated", count: graduated.length, col: C.green     },
+    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
+    { k: "all",       label: "All",       count: mine.length,      col: C.textMuted },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="My Potential Envoys" subtitle={`${mine.length} assigned to you`} />
+
+      <DueTodayPanel entries={dueEntries} actionLabel="Log Call" onAction={r => onLogFeedback(r)} />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Assigned to Me" value={mine.length}      icon={Users}     accent={C.soul}  />
+        <StatCard label="Graduated"      value={graduated.length} icon={Star}      accent={C.green} />
+        <StatCard label="Flagged"        value={flagged.length}   icon={Flag}      accent={C.flag}
+          sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            fontFamily: F.body, background: filter === t.k ? t.col : C.bg,
+            color: filter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {filtered.map(r => {
+            const nxt = peNextWeek(r.fbRows);
+            const isComplete = pePipelineComplete(r.fbRows);
+            const canGraduate = isComplete && r.training_completed && !r.promoted_to_membership;
+            return (
+              <div key={r.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${r.promoted_to_membership ? C.green : C.soul}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+                    <Avatar name={r.full_name} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>
+                        {r.full_name}{r.promoted_to_membership && <span style={{ marginLeft: 6 }}>🎉</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /></div>
+                    </div>
+                  </div>
+                  {!r.promoted_to_membership && !isComplete && (
+                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogFeedback(r)}>
+                      <Phone size={13} />Log Week {nxt}
+                    </button>
+                  )}
+                  {r.promoted_to_membership && (
+                    <span style={badge(C.green, C.greenLight, { fontSize: 12 })}><Star size={11} />Now a Member</span>
+                  )}
+                </div>
+
+                <div style={{ marginTop: 10 }}><PEPipelineBar fbRows={r.fbRows} trainingCompleted={r.training_completed} /></div>
+
+                {!r.promoted_to_membership && <PETrainingBlock pe={r} onSaved={reload} />}
+
+                {canGraduate && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: C.textMuted, fontStyle: "italic" }}>
+                    All requirements met — this person will move to Membership automatically.
+                  </div>
+                )}
+
+                {r.fbRows.length > 0 && (
+                  <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                    {r.fbRows.map(fb => {
+                      const fsm = statusMeta(fb.call_status);
+                      return (
+                        <div key={fb.id} style={{ background: C.bg, borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.border}` }}>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4, alignItems: "center" }}>
+                            <span style={badge(fsm.color, fsm.bg, { fontSize: 10, fontFamily: F.head })}>Week {fb.week_number} · {fsm.label}</span>
+                            {fb.flagged_for_pastoral && <span style={badge(C.flag, C.flagLight, { fontSize: 10 })}><Flag size={9} />Flagged</span>}
+                          </div>
+                          <div style={{ fontSize: 12, color: C.textSecondary }}>
+                            {fb.caller_name}
+                            {fb.follow_up_date && <span style={{ marginLeft: 8, color: C.amber }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> {fb.follow_up_date}</span>}
+                          </div>
+                          {fb.notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 3 }}>{fb.notes}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {!loading && filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>
+                {mine.length === 0 ? "No Potential Envoys assigned to you yet." : "Nothing in this category."}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogPotentialEnvoyFeedback({ person, callerName, onBack }) {
+  const nxt = peNextWeek(person.fbRows);
+  const [form, setForm] = useState({
+    call_status: "", notes: "", follow_up_date: "",
+    flagged_for_pastoral: false, flag_reason: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e && e.target !== undefined ? e.target.value : e }));
+
+  const submit = async () => {
+    if (!form.call_status) { setErr("Call status is required."); return; }
+    if (form.flagged_for_pastoral && !form.flag_reason.trim()) { setErr("Describe the reason for flagging."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("potential_envoys_feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          potential_envoy_id: person.id,
+          week_number: nxt,
+          call_status: form.call_status,
+          notes: form.notes || null,
+          follow_up_date: form.follow_up_date || null,
+          caller_name: callerName,
+          flagged_for_pastoral: !!form.flagged_for_pastoral,
+          flag_reason: form.flagged_for_pastoral ? form.flag_reason : null,
+        }),
+      });
+      toast.success(`Week ${nxt} logged.`);
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
+      <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
+      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>Week {nxt} logged for {person.full_name}</h3>
+      <button style={{ ...btn("outline"), marginTop: 12 }} onClick={onBack}><ArrowLeft size={14} />Back</button>
+    </div>
+  );
+
+  return (
+    <div style={card} className="page-enter">
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>Week {nxt} Check-In — {person.full_name}</h2>
+          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}><PhoneLink phone={person.phone} withWhatsApp size={13} bold /></p>
+        </div>
+      </div>
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      <FieldInput label="Call Status" id="pecs" type="select" required value={form.call_status} onChange={set("call_status")} options={CALL_STATUS_OPTIONS} />
+      {form.call_status && !["Reached"].includes(form.call_status) && (
+        <FieldInput label="Follow-Up Date" id="pefd" type="date" value={form.follow_up_date} onChange={set("follow_up_date")} />
+      )}
+      <FieldInput label="Notes" id="pent" type="textarea" value={form.notes} onChange={set("notes")}
+        placeholder="How are they settling in? Any needs, questions, or encouragement shared…" />
+      <div style={{ background: C.flagLight, border: "1px solid #FECACA", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: C.flag, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+          <Flag size={13} />Flag for Pastoral Team
+        </div>
+        <FieldInput label="Flag this person for pastoral attention" id="pefl" type="toggle"
+          value={form.flagged_for_pastoral} onChange={set("flagged_for_pastoral")} />
+        {form.flagged_for_pastoral && (
+          <FieldInput label="Reason" id="pefr" type="textarea" required value={form.flag_reason} onChange={set("flag_reason")} />
+        )}
+      </div>
+      <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
+        {loading ? "Saving…" : `Save Week ${nxt}`}
       </button>
     </div>
   );
@@ -7063,7 +8958,7 @@ function MembersCare({ currentUser, role }) {
       setLoading(true); setErr("");
       try {
         const [cm, pool, visits] = await Promise.all([
-          sb("church_members?select=*&order=full_name.asc&limit=3000"),
+          sb("church_members?select=*&order=created_at.desc&limit=3000"),
           sb("soul_care_contacts?select=id,phone").catch(() => []),
           sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
         ]);
@@ -10501,6 +12396,7 @@ function App() {
   const [visitEditTarget, setVisitEditTarget] = useState(null);
   const [showFeedback,    setShowFeedback]    = useState(false);
   const [showTestimony,   setShowTestimony]   = useState(false);
+  const [showNewConvert,  setShowNewConvert]  = useState(false);
 
   useEffect(() => {
     const onPopState = (e) => {
@@ -10516,6 +12412,7 @@ function App() {
     if (p === "/register"  || p === "/register/"  || h === "#register")  setShowPublic(true);
     if (p === "/feedback"  || p === "/feedback/"  || h === "#feedback")  setShowFeedback(true);
     if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
+    if (p === "/new-convert" || p === "/new-convert/" || h === "#new-convert") setShowNewConvert(true);
   }, []);
 
   useEffect(() => {
@@ -10555,8 +12452,9 @@ function App() {
 
   if (showPublic)    return <PublicForm />;
   if (showFeedback)  return <PublicFeedbackForm />;
-  if (showTestimony) return <PublicTestimonyForm />;
-  if (!session)      return <Login onLogin={login} />;
+  if (showTestimony)   return <PublicTestimonyForm />;
+  if (showNewConvert)  return <PublicNewConvertForm />;
+  if (!session)        return <Login onLogin={login} />;
 
   const { role, user, username } = session;
   const pageTitle = NAV[role]?.find(n => n.id === active)?.label || "Dashboard";
@@ -10681,6 +12579,8 @@ function App() {
       );
     }
 
+    if (active === "envoys_visitors") return <EnvoysVisitors />;
+
     if (active === "completed_pipelines") {
       const cpBackTarget = role === "soulcareadmin" ? "sc_assign" : "assign_calls";
       return <CompletedPipelines onBack={() => navTo(cpBackTarget)} />;
@@ -10738,6 +12638,21 @@ function App() {
       return <AssignVisitsView currentUser={user} />;
     }
 
+    if (active === "pe_assign") return <PotentialEnvoysAssignView currentUser={user} />;
+
+    if (active === "pe_mine") {
+      if (feedbackTarget) {
+        return (
+          <LogPotentialEnvoyFeedback
+            person={feedbackTarget}
+            callerName={user}
+            onBack={() => setFeedbackTarget(null)}
+          />
+        );
+      }
+      return <MyPotentialEnvoys currentUser={user} onLogFeedback={r => setFeedbackTarget(r)} />;
+    }
+
     if (active === "add_visit") {
       const backTarget = (role === "soulcareadmin" || role === "admin") ? "sc_queue" : "sc_mine";
       return (
@@ -10747,6 +12662,25 @@ function App() {
           onLoggingDone={() => navTo(backTarget)}
         />
       );
+    }
+
+    if (active === "soulcare_dashboard") return <SoulCareReportingDashboard />;
+    
+    if (active === "nc_assign") return <NewConvertsAssignView currentUser={user} />;
+    if (active === "nc_qr")     return <NewConvertQRPage />;
+    if (active === "nc_report") return <NewConvertsRetentionReport />;
+
+    if (active === "nc_mine") {
+      if (feedbackTarget) {
+        return (
+          <LogNewConvertCheckin
+            person={feedbackTarget}
+            callerName={user}
+            onBack={() => setFeedbackTarget(null)}
+          />
+        );
+      }
+      return <MyNewConverts currentUser={user} onLogCheckin={r => setFeedbackTarget(r)} />;
     }
 
     if (active === "members_care") return <MembersCare currentUser={user} role={role} />;
