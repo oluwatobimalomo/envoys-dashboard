@@ -685,7 +685,7 @@ const NAV = {
     { id: "feedback_qr",   label: "Feedback QR"   },
     { id: "sc_testimonies", label: "Visitation Testimony"   },
     { id: "testimony_qr", label: "Testimony QR"   },
-    { id: "qrcode",        label: "QR Code"       },
+    { id: "qrcode",        label: "VIPs QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
   ],
@@ -791,6 +791,13 @@ const NAV_GROUPS = {
     { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_mine", "nc_qr", "nc_report", "soulcare_dashboard"] },
     { title: "Testimonies",      ids: ["sc_testimonies"] },
   ],
+
+  soulcare: [
+    { title: "Visits",           ids: ["add_visit", "sc_queue", "sc_mine", "sc_flagged"] },
+    { title: "Retention Funnel", ids: ["envoys_visitors", "pe_mine"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_mine"] },
+  ],
+
   experienceadmin: [
     { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors"] },
     { title: "Feedback", ids: ["allfeedback", "flagged"] },
