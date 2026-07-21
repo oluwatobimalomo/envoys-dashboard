@@ -20,7 +20,8 @@ import {
   Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
 } from "recharts";
 
-import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet, pdf } from "@react-pdf/renderer";
+import html2canvas from "html2canvas";
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: GLOBAL STYLES & CSS INJECTION                                     ║
@@ -129,65 +130,124 @@ import { Document, Page, Text, View, StyleSheet, PDFDownloadLink } from "@react-
 })();
 
 const pdfStyles = StyleSheet.create({
-  page: { padding: 32, fontSize: 11, fontFamily: "Helvetica" },
-  title: { fontSize: 18, fontWeight: 700, marginBottom: 4 },
-  subtitle: { fontSize: 10, color: "#666", marginBottom: 20 },
-  sectionTitle: { fontSize: 13, fontWeight: 700, marginTop: 18, marginBottom: 8, color: "#1B3A2D" },
-  row: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  label: { color: "#333" },
-  value: { fontWeight: 700 },
-  aiText: { fontSize: 10, lineHeight: 1.6, marginTop: 6, color: "#222" },
+  page: { padding: 28, fontSize: 10, fontFamily: "Helvetica" },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
+  headerLeft: { flexDirection: "row", alignItems: "center" },
+  logo: { width: 30, height: 30, marginRight: 10 },
+  title: { fontSize: 16, fontWeight: 700, color: "#1B3A2D" },
+  subtitle: { fontSize: 9, color: "#666", marginTop: 2 },
+  dateRange: { fontSize: 9, color: "#666", textAlign: "right" },
+  sectionLabel: { fontSize: 8, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
+  statRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
+  statBox: { width: "23%", borderWidth: 1, borderColor: "#e2e2e2", borderRadius: 5, padding: 8 },
+  statValue: { fontSize: 15, fontWeight: 700, color: "#1B3A2D" },
+  statLabel: { fontSize: 7.5, color: "#666", marginTop: 2 },
+  statSub: { fontSize: 7, color: "#A66D15", marginTop: 1 },
+  chartRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
+  chartBox: { width: "23%", borderWidth: 1, borderColor: "#e2e2e2", borderRadius: 5, padding: 6 },
+  chartTitle: { fontSize: 7.5, fontWeight: 700, color: "#666", marginBottom: 4, textTransform: "uppercase" },
+  chartImage: { width: "100%" },
+  summaryBox: { borderWidth: 1, borderColor: "#F0DFAF", backgroundColor: "#FEF6E4", borderRadius: 6, padding: 10, marginTop: 4 },
+  summaryLabel: { fontSize: 8, fontWeight: 700, color: "#A66D15", marginBottom: 4, textTransform: "uppercase" },
+  summaryText: { fontSize: 8.5, lineHeight: 1.5, color: "#222" },
 });
 
-function SoulCareReportPDF({ funnelStats, ncStats, aiSummary, dateFrom, dateTo }) {
+function SoulCareReportPDF({ funnelStats, ncStats, aiSummary, dateFrom, dateTo, chartImages, logoDataUri }) {
   return (
     <Document>
-      <Page size="A4" style={pdfStyles.page}>
-        <Text style={pdfStyles.title}>Soul Care Reporting Dashboard</Text>
-        <Text style={pdfStyles.subtitle}>
-          RCCG The Envoys — {dateFrom || "All time"} to {dateTo || "Present"} — Generated {new Date().toLocaleDateString()}
-        </Text>
-
-        <Text style={pdfStyles.sectionTitle}>VIP → Membership Funnel</Text>
-        {[
-          ["VIP Retention Overviews Submitted", funnelStats?.totalOverviews ?? "—"],
-          ["Recommended for Membership", `${funnelStats?.recommended ?? "—"} (${funnelStats?.recommendationRate ?? 0}%)`],
-          ["Not Recommended (Envoys Visitors)", funnelStats?.declined ?? "—"],
-          ["Potential Envoys — Graduated", funnelStats?.graduated ?? "—"],
-          ["Potential Envoys — Still Active", funnelStats?.stillActivePE ?? "—"],
-          ["Graduation Rate (of Potential Envoys)", `${funnelStats?.graduationRate ?? 0}%`],
-          ["Overall VIP → Member Conversion", `${funnelStats?.overallConversionRate ?? 0}%`],
-        ].map(([label, value]) => (
-          <View style={pdfStyles.row} key={label}>
-            <Text style={pdfStyles.label}>{label}</Text>
-            <Text style={pdfStyles.value}>{String(value)}</Text>
+      <Page size="A4" orientation="landscape" style={pdfStyles.page}>
+        <View wrap={false}>
+          <View style={pdfStyles.headerRow}>
+            <View style={pdfStyles.headerLeft}>
+              {logoDataUri && <Image src={logoDataUri} style={pdfStyles.logo} />}
+              <View>
+                <Text style={pdfStyles.title}>Soul Care Reporting Dashboard</Text>
+                <Text style={pdfStyles.subtitle}>RCCG The Envoys — Turning information into insight and insight into impact</Text>
+              </View>
+            </View>
+            <Text style={pdfStyles.dateRange}>
+              {dateFrom || "All time"} to {dateTo || "Present"}{"\n"}Generated {new Date().toLocaleDateString()}
+            </Text>
           </View>
-        ))}
 
-        <Text style={pdfStyles.sectionTitle}>New Converts</Text>
-        {[
-          ["Total New Converts", ncStats?.total ?? "—"],
-          ["Fully Discipled (3 months + training)", ncStats?.completed ?? "—"],
-          ["Retention Rate", `${ncStats?.retentionPct ?? 0}%`],
-          ["Training Completed", ncStats?.trainingDone ?? "—"],
-        ].map(([label, value]) => (
-          <View style={pdfStyles.row} key={label}>
-            <Text style={pdfStyles.label}>{label}</Text>
-            <Text style={pdfStyles.value}>{String(value)}</Text>
+          <Text style={pdfStyles.sectionLabel}>VIP → Membership Funnel</Text>
+          <View style={pdfStyles.statRow}>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{funnelStats?.totalOverviews ?? 0}</Text>
+              <Text style={pdfStyles.statLabel}>Overviews Submitted</Text>
+            </View>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{funnelStats?.recommended ?? 0}</Text>
+              <Text style={pdfStyles.statLabel}>Recommended (Yes)</Text>
+              <Text style={pdfStyles.statSub}>{funnelStats?.recommendationRate ?? 0}% of overviews</Text>
+            </View>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{funnelStats?.graduated ?? 0}</Text>
+              <Text style={pdfStyles.statLabel}>Potential Envoys Graduated</Text>
+              <Text style={pdfStyles.statSub}>{funnelStats?.graduationRate ?? 0}% graduation rate</Text>
+            </View>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{funnelStats?.overallConversionRate ?? 0}%</Text>
+              <Text style={pdfStyles.statLabel}>Overall VIP → Member</Text>
+              <Text style={pdfStyles.statSub}>End-to-end conversion</Text>
+            </View>
           </View>
-        ))}
 
-        {aiSummary && (
-          <>
-            <Text style={pdfStyles.sectionTitle}>AI-Generated Insight Summary</Text>
-            <Text style={pdfStyles.aiText}>{aiSummary}</Text>
-          </>
-        )}
+          <Text style={pdfStyles.sectionLabel}>New Converts</Text>
+          <View style={pdfStyles.statRow}>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{ncStats?.total ?? 0}</Text>
+              <Text style={pdfStyles.statLabel}>Total New Converts</Text>
+            </View>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{ncStats?.completed ?? 0}</Text>
+              <Text style={pdfStyles.statLabel}>Fully Discipled</Text>
+            </View>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{ncStats?.trainingDone ?? 0}</Text>
+              <Text style={pdfStyles.statLabel}>Training Completed</Text>
+            </View>
+            <View style={pdfStyles.statBox}>
+              <Text style={pdfStyles.statValue}>{ncStats?.retentionPct ?? 0}%</Text>
+              <Text style={pdfStyles.statLabel}>Retention Rate</Text>
+            </View>
+          </View>
+
+          {chartImages && (chartImages.vipDecision || chartImages.vipFunnel || chartImages.ncType || chartImages.ncMonth) && (
+            <>
+              <Text style={pdfStyles.sectionLabel}>Visual Breakdown</Text>
+              <View style={pdfStyles.chartRow}>
+                <View style={pdfStyles.chartBox}>
+                  <Text style={pdfStyles.chartTitle}>VIP Decision Split</Text>
+                  {chartImages.vipDecision && <Image src={chartImages.vipDecision} style={pdfStyles.chartImage} />}
+                </View>
+                <View style={pdfStyles.chartBox}>
+                  <Text style={pdfStyles.chartTitle}>VIP Funnel Stages</Text>
+                  {chartImages.vipFunnel && <Image src={chartImages.vipFunnel} style={pdfStyles.chartImage} />}
+                </View>
+                <View style={pdfStyles.chartBox}>
+                  <Text style={pdfStyles.chartTitle}>New Converts by Type</Text>
+                  {chartImages.ncType && <Image src={chartImages.ncType} style={pdfStyles.chartImage} />}
+                </View>
+                <View style={pdfStyles.chartBox}>
+                  <Text style={pdfStyles.chartTitle}>Monthly Reach</Text>
+                  {chartImages.ncMonth && <Image src={chartImages.ncMonth} style={pdfStyles.chartImage} />}
+                </View>
+              </View>
+            </>
+          )}
+
+          {aiSummary && (
+            <View style={pdfStyles.summaryBox}>
+              <Text style={pdfStyles.summaryLabel}>Period Summary</Text>
+              <Text style={pdfStyles.summaryText}>{aiSummary}</Text>
+            </View>
+          )}
+        </View>
       </Page>
     </Document>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // v5.7 — Click-to-call
 // normalizePhone(): returns a dialable E.164-ish number.
@@ -593,6 +653,7 @@ const NAV_ICONS = {
   nc_qr: QrCode,
   nc_report: TrendingUp,
   soulcare_dashboard: BarChart2,
+  steward_care: Shield,
 };
 
 const NAV = {
@@ -606,19 +667,21 @@ const NAV = {
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "callqueue",           label: "Call Queue"          },
+    { id: "add_visit",     label: "Add Visit"     },
     { id: "sc_assign",     label: "Assign Visits" },
     { id: "sc_queue",      label: "Visit Queue"   },
-    { id: "add_visit",     label: "Add Visit"     },
     { id: "pe_assign",     label: "Potential Envoys" },
     { id: "nc_assign",     label: "New Converts" },
+    { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care", label: "Members Care" },
     { id: "report",        label: "Report"        },
+    { id: "nc_qr",         label: "New Convert QR" },
     { id: "nc_report",     label: "New Converts Retention" },
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
-    { id: "research_feedback", label: "General Feedback"  },
-    { id: "general_feedback",  label: "VIPs Feedback" },
+    { id: "research_feedback", label: "VIPs Feedback"  },
+    { id: "general_feedback",  label: "General Feedback" },
     { id: "feedback_qr",   label: "Feedback QR"   },
     { id: "sc_testimonies", label: "Visitation Testimony"   },
     { id: "testimony_qr", label: "Testimony QR"   },
@@ -631,6 +694,7 @@ const NAV = {
     { id: "vip_contact",   label: "VIP Contact"   },
     { id: "addmember",     label: "Add Record"    },
     { id: "qrcode",        label: "QR Code"       },
+    { id: "nc_qr",         label: "New Convert QR" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -653,6 +717,7 @@ const NAV = {
     { id: "sc_mine",          label: "My Visits"  },
     { id: "pe_mine",          label: "My Potential Envoys" },
     { id: "envoys_visitors",  label: "Envoys Visitors" },
+    { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",     label: "Members Care" },
     { id: "sc_flagged",       label: "Flagged"     },
     { id: "pe_mine",          label: "My Potential Envoys" },
@@ -666,6 +731,7 @@ const NAV = {
     { id: "pe_assign",           label: "Potential Envoys"    },
     { id: "pe_mine",             label: "My Potential Envoys" },
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
+    { id: "steward_care",        label: "Stewards Care" },
     { id: "members_care",        label: "Members Care" },
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "sc_flagged",          label: "Flagged"             },
@@ -692,6 +758,7 @@ const NAV = {
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
   { id: "completed_pipelines", label: "Completed Pipelines" },
+  { id: "pe_assign",           label: "Potential Envoys"    },
   { id: "envoys_visitors",     label: "Envoys Visitors"     },
   { id: "callqueue",           label: "Call Queue"          },
   { id: "allfeedback",         label: "All Feedback"        },
@@ -708,21 +775,24 @@ const NAV = {
 
 const NAV_GROUPS = {
   admin: [
-    { title: "Administration",  ids: ["admin_overview", "admin_users", "admin_adduser"] },
-    { title: "First-Timers",    ids: ["firsttimers", "vip_contact", "qrcode"] },
-    { title: "Experience Team", ids: ["assign_calls", "callqueue", "completed_pipelines", "envoys_visitors"] },
-    { title: "Soul Care",   ids: ["sc_assign", "sc_queue", "sc_mine", "pe_assign", "pe_mine", "envoys_visitors", "add_visit", "members_care", "visitation_tab", "nc_assign"] },
-    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged", "nc_report", "soulcare_dashboard"] },
-    { title: "Research",        ids: ["research_feedback", "general_feedback", "feedback_qr"] },
-    { title: "Testimonies",     ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
+    { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
+    { title: "First-Timers",     ids: ["firsttimers", "vip_contact", "qrcode"] },
+    { title: "Experience Team",  ids: ["assign_calls", "callqueue"] },
+    { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "visitation_tab"] },
+    { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
+    { title: "Pastoral",         ids: ["report", "allfeedback", "flagged"] },
+    { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
+    { title: "Testimonies",      ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
   ],
   soulcareadmin: [
-    { title: "Soul Care",   ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "pe_assign", "pe_mine", "envoys_visitors", "members_care", "nc_assign", "nc_mine", "nc_qr", "nc_report"] },
-    { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged", "soulcare_dashboard"] },
-    { title: "Testimonies", ids: ["sc_testimonies"] },
+    { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "sc_flagged"] },
+    { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "pe_mine", "envoys_visitors"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_mine", "nc_qr", "nc_report", "soulcare_dashboard"] },
+    { title: "Testimonies",      ids: ["sc_testimonies"] },
   ],
   experienceadmin: [
-    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines"] },
+    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors"] },
     { title: "Feedback", ids: ["allfeedback", "flagged"] },
   ],
 };
@@ -1736,25 +1806,27 @@ function birthdayWhatsAppLink(name, phone) {
 function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [wishedSet, setWishedSet] = useState(new Set());
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [ftRows, scRows, cmRows] = await Promise.all([
+        const [ftRows, scRows, cmRows, wished] = await Promise.all([
           sb("first_timers?select=id,full_name,phone,dob&dob=not.is.null&limit=2000").catch(() => []),
           sb("soul_care_contacts?select=id,full_name,phone,dob&dob=not.is.null&limit=2000").catch(() => []),
           sb("church_members?select=id,full_name,phone,dob&dob=not.is.null&limit=3000").catch(() => []),
+          fetchBirthdayWishesSet(currentYear),
         ]);
         if (cancelled) return;
-        // Merge all pools, dedupe by normalized phone (first source wins)
         const seen = new Set();
         const rows = [];
         const take = (list, prefix) => (list || []).forEach(r => {
           const k = phoneKey(r.phone) || `${prefix}-${r.id}`;
           if (!seen.has(k)) { seen.add(k); rows.push({ ...r, id: `${prefix}-${r.id}` }); }
         });
-        take(cmRows, "cm");   // members registry first — most authoritative for member care
+        take(cmRows, "cm");
         take(scRows, "sc");
         take(ftRows, "ft");
         const upcoming = rows
@@ -1765,11 +1837,21 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
           .filter(Boolean)
           .sort((a, b) => a.daysUntil - b.daysUntil || a.full_name.localeCompare(b.full_name));
         setPeople(upcoming);
+        setWishedSet(wished);
       } catch { if (!cancelled) setPeople([]); }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [daysAhead]);
+  }, [daysAhead, currentYear]);
+
+  const sendWish = (p, link) => {
+    window.open(link, "_blank", "noreferrer");
+    const key = phoneKey(p.phone);
+    if (key) {
+      setWishedSet(prev => new Set(prev).add(key));
+      logBirthdayWish(p.phone, currentYear).catch(() => {});
+    }
+  };
 
   if (loading) return null;
   if (people.length === 0 && !showEmpty) return null;
@@ -1799,6 +1881,8 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
           {people.map(p => {
             const isToday = p.daysUntil === 0;
             const waLink  = birthdayWhatsAppLink(p.full_name, p.phone);
+            const key     = phoneKey(p.phone);
+            const wished  = key && wishedSet.has(key);
             return (
               <div key={p.id} style={{
                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
@@ -1819,10 +1903,121 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
                   {isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}
                 </span>
                 {waLink && (
-                  <a href={waLink} target="_blank" rel="noreferrer"
-                    style={{ ...btn("gold", { padding: "6px 12px", fontSize: 12 }), textDecoration: "none" }}>
-                    <MessageCircle size={12} />Send Wishes
-                  </a>
+                  wished ? (
+                    <span style={badge(C.green, C.greenLight, { fontSize: 12 })}>
+                      <CheckCircle size={11} />Wished
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => sendWish(p, waLink)}
+                      style={{ ...btn("gold", { padding: "6px 12px", fontSize: 12 }), border: "none", cursor: "pointer" }}>
+                      <MessageCircle size={12} />Send Wishes
+                    </button>
+                  )
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// BirthdaysFromList — same visual card as BirthdaysWidget, but computes
+// upcoming birthdays from an ALREADY-FETCHED list passed in by the parent,
+// rather than fetching+merging first_timers/soul_care_contacts/church_members
+// itself. Used where a page's birthday banner should reflect ONLY that
+// page's own table records (Members Care, Stewards Care).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
+  const [wishedSet, setWishedSet] = useState(new Set());
+  const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchBirthdayWishesSet(currentYear).then(set => { if (!cancelled) setWishedSet(set); });
+    return () => { cancelled = true; };
+  }, [currentYear]);
+
+  const upcoming = (people || [])
+    .map(r => {
+      const info = nextBirthdayInfo(r.dob);
+      return info && info.daysUntil < daysAhead ? { ...r, ...info } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.daysUntil - b.daysUntil || (a.full_name || "").localeCompare(b.full_name || ""));
+
+  const sendWish = (p, link) => {
+    window.open(link, "_blank", "noreferrer");
+    const key = phoneKey(p.phone);
+    if (key) {
+      setWishedSet(prev => new Set(prev).add(key));
+      logBirthdayWish(p.phone, currentYear).catch(() => {});
+    }
+  };
+
+  if (upcoming.length === 0 && !showEmpty) return null;
+
+  return (
+    <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: upcoming.length ? 12 : 0 }}>
+        <Gift size={14} color={C.goldDark} />
+        <span style={{
+          fontSize: 12, fontWeight: 700, fontFamily: F.head,
+          textTransform: "uppercase", letterSpacing: ".07em", color: C.goldDark,
+        }}>
+          Birthdays This Week
+        </span>
+        {upcoming.length > 0 && (
+          <span style={badge(C.goldDark, "#fff", { fontSize: 11 })}>{upcoming.length}</span>
+        )}
+        {upcoming.length === 0 && (
+          <span style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
+            None in the next {daysAhead} days
+          </span>
+        )}
+      </div>
+
+      {upcoming.length > 0 && (
+        <div style={{ display: "grid", gap: 6 }}>
+          {upcoming.map(p => {
+            const isToday = p.daysUntil === 0;
+            const waLink  = birthdayWhatsAppLink(p.full_name, p.phone);
+            const key     = phoneKey(p.phone);
+            const wished  = key && wishedSet.has(key);
+            return (
+              <div key={p.id} style={{
+                display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+                background: C.surface, borderRadius: 8, padding: "8px 12px",
+                border: `1px solid ${isToday ? C.gold : C.border}`,
+              }}>
+                <Avatar name={p.full_name} size={30} />
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>
+                    {isToday ? "🎂 " : ""}{p.full_name}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>
+                    <PhoneLink phone={p.phone} />
+                  </div>
+                </div>
+                <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
+                  <Gift size={10} />
+                  {isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}
+                </span>
+                {waLink && (
+                  wished ? (
+                    <span style={badge(C.green, C.greenLight, { fontSize: 12 })}>
+                      <CheckCircle size={11} />Wished
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => sendWish(p, waLink)}
+                      style={{ ...btn("gold", { padding: "6px 12px", fontSize: 12 }), border: "none", cursor: "pointer" }}>
+                      <MessageCircle size={12} />Send Wishes
+                    </button>
+                  )
                 )}
               </div>
             );
@@ -2126,55 +2321,67 @@ function useSoulCareFunnelData(dateFrom, dateTo) {
   return { stats, loading, err };
 }
 
-function AISummaryPanel({ statsPayload }) {
-  const [summary, setSummary] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr]         = useState("");
-  const [shown, setShown]     = useState(false);
+// ─────────────────────────────────────────────────────────────────────────────
+// Soul Care Reporting Dashboard — free, deterministic narrative summary.
+// Reads the same computed stats a paid AI call would have used, and writes
+// a short multi-sentence summary via threshold-based phrasing. No network
+// call, no cost, no dependency on any third party.
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const generate = async () => {
-    setLoading(true); setErr(""); setShown(true);
-    try {
-      const res = await fetch("/api/generate-insight", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stats: statsPayload }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-      setSummary(data.summary || "No summary returned.");
-    } catch (e) {
-      setErr(`Couldn't generate a summary: ${e.message}. Confirm ANTHROPIC_API_KEY is set in Vercel and api/generate-insight.js is deployed.`);
+function generateSoulCareSummary(funnelStats, ncStats) {
+  if (!funnelStats) return "Not enough data yet to generate a summary for this period.";
+  const sentences = [];
+
+  if (funnelStats.totalOverviews === 0) {
+    sentences.push("No VIP Retention Overviews were submitted in this period, so there's no funnel data to report on yet.");
+  } else {
+    sentences.push(
+      `This period, ${funnelStats.totalOverviews} VIP Retention Overview${funnelStats.totalOverviews !== 1 ? "s were" : " was"} submitted, with ${funnelStats.recommended} (${funnelStats.recommendationRate}%) recommended for membership.`
+    );
+    if (funnelStats.totalPE > 0) {
+      sentences.push(
+        `Of those recommended, ${funnelStats.graduated} of ${funnelStats.totalPE} Potential Envoys have completed the 5-week follow-up and training, a ${funnelStats.graduationRate}% graduation rate — bringing the overall VIP-to-Member conversion to ${funnelStats.overallConversionRate}%.`
+      );
     }
-    setLoading(false);
-  };
+    if (funnelStats.recommendationRate >= 60) {
+      sentences.push(`A ${funnelStats.recommendationRate}% recommendation rate is a strong sign the Experience Team's 3-week follow-up is genuinely connecting with first-timers.`);
+    } else if (funnelStats.recommendationRate > 0 && funnelStats.recommendationRate < 40) {
+      sentences.push(`A ${funnelStats.recommendationRate}% recommendation rate may be worth a closer look at what's happening during the 3-week call window.`);
+    }
+    if (funnelStats.stillActivePE > 0) {
+      sentences.push(`${funnelStats.stillActivePE} Potential Envoy${funnelStats.stillActivePE !== 1 ? "s are" : " is"} still active in the 5-week pipeline — keep an eye on their follow-up dates so momentum doesn't stall near the finish line.`);
+    }
+  }
 
+  if (ncStats.total === 0) {
+    sentences.push("No New Converts were logged in this period.");
+  } else {
+    sentences.push(
+      `Separately, ${ncStats.total} New Convert${ncStats.total !== 1 ? "s were" : " was"} logged, with ${ncStats.completed} (${ncStats.retentionPct}%) fully discipled through the 3-month process and Envoys Training.`
+    );
+    if (ncStats.retentionPct >= 60) {
+      sentences.push(`That retention rate reflects healthy discipleship follow-through for new believers.`);
+    } else if (ncStats.retentionPct < 40 && ncStats.total >= 3) {
+      sentences.push(`A retention rate under 40% suggests some New Converts may be disengaging before completing training — worth checking whether Month 2 and 3 check-ins are happening consistently.`);
+    }
+  }
+
+  return sentences.join(" ");
+}
+
+function SoulCareSummaryPanel({ summaryText }) {
   return (
     <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30` }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: shown ? 14 : 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Zap size={15} color={C.goldDark} />
-          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head, color: C.goldDark }}>AI Insight Summary</span>
-        </div>
-        <button style={btn("gold", { padding: "8px 16px", fontSize: 13 })} onClick={generate} disabled={loading}>
-          {loading ? "Generating…" : shown ? "Regenerate" : "Generate AI Summary"}
-        </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <FileText size={15} color={C.goldDark} />
+        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head, color: C.goldDark }}>Period Summary</span>
       </div>
-      {shown && (
-        <>
-          <Alert type="error" msg={err} onClose={() => setErr("")} />
-          {loading ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.textMuted, fontSize: 13 }}>
-              <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />Thinking this through…
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            </div>
-          ) : summary && (
-            <div style={{ fontSize: 14, color: C.textPrimary, lineHeight: 1.75, whiteSpace: "pre-wrap", background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${C.gold}20` }}>
-              {summary}
-            </div>
-          )}
-        </>
-      )}
+      <div style={{
+        fontSize: 14, color: C.textPrimary, lineHeight: 1.75,
+        background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${C.gold}20`,
+      }}>
+        {summaryText}
+      </div>
     </div>
   );
 }
@@ -2184,7 +2391,12 @@ function SoulCareReportingDashboard() {
   const [dateTo, setDateTo]     = useState("");
   const { stats: funnelStats, loading: funnelLoading, err: funnelErr } = useSoulCareFunnelData(dateFrom, dateTo);
   const { data: ncData, loading: ncLoading } = useNewConvertData(dateFrom, dateTo);
-  const [aiSummaryForPdf, setAiSummaryForPdf] = useState("");
+  const [pdfGenerating, setPdfGenerating] = useState(false);
+
+  const vipDecisionRef = useRef(null);
+  const vipFunnelRef   = useRef(null);
+  const ncTypeRef       = useRef(null);
+  const ncMonthRef      = useRef(null);
 
   const ncTotal     = ncData.length;
   const ncCompleted = ncData.filter(r => ncComplete(r.fbRows) && r.envoys_training_completed).length;
@@ -2192,8 +2404,78 @@ function SoulCareReportingDashboard() {
   const ncRetentionPct = ncTotal > 0 ? Math.round((ncCompleted / ncTotal) * 100) : 0;
   const ncStats = { total: ncTotal, completed: ncCompleted, trainingDone: ncTraining, retentionPct: ncRetentionPct };
 
-  const statsPayload = { period: { from: dateFrom || "all-time", to: dateTo || "present" }, vipFunnel: funnelStats, newConverts: ncStats };
   const loading = funnelLoading || ncLoading;
+  const summaryText = loading ? "" : generateSoulCareSummary(funnelStats, ncStats);
+
+  const vipDecisionDonut = [
+    { name: "Recommended",     value: funnelStats?.recommended || 0, color: C.green },
+    { name: "Not Recommended", value: funnelStats?.declined || 0,    color: C.amber },
+  ].filter(d => d.value > 0);
+
+  const vipFunnelBars = funnelStats ? [
+    { name: "Overviews Submitted", value: funnelStats.totalOverviews, color: C.blue },
+    { name: "Recommended (Yes)",   value: funnelStats.recommended,    color: C.soul },
+    { name: "Graduated to Member", value: funnelStats.graduated,      color: C.goldDark },
+  ] : [];
+
+  const ncByType = { "New Salvation": 0, "Rededication": 0 };
+  ncData.forEach(r => { if (ncByType[r.conversion_type] !== undefined) ncByType[r.conversion_type]++; });
+  const ncTypeDonut = Object.entries(ncByType)
+    .map(([k, v]) => ({ name: k, value: v, color: k === "New Salvation" ? C.soul : C.gold }))
+    .filter(d => d.value > 0);
+
+  const ncMonthReach = [1, 2, 3].map(m => ({
+    name: `Month ${m}`,
+    value: ncData.filter(r => ncCheckinsLogged(r.fbRows).has(m)).length,
+    color: C.soul,
+  }));
+
+  async function fetchLogoDataUri() {
+  try {
+    const res = await fetch("/logo.png");
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+  const downloadPdfWithCharts = async () => {
+    setPdfGenerating(true);
+    try {
+      const captureRef = async (ref) => {
+        if (!ref.current) return null;
+        const canvas = await html2canvas(ref.current, { backgroundColor: "#ffffff", scale: 2 });
+        return canvas.toDataURL("image/png");
+      };
+      const [vipDecision, vipFunnel, ncType, ncMonth, logoDataUri] = await Promise.all([
+        captureRef(vipDecisionRef), captureRef(vipFunnelRef), captureRef(ncTypeRef), captureRef(ncMonthRef),
+        fetchLogoDataUri(),
+      ]);
+      const doc = (
+        <SoulCareReportPDF
+          funnelStats={funnelStats} ncStats={ncStats} aiSummary={summaryText}
+          dateFrom={dateFrom} dateTo={dateTo}
+          chartImages={{ vipDecision, vipFunnel, ncType, ncMonth }}
+          logoDataUri={logoDataUri}
+        />
+      );
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `soul_care_report_${new Date().toISOString().slice(0, 10)}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(`Could not generate PDF: ${e.message}`);
+    }
+    setPdfGenerating(false);
+  };
 
   return (
     <div className="page-enter">
@@ -2206,16 +2488,9 @@ function SoulCareReportingDashboard() {
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 140 }} />
             {!loading && (
-              <PDFDownloadLink
-                document={<SoulCareReportPDF funnelStats={funnelStats} ncStats={ncStats} aiSummary={aiSummaryForPdf} dateFrom={dateFrom} dateTo={dateTo} />}
-                fileName={`soul_care_report_${new Date().toISOString().slice(0, 10)}.pdf`}
-                style={{ textDecoration: "none" }}>
-                {({ loading: pdfLoading }) => (
-                  <button style={btn("primary")} disabled={pdfLoading}>
-                    <Download size={14} />{pdfLoading ? "Preparing…" : "Download PDF"}
-                  </button>
-                )}
-              </PDFDownloadLink>
+              <button style={btn("primary")} onClick={downloadPdfWithCharts} disabled={pdfGenerating}>
+                <Download size={14} />{pdfGenerating ? "Preparing…" : "Download PDF"}
+              </button>
             )}
           </div>
         }
@@ -2248,8 +2523,38 @@ function SoulCareReportingDashboard() {
             <StatCard label="Retention Rate"      value={`${ncStats.retentionPct}%`} icon={TrendingUp} accent={C.soul} />
           </div>
 
+          <div style={{ marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+            Visual Breakdown
+          </div>
+          <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+            <div style={card}>
+              <SH title="VIP Decision Split" icon={UserCheck} />
+              <div ref={vipDecisionRef}>
+                {vipDecisionDonut.length === 0
+                  ? <PasEmpty label="No VIP overviews in this range" />
+                  : <PasDonut data={vipDecisionDonut} centerValue={funnelStats?.totalOverviews ?? 0} centerLabel="Overviews Submitted" />}
+              </div>
+            </div>
+            <div style={card}>
+              <SH title="VIP Funnel Stages" icon={TrendingUp} />
+              <div ref={vipFunnelRef}><PasOutcomeBars data={vipFunnelBars} /></div>
+            </div>
+            <div style={card}>
+              <SH title="New Converts by Type" icon={Heart} />
+              <div ref={ncTypeRef}>
+                {ncTypeDonut.length === 0
+                  ? <PasEmpty label="No New Converts in this range" />
+                  : <PasDonut data={ncTypeDonut} centerValue={ncStats.total} centerLabel="New Converts" />}
+              </div>
+            </div>
+            <div style={card}>
+              <SH title="New Converts — Monthly Reach" icon={Activity} />
+              <div ref={ncMonthRef}><PasOutcomeBars data={ncMonthReach} /></div>
+            </div>
+          </div>
+
           <div style={{ marginBottom: 20 }}>
-            <AISummaryPanel statsPayload={statsPayload} />
+            <SoulCareSummaryPanel summaryText={summaryText} />
           </div>
 
           <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.6 }}>
@@ -2261,7 +2566,6 @@ function SoulCareReportingDashboard() {
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // v6.2 — duplicate detection helpers
 // phoneKey(): reduces any NG phone format to a comparable 10-digit key.
@@ -2287,6 +2591,20 @@ function phoneKey(raw) {
   if (d.startsWith("234")) d = d.slice(3);
   else if (d.startsWith("0") && d.length === 11) d = d.slice(1);
   return d.length >= 7 ? d.slice(-10) : "";
+}
+
+async function fetchBirthdayWishesSet(year) {
+  const rows = await sb(`birthday_wishes?wish_year=eq.${year}&select=phone_key`).catch(() => []);
+  return new Set((rows || []).map(r => r.phone_key));
+}
+
+async function logBirthdayWish(phone, year, wishedBy) {
+  const key = phoneKey(phone);
+  if (!key) return;
+  await sb("birthday_wishes", {
+    method: "POST",
+    body: JSON.stringify({ phone_key: key, wish_year: year, wished_by: wishedBy || null }),
+  }).catch(() => {});
 }
 
 async function findFirstTimerDupes(phone, excludeId) {
@@ -8014,7 +8332,7 @@ function useVisitData(dateFrom, dateTo) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        let cq = "soul_care_contacts?order=created_at.desc&limit=500";
+        let cq = "soul_care_contacts?is_active=eq.true&order=created_at.desc&limit=500";
         if (dateFrom) cq += `&created_at=gte.${dateFrom}`;
         if (dateTo)   cq += `&created_at=lte.${dateTo}T23:59:59`;
 
@@ -8935,6 +9253,259 @@ const MC_STATUS_META = {
   Travelled: { color: C.amber,  bg: C.amberLight  },
 };
 
+function StewardsCare({ currentUser, role }) {
+  const isAdmin = role === "soulcareadmin" || role === "admin";
+  const [stewards, setStewards]         = useState([]);
+  const [poolKeys, setPoolKeys]         = useState(new Set());
+  const [lastVisitByKey, setLastVisit]  = useState({});
+  const [loading, setLoading]           = useState(true);
+  const [err, setErr]                   = useState("");
+  const [msg, setMsg]                   = useState("");
+  const [search, setSearch]             = useState("");
+  const [fStatus, setFStatus]           = useState("");
+  const [fMarital, setFMarital]         = useState("");
+  const [fLife, setFLife]               = useState("");
+  const [addingId, setAddingId]         = useState(null);
+  const [tick, setTick]                 = useState(0);
+  const reload = () => setTick(t => t + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [cm, pool, visits] = await Promise.all([
+          sb("church_members?select=*&order=created_at.desc&limit=3000"),
+          sb("soul_care_contacts?select=id,phone&is_active=eq.true").catch(() => []),
+          sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
+        ]);
+        if (cancelled) return;
+        const keys = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
+        const contactKey = {};
+        (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
+        const lv = {};
+        (visits || []).forEach(v => {
+          const k = contactKey[v.contact_id];
+          if (k && v.visit_date && (!lv[k] || v.visit_date > lv[k])) lv[k] = v.visit_date;
+        });
+        setStewards((cm || []).filter(m => m.category === "Steward"));
+        setPoolKeys(keys);
+        setLastVisit(lv);
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  const ageOf = (dob) => {
+    if (!dob) return null;
+    const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+    if (!y) return null;
+    const t = new Date();
+    let a = t.getFullYear() - y;
+    if (t.getMonth() + 1 < m || (t.getMonth() + 1 === m && t.getDate() < d)) a--;
+    return a;
+  };
+  const dobDayMonth = (dob) => {
+    if (!dob) return "—";
+    const [, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+    if (!m || !d) return "—";
+    return new Date(2000, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const total        = stewards.length;
+  const activeCount  = stewards.filter(m => (m.membership_status || "Active") === "Active").length;
+  const newThisMonth = stewards.filter(m => ((m.date_joined || (m.created_at || "").slice(0, 10)) >= monthStart)).length;
+  const children      = stewards.filter(m => { const a = ageOf(m.dob); return a !== null && a < 18; }).length;
+
+  const filtered = stewards.filter(m => {
+    if (fStatus  && (m.membership_status || "Active") !== fStatus) return false;
+    if (fMarital && m.marital_status !== fMarital) return false;
+    if (fLife    && m.life_stage !== fLife) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!m.full_name?.toLowerCase().includes(q) && !m.phone?.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const addToPool = async (m) => {
+    setAddingId(m.id); setErr("");
+    try {
+      await sb("soul_care_contacts", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: m.full_name, phone: m.phone, email: m.email || null, gender: m.gender || null,
+          house_address: m.house_address || null, nearest_landmark: m.nearest_landmark || null,
+          marital_status: m.marital_status || null, life_stage: m.life_stage || null, dob: m.dob || null,
+          added_by: currentUser || null,
+        }),
+      });
+      setPoolKeys(prev => { const n = new Set(prev); n.add(phoneKey(m.phone)); return n; });
+      setMsg(`${m.full_name} added to the visit pool — find them under Unassigned in Assign Visits.`);
+      toast.success(`${m.full_name} added to the visit pool.`);
+    } catch (e) { setErr(e.message); }
+    setAddingId(null);
+  };
+
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 100px 175px";
+  const headCell = {
+    fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
+    letterSpacing: ".07em", fontFamily: F.head,
+  };
+  const stickyLeft = (bg, z = 2) => ({
+    position: "sticky", left: 0, zIndex: z, background: bg,
+    boxShadow: "2px 0 5px rgba(0,0,0,.06)", paddingLeft: 16,
+    alignSelf: "stretch", display: "flex", alignItems: "center",
+  });
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Stewards Care"
+        subtitle="Stewards registry — bulk import from Members Care using the Category column"
+        action={<button style={btn("ghost", { padding: "8px 10px" })} onClick={reload}><RefreshCw size={14} /></button>}
+      />
+
+      <div style={{ marginBottom: 20 }}><BirthdaysFromList people={stewards} /></div>
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Stewards"        value={total}        icon={Shield}      accent={C.goldDark} />
+        <StatCard label="Active Stewards"       value={activeCount}  icon={CheckCircle} accent={C.green}    />
+        <StatCard label="New This Month"        value={newThisMonth} icon={UserPlus}    accent={C.soul}     />
+        <StatCard label="Children"              value={children}     icon={Heart}       accent={C.research}
+          sub={children === 0 && total > 0 ? "Counted from recorded DOBs" : ""} />
+      </div>
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.goldLight, borderRadius: 10, border: `1px solid ${C.gold}30`,
+      }}>
+        <Filter size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
+        <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Membership Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Travelled">Travelled</option>
+        </select>
+        <select value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Marital Status</option>
+          <option value="Single">Single</option>
+          <option value="Married">Married</option>
+          <option value="Divorced">Divorced</option>
+          <option value="Widowed">Widowed</option>
+        </select>
+        <select value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Life Stage</option>
+          <option value="Student">Student</option>
+          <option value="Employee">Employee</option>
+          <option value="Business Owner">Business Owner</option>
+        </select>
+        {(fStatus || fMarital || fLife) && (
+          <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
+            onClick={() => { setFStatus(""); setFMarital(""); setFLife(""); }}>
+            <X size={12} />Clear
+          </button>
+        )}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name…"
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error"   msg={err} onClose={() => setErr("")} />
+      <Alert type="success" msg={msg} onClose={() => setMsg("")} />
+
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Shield size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {stewards.length === 0
+              ? "No Stewards yet — import members via Members Care with Category set to Steward."
+              : "No Stewards match your filters."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
+              padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1000,
+            }}>
+              <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
+              {["Phone", "Email", "Gender", "DOB", "Status", "Last Visit"].map(h => (
+                <div key={h} style={headCell}>{h}</div>
+              ))}
+              <div style={headCell}>Visit Pool</div>
+            </div>
+
+            {filtered.map((m, i) => {
+              const k       = phoneKey(m.phone);
+              const inPool  = k && poolKeys.has(k);
+              const lastVis = k ? lastVisitByKey[k] : null;
+              const stm     = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
+              return (
+                <div key={m.id} style={{
+                  display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
+                  padding: "10px 0", background: C.surface, minWidth: 1000,
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                }}>
+                  <div style={stickyLeft(C.surface)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <Avatar name={m.full_name} size={30} />
+                      <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.full_name}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
+                  <div style={{ fontSize: 12, color: C.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {m.email || <span style={{ color: C.textMuted }}>—</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
+                  <div>
+                    <span style={badge(stm.color, stm.bg, { fontSize: 10 })}>
+                      <span style={dot(stm.color)} />{m.membership_status || "Active"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
+                    {lastVis || "Never"}
+                  </div>
+                  <div style={{ paddingLeft: 6, minWidth: 0, overflow: "hidden" }}>
+                    {inPool ? (
+                      <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
+                        <CheckCircle size={10} />In Pool
+                      </span>
+                    ) : (
+                      <button style={btn("soul", { padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" })}
+                        onClick={() => addToPool(m)} disabled={addingId === m.id}>
+                        {addingId === m.id ? "Adding…" : "+ Add"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
+          Showing <strong>{filtered.length}</strong> of <strong>{stewards.length}</strong> Steward{stewards.length !== 1 ? "s" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MembersCare({ currentUser, role }) {
   const isAdmin = role === "soulcareadmin" || role === "admin";
   const [members, setMembers]           = useState([]);
@@ -8971,7 +9542,7 @@ function MembersCare({ currentUser, role }) {
           const k = contactKey[v.contact_id];
           if (k && v.visit_date && (!lv[k] || v.visit_date > lv[k])) lv[k] = v.visit_date;
         });
-        setMembers(cm || []);
+        setMembers((cm || []).filter(m => m.category !== "Steward"));
         setPoolKeys(keys);
         setLastVisit(lv);
       } catch (e) { if (!cancelled) setErr(e.message); }
@@ -8999,7 +9570,7 @@ function MembersCare({ currentUser, role }) {
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   const total        = members.length;
-  const stewards     = members.filter(m => m.category === "Steward").length;
+  const activeCount  = members.filter(m => (m.membership_status || "Active") === "Active").length;
   const newThisMonth = members.filter(m => ((m.date_joined || (m.created_at || "").slice(0, 10)) >= monthStart)).length;
   const children     = members.filter(m => { const a = ageOf(m.dob); return a !== null && a < 18; }).length;
 
@@ -9035,7 +9606,7 @@ function MembersCare({ currentUser, role }) {
     setAddingId(null);
   };
 
-  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 150px";
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 200px";
   const headCell = {
     fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
     letterSpacing: ".07em", fontFamily: F.head,
@@ -9056,7 +9627,7 @@ function MembersCare({ currentUser, role }) {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title="Members Care"
-        subtitle="Full congregation registry for Soul Care follow-up"
+        subtitle="Members registry for Soul Care follow-up — Stewards are on their own page"
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {isAdmin && (
@@ -9070,11 +9641,11 @@ function MembersCare({ currentUser, role }) {
 
       {isAdmin && showImport && <MembersCareCSVImport currentUser={currentUser} onDone={reload} />}
 
-      <div style={{ marginBottom: 20 }}><BirthdaysWidget /></div>
+      <div style={{ marginBottom: 20 }}><BirthdaysFromList people={members} /></div>
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Envoys"           value={total}        icon={Users}    accent={C.soul}     />
-        <StatCard label="Stewards"                value={stewards}     icon={Shield}   accent={C.goldDark} />
+        <StatCard label="Total Members"           value={total}        icon={Users}    accent={C.soul}     />
+        <StatCard label="Active Members"          value={activeCount}  icon={CheckCircle} accent={C.green} />
         <StatCard label="New Members This Month"  value={newThisMonth} icon={UserPlus} accent={C.green}    />
         <StatCard label="Children"                value={children}     icon={Heart}    accent={C.research}
           sub={children === 0 && total > 0 ? "Counted from recorded DOBs" : ""} />
@@ -9187,15 +9758,15 @@ function MembersCare({ currentUser, role }) {
                   <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
                     {lastVis || "Never"}
                   </div>
-                  <div style={{ paddingLeft: 6 }}>
+                  <div style={{ paddingLeft: 6, minWidth: 0, overflow: "hidden" }}>
                     {inPool ? (
                       <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
                         <CheckCircle size={10} />In Pool
                       </span>
                     ) : (
-                      <button style={btn("soul", { padding: "5px 10px", fontSize: 11 })}
+                      <button style={btn("soul", { padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" })}
                         onClick={() => addToPool(m)} disabled={addingId === m.id}>
-                        <UserPlus size={11} />{addingId === m.id ? "Adding…" : "Add to Pool"}
+                        {addingId === m.id ? "Adding…" : "+ Add"}
                       </button>
                     )}
                   </div>
@@ -9264,6 +9835,18 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
     { k: "unavailable", label: "Unavailable",   count: unavailable.length, col: C.danger    },
     { k: "all",         label: "All",           count: visible.length,     col: C.textMuted },
   ];
+
+  const removeFromPool = async (contact) => {
+    if (!window.confirm(`Remove ${contact.full_name} from the Visit Pool? They will no longer appear in Visit Queue or Assign Visits.`)) return;
+    try {
+      await sb(`soul_care_contacts?id=eq.${contact.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: false }),
+      });
+      toast.success(`${contact.full_name} removed from the visit pool.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+  };
 
   return (
     <div className="page-enter">
@@ -9353,6 +9936,12 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
                     )}
                     {!isAdmin && !isMine && (
                       <span style={badge(C.textMuted, C.bg, { fontSize: 11 })}>Not assigned to you</span>
+                    )}
+                    {isAdmin && (
+                      <button style={btn("danger", { padding: "6px 12px", fontSize: 11 })}
+                        onClick={e => { e.stopPropagation(); removeFromPool(c); }}>
+                        <X size={11} />Remove from Pool
+                      </button>
                     )}
                     {isAdmin && (
                       <ChevronDown size={14} color={C.textMuted}
@@ -12665,7 +13254,7 @@ function App() {
     }
 
     if (active === "soulcare_dashboard") return <SoulCareReportingDashboard />;
-    
+
     if (active === "nc_assign") return <NewConvertsAssignView currentUser={user} />;
     if (active === "nc_qr")     return <NewConvertQRPage />;
     if (active === "nc_report") return <NewConvertsRetentionReport />;
@@ -12683,6 +13272,7 @@ function App() {
       return <MyNewConverts currentUser={user} onLogCheckin={r => setFeedbackTarget(r)} />;
     }
 
+    if (active === "steward_care") return <StewardsCare currentUser={user} role={role} />;
     if (active === "members_care") return <MembersCare currentUser={user} role={role} />;
     if (active === "sc_flagged") return <SoulCareFlagged />;
     if (active === "sc_testimonies") return <Testimonies />;
