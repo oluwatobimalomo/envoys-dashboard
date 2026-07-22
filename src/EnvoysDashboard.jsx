@@ -6464,21 +6464,25 @@ async function findGuardianByPhone(phone) {
 async function searchMegastarFamilies(query) {
   const q = query.trim().replace(/[,()]/g, "");
   if (!q) return [];
-  const [guardians, children] = await Promise.all([
+  const [guardianMatches, childMatches] = await Promise.all([
     sb(`megastar_guardians?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&limit=10`).catch(() => []),
-    sb(`megastars?full_name=ilike.*${q}*&limit=10`).catch(() => []),
+    sb(`megastars?full_name=ilike.*${q}*&is_active=eq.true&limit=10`).catch(() => []),
   ]);
 
   const links = await sb("megastar_guardian_links?select=*").catch(() => []);
   const allGuardians = await sb("megastar_guardians?select=*").catch(() => []);
-  const allChildren  = await sb("megastars?select=*").catch(() => []);
+  const allChildren  = (await sb("megastars?select=*").catch(() => [])).filter(c => c.is_active !== false);
 
   const guardianMap = {}; (allGuardians || []).forEach(g => { guardianMap[g.id] = g; });
   const childMap     = {}; (allChildren  || []).forEach(c => { childMap[c.id] = c; });
 
+  // Track exactly which children caused a family to surface, so the UI can
+  // badge them — distinct from siblings who are shown along for convenience.
+  const matchedChildIds = new Set((childMatches || []).map(c => c.id));
+
   const familyIds = new Set();
-  (guardians || []).forEach(g => familyIds.add(g.id));
-  (children || []).forEach(c => {
+  (guardianMatches || []).forEach(g => familyIds.add(g.id));
+  (childMatches || []).forEach(c => {
     (links || []).filter(l => l.megastar_id === c.id).forEach(l => familyIds.add(l.guardian_id));
   });
 
@@ -6489,7 +6493,7 @@ async function searchMegastarFamilies(query) {
       .filter(l => l.guardian_id === gid)
       .map(l => childMap[l.megastar_id])
       .filter(Boolean);
-    return { guardian, children: kids };
+    return { guardian, children: kids, matchedChildIds };
   }).filter(Boolean);
 }
 
@@ -6610,6 +6614,204 @@ function AddMegastarPage({ currentUser, onCancel, onDone, prefillGuardian = null
   );
 }
 
+const MEGASTARS_TEMPLATE_HEADERS = ["child_full_name", "gender", "dob", "class", "guardian_name", "guardian_phone"];
+const MEGASTARS_TEMPLATE_EXAMPLE = ["Tomiwa Johnson", "Male", "2018-04-12", "Pre-K", "Mrs. Johnson", "08031234567"];
+
+function MegastarsCSVImport({ currentUser, onDone }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [report, setReport] = useState(null);
+  const fileRef = useRef();
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
+      return obj;
+    });
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { setRows(parseCSV(ev.target.result)); setErr(""); setReport(null); };
+    reader.readAsText(file);
+  };
+
+  const oneOf = (v, list) => {
+    const c = (v || "").toString().trim().toLowerCase();
+    const hit = list.find(x => x.toLowerCase() === c);
+    return hit || null;
+  };
+  const cleanDate = (raw) => {
+    const s = (raw || "").toString().trim();
+    const parts = s.split(/[/-]/);
+    if (parts.length !== 3) return null;
+    const [a, b, c2] = parts;
+    if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
+    return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+  };
+
+  const importAll = async () => {
+    if (!rows.length) return;
+    setLoading(true); setErr(""); setReport(null);
+    try {
+      const parsed = rows.map(r => ({
+        child_full_name: (r.child_full_name || r.full_name || r.name || "").toString().trim(),
+        gender:          oneOf(r.gender, ["Male", "Female"]),
+        dob:             cleanDate(r.dob || r.date_of_birth),
+        childClass:      MEGASTAR_CLASSES.find(c => c.toLowerCase() === (r.class || "").toString().trim().toLowerCase()) || null,
+        guardian_name:   (r.guardian_name || r.parent_name || "").toString().trim(),
+        guardian_phone:  (r.guardian_phone || r.phone || "").toString().trim(),
+      })).filter(r => r.child_full_name && r.guardian_phone);
+
+      if (!parsed.length) {
+        setErr("No valid rows found. Each row needs at least child_full_name and guardian_phone.");
+        setLoading(false); return;
+      }
+
+      const [existingGuardians, existingChildren, existingLinks] = await Promise.all([
+        sb("megastar_guardians?select=*").catch(() => []),
+        sb("megastars?select=id,full_name,dob").catch(() => []),
+        sb("megastar_guardian_links?select=*").catch(() => []),
+      ]);
+      const guardianByPhone = {};
+      (existingGuardians || []).forEach(g => { const k = phoneKey(g.phone); if (k) guardianByPhone[k] = g; });
+
+      let imported = 0;
+      const skippedDuplicates = [];
+
+      // Processed sequentially (not batched) so guardian/child/link relationships
+      // are always created correctly — a small trade-off in import speed for a
+      // guarantee of correct linking, worth it given how many tables this touches.
+      for (const row of parsed) {
+        const key = phoneKey(row.guardian_phone);
+        const alreadyExists = (existingChildren || []).some(c => {
+          const sameName = c.full_name.toLowerCase() === row.child_full_name.toLowerCase();
+          const sameDob  = row.dob ? c.dob === row.dob : true;
+          const linkedToSameGuardian = key && guardianByPhone[key] &&
+            (existingLinks || []).some(l => l.megastar_id === c.id && l.guardian_id === guardianByPhone[key].id);
+          return sameName && sameDob && linkedToSameGuardian;
+        });
+        if (alreadyExists) { skippedDuplicates.push(row.child_full_name); continue; }
+
+        let guardian = key ? guardianByPhone[key] : null;
+        if (!guardian) {
+          const [newGuardian] = await sb("megastar_guardians", {
+            method: "POST",
+            body: JSON.stringify({ full_name: row.guardian_name || "Guardian", phone: row.guardian_phone, added_by: currentUser || null }),
+          });
+          guardian = newGuardian;
+          if (key) guardianByPhone[key] = guardian;
+        }
+
+        const [newChild] = await sb("megastars", {
+          method: "POST",
+          body: JSON.stringify({
+            full_name: row.child_full_name, gender: row.gender, dob: row.dob,
+            class: row.childClass, added_by: currentUser || null,
+          }),
+        });
+
+        await sb("megastar_guardian_links", {
+          method: "POST",
+          body: JSON.stringify({ megastar_id: newChild.id, guardian_id: guardian.id, relationship: "Parent" }),
+        });
+
+        imported++;
+      }
+
+      setReport({ imported, skippedDuplicates });
+      toast.success(`Import complete — ${imported} added.`);
+      setRows([]);
+      onDone?.();
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
+      <SH title="Bulk CSV Import — Megastars" icon={Upload} />
+      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
+        One row per child. Required: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>child_full_name</code>,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>guardian_phone</code>. Optional: gender, dob, class,
+        guardian_name. Siblings sharing the same guardian_phone are automatically linked to one guardian, not duplicated.
+      </p>
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {report && (
+        <div style={{
+          ...card, marginBottom: 16, padding: "14px 18px",
+          background: C.greenXLight, border: `1px solid ${C.greenBorder}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <CheckCircle size={15} color={C.green} />
+            <span style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.green }}>
+              {report.imported} child{report.imported !== 1 ? "ren" : ""} imported
+            </span>
+            <button onClick={() => setReport(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: 16 }}>×</button>
+          </div>
+          {report.skippedDuplicates.length > 0 && (
+            <div style={{ fontSize: 12, color: C.amber }}>
+              {report.skippedDuplicates.length} skipped as likely duplicates: {report.skippedDuplicates.join(", ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: rows.length ? 16 : 0 }}>
+        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
+        <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => fileRef.current.click()}>
+          <Upload size={14} />Choose CSV File
+        </button>
+        <button style={btn("ghost", { fontSize: 12 })}
+          onClick={() => downloadCSVTemplate("megastars_import_template.csv", MEGASTARS_TEMPLATE_HEADERS, MEGASTARS_TEMPLATE_EXAMPLE)}>
+          <Download size={12} />Download Template
+        </button>
+        {rows.length > 0 && (
+          <button style={btn("soul")} onClick={importAll} disabled={loading}>
+            {loading ? "Importing…" : `Import ${rows.length} rows`}
+          </button>
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
+            <thead>
+              <tr style={{ background: C.bg }}>
+                {Object.keys(rows[0]).slice(0, 6).map(h => (
+                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: C.textSecondary, borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 5).map((r, i) => (
+                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
+                  {Object.values(r).slice(0, 6).map((v, j) => (
+                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
+                  ))}
+                </tr>
+              ))}
+              {rows.length > 5 && (
+                <tr><td colSpan={6} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
+                  …and {rows.length - 5} more rows
+                </td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MegastarsCheckInOut({ currentUser }) {
   const [mode, setMode] = useState("checkin"); // "checkin" | "checkout"
   const [service, setService] = useState(null);
@@ -6644,6 +6846,24 @@ function MegastarsCheckInOut({ currentUser }) {
     } catch { setActiveList([]); }
   }, [service]);
   useEffect(() => { loadActiveList(); }, [loadActiveList]);
+
+  // Live search: fires automatically ~400ms after typing stops, so results
+  // update as-you-type without needing the Search button. The button still
+  // works too, for an immediate search without waiting.
+  useEffect(() => {
+    if (mode !== "checkin") return;
+    if (!search.trim()) { setResults([]); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const families = await searchMegastarFamilies(search);
+        if (!cancelled) setResults(families);
+      } catch { if (!cancelled) setResults([]); }
+      if (!cancelled) setSearching(false);
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [search, mode]);
 
   const doSearch = async () => {
     if (!search.trim()) return;
@@ -6783,6 +7003,7 @@ function MegastarsCheckInOut({ currentUser }) {
                   {fam.children.map(child => {
                     const checked = !!selectedKids[child.id];
                     const alreadyIn = activeList.some(a => a.megastar_id === child.id);
+                    const wasMatched = fam.matchedChildIds?.has(child.id);
                     return (
                       <label key={child.id} style={{
                         display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
@@ -6794,7 +7015,10 @@ function MegastarsCheckInOut({ currentUser }) {
                           onChange={() => toggleKid(child.id, fam.guardian.id)} />
                         <Avatar name={child.full_name} size={28} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{child.full_name}</div>
+                          <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+                            {child.full_name}
+                            {wasMatched && <span style={badge(C.gold, C.goldLight, { fontSize: 9 })}>Matched</span>}
+                          </div>
                           <div style={{ fontSize: 11, color: C.textMuted }}>
                             {child.class || "No class set"}{megastarAge(child.dob) !== null ? ` · Age ${megastarAge(child.dob)}` : ""}
                             {alreadyIn ? " · Already checked in" : ""}
@@ -6849,11 +7073,34 @@ function MegastarsCheckInOut({ currentUser }) {
       {activeList.length === 0 ? (
         <div style={{ fontSize: 13, color: C.textMuted }}>No one checked in yet for this service.</div>
       ) : (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {activeList.map(row => (
-            <span key={row.id} style={badge(C.soul, C.soulLight, { fontSize: 12 })}>
-              {row.megastars?.full_name} · {row.class_at_checkin || "—"}
-            </span>
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div style={{
+            display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
+            gap: 10, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
+          }}>
+            {["Child", "Class", "Guardian", "Checked In", ""].map(h => (
+              <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+            ))}
+          </div>
+          {activeList.map((row, i) => (
+            <div key={row.id} style={{
+              display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
+              gap: 10, alignItems: "center", padding: "10px 16px",
+              borderBottom: i < activeList.length - 1 ? `1px solid ${C.border}` : "none",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Avatar name={row.megastars?.full_name} size={26} />
+                <span style={{ fontWeight: 600, fontSize: 13 }}>{row.megastars?.full_name}</span>
+              </div>
+              <div style={{ fontSize: 12, color: C.textSecondary }}>{row.class_at_checkin || "—"}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary }}>{row.megastar_guardians?.full_name || "—"}</div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>
+                {new Date(row.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+              <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => checkOutOne(row)} disabled={processing}>
+                <CheckCircle size={11} />Check Out
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -6951,11 +7198,12 @@ function MegastarsRoster({ currentUser, role }) {
   const isAdmin = role === "megastarsadmin" || role === "admin";
   const [children, setChildren] = useState([]);
   const [linksMap, setLinksMap] = useState({});
-  const [guardiansMap, setGuardiansMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [fClass, setFClass] = useState("");
+  const [showRemoved, setShowRemoved] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [tick, setTick] = useState(0);
   const reload = () => setTick(t => t + 1);
 
@@ -6978,18 +7226,44 @@ function MegastarsRoster({ currentUser, role }) {
         });
         setChildren(kids || []);
         setLinksMap(lMap);
-        setGuardiansMap(gMap);
-      } catch {} 
+      } catch {}
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [tick]);
 
+  const removeFromRoster = async (child) => {
+    const reason = window.prompt(`Remove ${child.full_name} from the roster — why? (e.g. "Moved away", "Family left church")`, "");
+    if (reason === null) return; // cancelled
+    try {
+      await sb(`megastars?id=eq.${child.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: false, removed_reason: reason || null, removed_at: new Date().toISOString() }),
+      });
+      toast.success(`${child.full_name} removed from the active roster.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const restoreToRoster = async (child) => {
+    try {
+      await sb(`megastars?id=eq.${child.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: true, removed_reason: null, removed_at: null }),
+      });
+      toast.success(`${child.full_name} restored to the active roster.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+  };
+
   const filtered = children.filter(c => {
+    if (showRemoved ? c.is_active !== false : c.is_active === false) return false;
     if (fClass && c.class !== fClass) return false;
     if (search && !c.full_name?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  const activeChildren = children.filter(c => c.is_active !== false);
 
   if (showAdd) {
     return <AddMegastarPage currentUser={currentUser} onCancel={() => setShowAdd(false)} onDone={() => { setShowAdd(false); reload(); }} />;
@@ -6998,13 +7272,24 @@ function MegastarsRoster({ currentUser, role }) {
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Megastars Roster" subtitle={`${children.length} children registered`}
-        action={<button style={btn("soul")} onClick={() => setShowAdd(true)}><UserPlus size={14} />Add a Megastar</button>} />
+      <PageHeader title="Megastars Roster" subtitle={`${activeChildren.length} children currently active`}
+        action={
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {isAdmin && (
+              <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => setShowImport(s => !s)}>
+                <Upload size={14} />{showImport ? "Hide Import" : "Bulk Import"}
+              </button>
+            )}
+            <button style={btn("soul")} onClick={() => setShowAdd(true)}><UserPlus size={14} />Add a Megastar</button>
+          </div>
+        } />
+
+      {isAdmin && showImport && <MegastarsCSVImport currentUser={currentUser} onDone={reload} />}
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
-        <StatCard label="Total Megastars" value={children.length} icon={Heart} accent={C.soul} />
+        <StatCard label="Active Megastars" value={activeChildren.length} icon={Heart} accent={C.soul} />
         {MEGASTAR_CLASSES.slice(0, 2).map(cl => (
-          <StatCard key={cl} label={cl} value={children.filter(c => c.class === cl).length} icon={Users} accent={C.green} />
+          <StatCard key={cl} label={cl} value={activeChildren.filter(c => c.class === cl).length} icon={Users} accent={C.green} />
         ))}
       </div>
 
@@ -7013,13 +7298,23 @@ function MegastarsRoster({ currentUser, role }) {
           <option value="">All classes</option>
           {MEGASTAR_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        {isAdmin && (
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textSecondary, cursor: "pointer" }}>
+            <input type="checkbox" checked={showRemoved} onChange={e => setShowRemoved(e.target.checked)} />
+            Show removed children
+          </label>
+        )}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search child name…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
         </div>
       </div>
 
-      {loading ? <SkeletonList rows={6} /> : (
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          {showRemoved ? "No removed children." : "No children match your filters."}
+        </div>
+      ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.map(c => {
             const age = megastarAge(c.dob);
@@ -7028,8 +7323,9 @@ function MegastarsRoster({ currentUser, role }) {
                (c.class === "Pre-K" && age >= 7) || (c.class === "Grade 1-2" && age >= 10) ||
                (c.class === "Grade 3-5" && age >= 13));
             const guardians = linksMap[c.id] || [];
+            const isRemoved = c.is_active === false;
             return (
-              <div key={c.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+              <div key={c.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, opacity: isRemoved ? .65 : 1 }}>
                 <div style={{ display: "flex", gap: 12 }}>
                   <Avatar name={c.full_name} />
                   <div>
@@ -7040,9 +7336,27 @@ function MegastarsRoster({ currentUser, role }) {
                     <div style={{ fontSize: 12, color: C.soul, marginTop: 3 }}>
                       {guardians.length ? guardians.map(g => g?.full_name).join(", ") : "No guardian linked"}
                     </div>
+                    {isRemoved && (
+                      <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>
+                        Removed {c.removed_at ? c.removed_at.slice(0, 10) : ""}{c.removed_reason ? ` — ${c.removed_reason}` : ""}
+                      </div>
+                    )}
                   </div>
                 </div>
-                {suggestMove && <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}>Consider promoting class</span>}
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {suggestMove && !isRemoved && <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}>Consider promoting class</span>}
+                  {isAdmin && (
+                    isRemoved ? (
+                      <button style={btn("ghost", { padding: "6px 12px", fontSize: 11 })} onClick={() => restoreToRoster(c)}>
+                        <RefreshCw size={11} />Restore
+                      </button>
+                    ) : (
+                      <button style={btn("danger", { padding: "6px 12px", fontSize: 11 })} onClick={() => removeFromRoster(c)}>
+                        <X size={11} />Remove
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
             );
           })}
@@ -13381,6 +13695,8 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong>Data Officer</strong> — Add/edit first-timer records, generate QR code<br />
         <strong>Experience Team</strong> — My Calls, call queue, log feedback, flag for pastoral<br />
         <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records, visitation view<br />
+        <strong>Soul Care</strong> — My Visits, visit queue (assigned contacts only), flagged records<br />
+        <strong>Soul Care Admin</strong> — Bulk import contacts, assign visits, view all visits, flagged records, Testimonies<br />
         <strong>Soul Care</strong> — My Visits, visit queue (assigned contacts only), flagged records<br />
         <strong>Soul Care Admin</strong> — Bulk import contacts, assign visits, view all visits, flagged records, Testimonies<br />
         <strong>Research Team</strong> — View and download service feedback responses (CSV export)<br />
