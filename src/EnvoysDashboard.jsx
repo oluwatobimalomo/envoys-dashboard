@@ -623,6 +623,8 @@ const ROLE_META = {
   experienceadmin: { label: "Exp. Admin",    color: C.blue,     bg: C.blueLight     },
   soulcareadmin:   { label: "Soul Care Admin", color: C.soul,   bg: C.soulLight     },
   testimonyteam:   { label: "Testimony Team",  color: C.goldDark, bg: C.goldLight   },
+  megastars:      { label: "Megastars Team",  color: C.soul,  bg: C.soulLight },
+  megastarsadmin: { label: "Megastars Admin",  color: C.soul,  bg: C.soulLight },
 };
 
 const NAV_ICONS = {
@@ -654,6 +656,9 @@ const NAV_ICONS = {
   nc_report: TrendingUp,
   soulcare_dashboard: BarChart2,
   steward_care: Shield,
+  megastars_checkinout: UserCheck,
+  megastars_roster: Heart,
+  megastars_services: Calendar,
 };
 
 const NAV = {
@@ -680,6 +685,9 @@ const NAV = {
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
     { id: "visitation_tab",label: "Visitations"   },
+    { id: "megastars_checkinout", label: "Check In / Out" },
+    { id: "megastars_services",   label: "Services" },
+    { id: "megastars_roster",     label: "Roster" },
     { id: "research_feedback", label: "VIPs Feedback"  },
     { id: "general_feedback",  label: "General Feedback" },
     { id: "feedback_qr",   label: "Feedback QR"   },
@@ -743,7 +751,15 @@ const NAV = {
     { id: "nc_report",           label: "New Converts Retention" },
     { id: "soulcare_dashboard",  label: "Soul Care Dashboard" },
   ],
-  
+  megastars: [
+    { id: "megastars_checkinout", label: "Check In / Out" },
+    { id: "megastars_roster",     label: "Roster" },
+  ],
+  megastarsadmin: [
+    { id: "megastars_checkinout", label: "Check In / Out" },
+    { id: "megastars_services",   label: "Services" },
+    { id: "megastars_roster",     label: "Roster" },
+  ],
   research: [
     { id: "research_feedback", label: "Service Feedback" },
     { id: "feedback_qr",       label: "Feedback QR" },
@@ -782,6 +798,7 @@ const NAV_GROUPS = {
     { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors"] },
     { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
     { title: "Pastoral",         ids: ["report", "allfeedback", "flagged"] },
+    { title: "Megastars",        ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",      ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
   ],
@@ -5394,6 +5411,7 @@ function EnvoysVisitors() {
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const [restoringId, setRestoringId] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setErr("");
@@ -5420,6 +5438,26 @@ function EnvoysVisitors() {
     return n;
   });
 
+  const restoreVisitor = async (r) => {
+    if (!window.confirm(`Restore ${r.full_name} to the active call pipeline? They'll reappear in Assign Calls and Call Queue.`)) return;
+    setRestoringId(r.id); setErr("");
+    try {
+      if (r.original_first_timer_id) {
+        await sb(`first_timers?id=eq.${r.original_first_timer_id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ is_active: true }),
+        });
+      }
+      await sb(`envoys_visitors?id=eq.${r.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ restored_at: new Date().toISOString() }),
+      });
+      toast.success(`${r.full_name} restored to the active pipeline.`);
+      load();
+    } catch (e) { setErr(e.message); }
+    setRestoringId(null);
+  };
+
   const downloadCSV = () => {
     const toExport = filtered.filter(r => selected.has(r.id));
     if (!toExport.length) return;
@@ -5428,7 +5466,7 @@ function EnvoysVisitors() {
       const str = String(v).replace(/"/g, '""');
       return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
     };
-    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Service Date","Membership Decision","House Address","Nearest Landmark","Service Feedback","Connect Center","Natural Groups","Moved At"];
+    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Service Date","Membership Decision","House Address","Nearest Landmark","Service Feedback","Connect Center","Natural Groups","Moved At","Restored At"];
     const csvRows = [
       header.join(","),
       ...toExport.map(r => [
@@ -5438,6 +5476,7 @@ function EnvoysVisitors() {
         escape(r.service_feedback), escape(r.connect_center),
         escape(Array.isArray(r.natural_groups) ? r.natural_groups.join("; ") : (r.natural_groups || "")),
         escape(r.moved_at ? r.moved_at.slice(0, 10) : ""),
+        escape(r.restored_at ? r.restored_at.slice(0, 10) : ""),
       ].join(",")),
     ];
     const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
@@ -5448,7 +5487,7 @@ function EnvoysVisitors() {
   };
 
   const selectedCount = filtered.filter(r => selected.has(r.id)).length;
-  const GRID = "40px minmax(170px,1.2fr) 150px 90px 90px 130px 130px 130px 140px 1.4fr";
+  const GRID = "40px minmax(170px,1.2fr) 150px 90px 90px 130px 130px 130px 140px 1.4fr 130px";
   const headCell = { fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head };
   const stickyLeft = (bg, z = 2) => ({
     position: "sticky", left: 0, zIndex: z, background: bg,
@@ -5461,7 +5500,7 @@ function EnvoysVisitors() {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title="Envoys Visitors"
-        subtitle="First-timers not recommended for membership — kept for reference and export"
+        subtitle="First-timers not recommended for membership — kept for reference, export, or restoration"
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
@@ -5507,7 +5546,7 @@ function EnvoysVisitors() {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1180,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1310,
             }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"} style={{
                 width: 18, height: 18, borderRadius: 4, cursor: "pointer",
@@ -5522,14 +5561,16 @@ function EnvoysVisitors() {
               {["Phone", "Gender", "DOB", "Marital Status", "Life Stage", "Service Date", "Decision", "Moved", "Feedback"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
+              <div style={headCell}>Restore</div>
             </div>
 
             {filtered.map((r, i) => {
               const isChecked = selected.has(r.id);
+              const isRestored = !!r.restored_at;
               return (
                 <div key={r.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 16px", minWidth: 1180,
+                  padding: "10px 16px", minWidth: 1310,
                   background: isChecked ? `${C.textSecondary}10` : C.surface,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
@@ -5558,6 +5599,18 @@ function EnvoysVisitors() {
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{r.membership_decision || "—"}</div>
                   <div style={{ fontSize: 12, color: C.textMuted }}>{r.moved_at ? r.moved_at.slice(0, 10) : "—"}</div>
                   <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.5 }}>{r.service_feedback || "—"}</div>
+                  <div style={{ minWidth: 0, overflow: "hidden" }}>
+                    {isRestored ? (
+                      <span style={badge(C.green, C.greenLight, { fontSize: 10 })} title={`Restored ${r.restored_at.slice(0, 10)}`}>
+                        <CheckCircle size={10} />Restored
+                      </span>
+                    ) : (
+                      <button style={btn("soul", { padding: "5px 10px", fontSize: 11, whiteSpace: "nowrap" })}
+                        onClick={() => restoreVisitor(r)} disabled={restoringId === r.id}>
+                        {restoringId === r.id ? "Restoring…" : "Restore"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -5573,7 +5626,6 @@ function EnvoysVisitors() {
     </div>
   );
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Soul Care Revamp Phase 3 — New Converts: 3 MONTHLY check-ins (not weekly),
 // mirroring the VIP/Potential Envoys pipeline pattern at a slower cadence.
@@ -6386,6 +6438,619 @@ function NewConvertsRetentionReport() {
 // rather than generalizing the originals, since those are load-bearing
 // elsewhere and shouldn't be touched.
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Megastars — shared helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MEGASTAR_CLASSES = ["Nursery", "Toddlers", "Pre-K", "Grade 1-2", "Grade 3-5", "Teens"];
+
+function megastarAge(dob) {
+  if (!dob) return null;
+  const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+  if (!y) return null;
+  const t = new Date();
+  let a = t.getFullYear() - y;
+  if (t.getMonth() + 1 < m || (t.getMonth() + 1 === m && t.getDate() < d)) a--;
+  return a;
+}
+
+async function findGuardianByPhone(phone) {
+  const key = phoneKey(phone);
+  if (!key) return null;
+  const rows = await sb("megastar_guardians?select=*").catch(() => []);
+  return (rows || []).find(g => phoneKey(g.phone) === key) || null;
+}
+
+async function searchMegastarFamilies(query) {
+  const q = query.trim().replace(/[,()]/g, "");
+  if (!q) return [];
+  const [guardians, children] = await Promise.all([
+    sb(`megastar_guardians?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&limit=10`).catch(() => []),
+    sb(`megastars?full_name=ilike.*${q}*&limit=10`).catch(() => []),
+  ]);
+
+  const links = await sb("megastar_guardian_links?select=*").catch(() => []);
+  const allGuardians = await sb("megastar_guardians?select=*").catch(() => []);
+  const allChildren  = await sb("megastars?select=*").catch(() => []);
+
+  const guardianMap = {}; (allGuardians || []).forEach(g => { guardianMap[g.id] = g; });
+  const childMap     = {}; (allChildren  || []).forEach(c => { childMap[c.id] = c; });
+
+  const familyIds = new Set();
+  (guardians || []).forEach(g => familyIds.add(g.id));
+  (children || []).forEach(c => {
+    (links || []).filter(l => l.megastar_id === c.id).forEach(l => familyIds.add(l.guardian_id));
+  });
+
+  return [...familyIds].map(gid => {
+    const guardian = guardianMap[gid];
+    if (!guardian) return null;
+    const kids = (links || [])
+      .filter(l => l.guardian_id === gid)
+      .map(l => childMap[l.megastar_id])
+      .filter(Boolean);
+    return { guardian, children: kids };
+  }).filter(Boolean);
+}
+
+function AddMegastarPage({ currentUser, onCancel, onDone, prefillGuardian = null }) {
+  const [guardianMode, setGuardianMode] = useState(prefillGuardian ? "existing" : "new");
+  const [existingPhone, setExistingPhone] = useState(prefillGuardian?.phone || "");
+  const [foundGuardian, setFoundGuardian] = useState(prefillGuardian);
+  const [gName, setGName] = useState(prefillGuardian?.full_name || "");
+  const [gPhone, setGPhone] = useState(prefillGuardian?.phone || "");
+  const [childName, setChildName] = useState("");
+  const [gender, setGender] = useState("");
+  const [dob, setDob] = useState("");
+  const [childClass, setChildClass] = useState("");
+  const [relationship, setRelationship] = useState("Parent");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const lookupGuardian = async () => {
+    const found = await findGuardianByPhone(existingPhone);
+    setFoundGuardian(found);
+    if (!found) setErr("No guardian found with that phone number — switch to 'New Guardian' to register them.");
+    else setErr("");
+  };
+
+  const submit = async () => {
+    if (!childName.trim()) { setErr("Child's full name is required."); return; }
+    if (guardianMode === "new" && (!gName.trim() || !gPhone.trim())) {
+      setErr("Guardian name and phone are required."); return;
+    }
+    if (guardianMode === "existing" && !foundGuardian) {
+      setErr("Look up a guardian by phone first, or switch to 'New Guardian'."); return;
+    }
+    setLoading(true); setErr("");
+    try {
+      let guardianId = foundGuardian?.id;
+      if (guardianMode === "new") {
+        const [newGuardian] = await sb("megastar_guardians", {
+          method: "POST",
+          body: JSON.stringify({ full_name: gName.trim(), phone: gPhone.trim(), added_by: currentUser || null }),
+        });
+        guardianId = newGuardian.id;
+      }
+      const [newChild] = await sb("megastars", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: childName.trim(), gender: gender || null, dob: dob || null,
+          class: childClass || null, added_by: currentUser || null,
+        }),
+      });
+      await sb("megastar_guardian_links", {
+        method: "POST",
+        body: JSON.stringify({ megastar_id: newChild.id, guardian_id: guardianId, relationship: relationship || null }),
+      });
+      toast.success(`${childName} registered.`);
+      onDone?.({ guardianId, child: newChild });
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div style={card} className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Add a Megastar" subtitle="Register a child and their guardian"
+        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      <SH title="Guardian" icon={Users} />
+      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <button style={btn(guardianMode === "existing" ? "primary" : "ghost", { padding: "6px 14px", fontSize: 12 })}
+          onClick={() => setGuardianMode("existing")}>Existing Guardian</button>
+        <button style={btn(guardianMode === "new" ? "primary" : "ghost", { padding: "6px 14px", fontSize: 12 })}
+          onClick={() => setGuardianMode("new")}>New Guardian</button>
+      </div>
+
+      {guardianMode === "existing" ? (
+        <>
+          <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <FieldInput label="Guardian Phone Number" id="mgep" value={existingPhone} onChange={e => setExistingPhone(e.target.value)} />
+            </div>
+            <button style={{ ...btn("outline"), alignSelf: "flex-end", marginBottom: 16 }} onClick={lookupGuardian}>
+              <Search size={13} />Look Up
+            </button>
+          </div>
+          {foundGuardian && (
+            <div style={{ background: C.greenLight, borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: C.green }}>
+              Found: <strong>{foundGuardian.full_name}</strong> · {foundGuardian.phone}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Guardian Full Name" id="mgn" required value={gName} onChange={e => setGName(e.target.value)} />
+          <FieldInput label="Guardian Phone Number" id="mgp" required value={gPhone} onChange={e => setGPhone(e.target.value)} />
+        </div>
+      )}
+
+      <div style={{ marginTop: 20 }}>
+        <SH title="Child" icon={Heart} />
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Child's Full Name" id="mcn" required value={childName} onChange={e => setChildName(e.target.value)} />
+          <FieldInput label="Gender" id="mcg" type="select" value={gender} onChange={e => setGender(e.target.value)}
+            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+        </div>
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Date of Birth" id="mcd" type="date" value={dob} onChange={e => setDob(e.target.value)} />
+          <FieldInput label="Class" id="mcc" type="select" value={childClass} onChange={e => setChildClass(e.target.value)}
+            options={MEGASTAR_CLASSES.map(c => ({ value: c, label: c }))} />
+        </div>
+        <FieldInput label="Relationship to Child" id="mcr" type="select" value={relationship} onChange={e => setRelationship(e.target.value)}
+          options={[{ value: "Parent", label: "Parent" }, { value: "Grandparent", label: "Grandparent" }, { value: "Guardian", label: "Guardian" }, { value: "Other", label: "Other" }]} />
+      </div>
+
+      <button style={{ ...btn("primary"), width: "100%", padding: 12, fontSize: 15, marginTop: 8 }} onClick={submit} disabled={loading}>
+        {loading ? "Saving…" : "Register Megastar"}
+      </button>
+    </div>
+  );
+}
+
+function MegastarsCheckInOut({ currentUser }) {
+  const [mode, setMode] = useState("checkin"); // "checkin" | "checkout"
+  const [service, setService] = useState(null);
+  const [loadingService, setLoadingService] = useState(true);
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedKids, setSelectedKids] = useState({}); // { childId: guardianId }
+  const [activeList, setActiveList] = useState([]);
+  const [showAddNew, setShowAddNew] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [msgType, setMsgType] = useState("success");
+  const [processing, setProcessing] = useState(false);
+
+  const loadService = useCallback(async () => {
+    setLoadingService(true);
+    try {
+      const rows = await sb("megastar_services?status=eq.Open&order=created_at.desc&limit=1").catch(() => []);
+      setService(rows && rows[0] ? rows[0] : null);
+    } catch { setService(null); }
+    setLoadingService(false);
+  }, []);
+  useEffect(() => { loadService(); }, [loadService]);
+
+  const loadActiveList = useCallback(async () => {
+    if (!service) { setActiveList([]); return; }
+    try {
+      const rows = await sb(
+        `megastar_checkins?service_id=eq.${service.id}&check_out_time=is.null&select=*,megastars(full_name,class),megastar_guardians!megastar_checkins_guardian_id_fkey(full_name,phone)&order=check_in_time.desc`
+      ).catch(() => []);
+      setActiveList(rows || []);
+    } catch { setActiveList([]); }
+  }, [service]);
+  useEffect(() => { loadActiveList(); }, [loadActiveList]);
+
+  const doSearch = async () => {
+    if (!search.trim()) return;
+    setSearching(true); setResults([]);
+    try {
+      const families = await searchMegastarFamilies(search);
+      setResults(families);
+    } catch { setResults([]); }
+    setSearching(false);
+  };
+
+  const toggleKid = (childId, guardianId) => {
+    setSelectedKids(prev => {
+      const n = { ...prev };
+      if (n[childId]) delete n[childId]; else n[childId] = guardianId;
+      return n;
+    });
+  };
+
+  const confirmCheckIn = async () => {
+    if (!service) { setMsg("No open service — ask a Megastars Admin to open one."); setMsgType("warn"); return; }
+    const entries = Object.entries(selectedKids);
+    if (!entries.length) { setMsg("Select at least one child."); setMsgType("warn"); return; }
+    setProcessing(true); setMsg("");
+    try {
+      const allChildren = await sb("megastars?select=id,class").catch(() => []);
+      const classMap = {}; (allChildren || []).forEach(c => { classMap[c.id] = c.class; });
+      const payload = entries.map(([childId, guardianId]) => ({
+        service_id: service.id, megastar_id: childId, guardian_id: guardianId,
+        class_at_checkin: classMap[childId] || null, checked_in_by: currentUser || null,
+      }));
+      await sb("megastar_checkins", { method: "POST", body: JSON.stringify(payload) });
+      toast.success(`${entries.length} child${entries.length !== 1 ? "ren" : ""} checked in.`);
+      setSelectedKids({}); setResults([]); setSearch("");
+      loadActiveList();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setProcessing(false);
+  };
+
+  const checkOutOne = async (checkinRow, guardianOverrideId) => {
+    setProcessing(true); setMsg("");
+    try {
+      await sb(`megastar_checkins?id=eq.${checkinRow.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          check_out_time: new Date().toISOString(),
+          checked_out_by: currentUser || null,
+          checkout_guardian_id: guardianOverrideId || checkinRow.guardian_id,
+        }),
+      });
+      toast.success(`${checkinRow.megastars?.full_name || "Child"} checked out.`);
+      loadActiveList();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setProcessing(false);
+  };
+
+  const checkoutMatches = mode === "checkout" && search.trim()
+    ? activeList.filter(r => {
+        const q = search.trim().toLowerCase();
+        return r.megastars?.full_name?.toLowerCase().includes(q) ||
+          r.megastar_guardians?.full_name?.toLowerCase().includes(q) ||
+          r.megastar_guardians?.phone?.includes(search);
+      })
+    : [];
+
+  if (showAddNew) {
+    return (
+      <AddMegastarPage currentUser={currentUser}
+        onCancel={() => setShowAddNew(false)}
+        onDone={() => { setShowAddNew(false); setSearch(""); setResults([]); }} />
+    );
+  }
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Check In / Check Out" subtitle="Megastars front desk" />
+
+      {loadingService ? (
+        <SkeletonList rows={2} />
+      ) : !service ? (
+        <div style={{ ...card, background: C.amberLight, border: `1px solid ${C.amber}30`, marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <AlertCircle size={16} color={C.amber} />
+            <span style={{ fontSize: 13, color: C.textSecondary }}>No service is currently open. Ask a Megastars Admin to open one from the Services page before checking children in.</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...card, background: C.greenXLight, border: `1px solid ${C.greenBorder}`, marginBottom: 20, padding: "10px 16px" }}>
+          <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>{service.label}</span>
+          <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 10 }}>{service.service_date} · {activeList.length} currently checked in</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button style={btn(mode === "checkin" ? "primary" : "ghost")} onClick={() => { setMode("checkin"); setSearch(""); setResults([]); }}>
+          <UserPlus size={14} />Check In
+        </button>
+        <button style={btn(mode === "checkout" ? "primary" : "ghost")} onClick={() => { setMode("checkout"); setSearch(""); }}>
+          <CheckCircle size={14} />Check Out
+        </button>
+      </div>
+
+      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+          <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && mode === "checkin" && doSearch()}
+            placeholder="Search by guardian phone or name, or child's name…"
+            style={{ ...inputBase, paddingLeft: 34 }} />
+        </div>
+        {mode === "checkin" && (
+          <>
+            <button style={btn("primary")} onClick={doSearch} disabled={searching}>
+              {searching ? "Searching…" : "Search"}
+            </button>
+            <button style={btn("soul")} onClick={() => setShowAddNew(true)}>
+              <UserPlus size={14} />New Family
+            </button>
+          </>
+        )}
+      </div>
+
+      {mode === "checkin" && results.length > 0 && (
+        <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+          {results.map(fam => (
+            <div key={fam.guardian.id} style={card}>
+              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 8 }}>
+                {fam.guardian.full_name} <span style={{ fontWeight: 400, color: C.textMuted, fontSize: 12 }}>· {fam.guardian.phone}</span>
+              </div>
+              {fam.children.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.textMuted }}>No children linked yet.</div>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {fam.children.map(child => {
+                    const checked = !!selectedKids[child.id];
+                    const alreadyIn = activeList.some(a => a.megastar_id === child.id);
+                    return (
+                      <label key={child.id} style={{
+                        display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
+                        background: alreadyIn ? C.bg : (checked ? C.greenXLight : C.surface),
+                        border: `1px solid ${checked ? C.green : C.border}`, borderRadius: 8,
+                        cursor: alreadyIn ? "not-allowed" : "pointer", opacity: alreadyIn ? .6 : 1,
+                      }}>
+                        <input type="checkbox" checked={checked} disabled={alreadyIn}
+                          onChange={() => toggleKid(child.id, fam.guardian.id)} />
+                        <Avatar name={child.full_name} size={28} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{child.full_name}</div>
+                          <div style={{ fontSize: 11, color: C.textMuted }}>
+                            {child.class || "No class set"}{megastarAge(child.dob) !== null ? ` · Age ${megastarAge(child.dob)}` : ""}
+                            {alreadyIn ? " · Already checked in" : ""}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+          <button style={{ ...btn("primary"), padding: 13, fontSize: 15 }}
+            onClick={confirmCheckIn} disabled={processing || Object.keys(selectedKids).length === 0}>
+            {processing ? "Checking in…" : `Check In ${Object.keys(selectedKids).length || ""} Selected`}
+          </button>
+        </div>
+      )}
+
+      {mode === "checkout" && (
+        <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+          {(search.trim() ? checkoutMatches : activeList).map(row => (
+            <div key={row.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Avatar name={row.megastars?.full_name} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{row.megastars?.full_name}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}>
+                    {row.class_at_checkin || row.megastars?.class || "—"} · Checked in {new Date(row.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.soul, marginTop: 2 }}>
+                    Releasing to on file: <strong>{row.megastar_guardians?.full_name}</strong> · {row.megastar_guardians?.phone}
+                  </div>
+                </div>
+              </div>
+              <button style={btn("primary")} onClick={() => checkOutOne(row)} disabled={processing}>
+                <CheckCircle size={14} />Confirm Checkout
+              </button>
+            </div>
+          ))}
+          {(search.trim() ? checkoutMatches : activeList).length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "2rem", color: C.textMuted }}>
+              {search.trim() ? "No matching checked-in child found." : "No one is currently checked in."}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: 8, marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+        Currently Checked In ({activeList.length})
+      </div>
+      {activeList.length === 0 ? (
+        <div style={{ fontSize: 13, color: C.textMuted }}>No one checked in yet for this service.</div>
+      ) : (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {activeList.map(row => (
+            <span key={row.id} style={badge(C.soul, C.soulLight, { fontSize: 12 })}>
+              {row.megastars?.full_name} · {row.class_at_checkin || "—"}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MegastarsServices({ currentUser }) {
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [label, setLabel] = useState("Sunday Service");
+  const [serviceDate, setServiceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setServices((await sb("megastar_services?order=created_at.desc&limit=100")) || []); }
+    catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const openService = async () => {
+    if (!label.trim()) { setErr("Service label is required."); return; }
+    setErr("");
+    try {
+      await sb("megastar_services", {
+        method: "POST",
+        body: JSON.stringify({ label: label.trim(), service_date: serviceDate, status: "Open", created_by: currentUser || null }),
+      });
+      toast.success("Service opened.");
+      load();
+    } catch (e) { setErr(e.message); }
+  };
+
+  const closeService = async (svc) => {
+    if (!window.confirm(`Close "${svc.label}"? Anyone still checked in will need to be checked out manually before or after closing.`)) return;
+    try {
+      await sb(`megastar_services?id=eq.${svc.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "Closed", closed_at: new Date().toISOString() }),
+      });
+      toast.success("Service closed.");
+      load();
+    } catch (e) { setErr(e.message); }
+  };
+
+  const openOnes = services.filter(s => s.status === "Open");
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Megastars Services" subtitle="Open a service before check-in can begin" />
+
+      {openOnes.length > 0 && (
+        <Alert type="warn" msg={`${openOnes.length} service${openOnes.length !== 1 ? "s are" : " is"} currently open.`} onClose={() => {}} />
+      )}
+
+      <div style={{ ...card, marginBottom: 20, background: C.soulLight, border: `1px solid ${C.soul}22` }}>
+        <SH title="Open a New Service" icon={UserPlus} />
+        <Alert type="error" msg={err} onClose={() => setErr("")} />
+        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Label" id="msl" value={label} onChange={e => setLabel(e.target.value)} />
+          <FieldInput label="Date" id="msd" type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
+        </div>
+        <button style={btn("soul")} onClick={openService}><UserPlus size={14} />Open Service</button>
+      </div>
+
+      {loading ? <SkeletonList rows={4} /> : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {services.map(svc => (
+            <div key={svc.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontFamily: F.head }}>{svc.label}</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>{svc.service_date}</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={badge(svc.status === "Open" ? C.green : C.textMuted, svc.status === "Open" ? C.greenLight : C.bg, { fontSize: 11 })}>
+                  {svc.status}
+                </span>
+                {svc.status === "Open" && (
+                  <button style={btn("danger", { padding: "6px 12px", fontSize: 12 })} onClick={() => closeService(svc)}>Close</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MegastarsRoster({ currentUser, role }) {
+  const isAdmin = role === "megastarsadmin" || role === "admin";
+  const [children, setChildren] = useState([]);
+  const [linksMap, setLinksMap] = useState({});
+  const [guardiansMap, setGuardiansMap] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [fClass, setFClass] = useState("");
+  const [showAdd, setShowAdd] = useState(false);
+  const [tick, setTick] = useState(0);
+  const reload = () => setTick(t => t + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const [kids, links, guardians] = await Promise.all([
+          sb("megastars?order=full_name.asc&limit=3000"),
+          sb("megastar_guardian_links?select=*").catch(() => []),
+          sb("megastar_guardians?select=*").catch(() => []),
+        ]);
+        if (cancelled) return;
+        const gMap = {}; (guardians || []).forEach(g => { gMap[g.id] = g; });
+        const lMap = {};
+        (links || []).forEach(l => {
+          if (!lMap[l.megastar_id]) lMap[l.megastar_id] = [];
+          lMap[l.megastar_id].push(gMap[l.guardian_id]);
+        });
+        setChildren(kids || []);
+        setLinksMap(lMap);
+        setGuardiansMap(gMap);
+      } catch {} 
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  const filtered = children.filter(c => {
+    if (fClass && c.class !== fClass) return false;
+    if (search && !c.full_name?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  if (showAdd) {
+    return <AddMegastarPage currentUser={currentUser} onCancel={() => setShowAdd(false)} onDone={() => { setShowAdd(false); reload(); }} />;
+  }
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Megastars Roster" subtitle={`${children.length} children registered`}
+        action={<button style={btn("soul")} onClick={() => setShowAdd(true)}><UserPlus size={14} />Add a Megastar</button>} />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
+        <StatCard label="Total Megastars" value={children.length} icon={Heart} accent={C.soul} />
+        {MEGASTAR_CLASSES.slice(0, 2).map(cl => (
+          <StatCard key={cl} label={cl} value={children.filter(c => c.class === cl).length} icon={Users} accent={C.green} />
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16, padding: "12px 16px", background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}22` }}>
+        <select value={fClass} onChange={e => setFClass(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">All classes</option>
+          {MEGASTAR_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search child name…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map(c => {
+            const age = megastarAge(c.dob);
+            const suggestMove = age !== null && MEGASTAR_CLASSES.indexOf(c.class) < MEGASTAR_CLASSES.length - 1 &&
+              ((c.class === "Nursery" && age >= 3) || (c.class === "Toddlers" && age >= 5) ||
+               (c.class === "Pre-K" && age >= 7) || (c.class === "Grade 1-2" && age >= 10) ||
+               (c.class === "Grade 3-5" && age >= 13));
+            const guardians = linksMap[c.id] || [];
+            return (
+              <div key={c.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <Avatar name={c.full_name} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{c.full_name}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}>
+                      {c.gender || "—"} · {age !== null ? `Age ${age}` : "DOB not set"} · {c.class || "No class"}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.soul, marginTop: 3 }}>
+                      {guardians.length ? guardians.map(g => g?.full_name).join(", ") : "No guardian linked"}
+                    </div>
+                  </div>
+                </div>
+                {suggestMove && <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}>Consider promoting class</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function peWeeksLogged(fbRows) {
   const weeks = new Set();
@@ -12705,6 +13370,8 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
           { value: "admin",         label: "Admin"           },
           { value: "experienceadmin", label: "Experience Admin" },
           { value: "soulcareadmin",   label: "Soul Care Admin"  },
+          { value: "megastars",      label: "Megastars Team"  },
+          { value: "megastarsadmin", label: "Megastars Admin" },
         ]} />
       <div style={{
         background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
@@ -12744,6 +13411,7 @@ const SIGNUP_ROLES = [
   { value: "soulcare",      label: "Soul Care"       },
   { value: "dofficer",      label: "Data Officer"    },
   { value: "pasteam",       label: "Pastoral Team"   },
+  { value: "megastars",     label: "Megastars Team"  },
   { value: "research",      label: "Research Team"   },
   { value: "testimonyteam", label: "Testimony Team"  },
 ];
@@ -13108,6 +13776,9 @@ function App() {
     if (active === "report") return <Report />;
     if (active === "flagged") return <FlaggedRecords />;
     if (active === "visitation_tab") return <VisitationTab />;
+    if (active === "megastars_checkinout") return <MegastarsCheckInOut currentUser={user} />;
+    if (active === "megastars_services")   return <MegastarsServices currentUser={user} />;
+    if (active === "megastars_roster")     return <MegastarsRoster currentUser={user} role={role} />;
     if (active === "research_feedback") return <ResearchFeedback />;
     if (active === "general_feedback")  return <GeneralFeedback />;
     if (active === "feedback_qr")       return <FeedbackQRPage />;
