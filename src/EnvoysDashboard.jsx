@@ -676,11 +676,11 @@ const NAV = {
     { id: "sc_assign",     label: "Assign Visits" },
     { id: "sc_queue",      label: "Visit Queue"   },
     { id: "pe_assign",     label: "Potential Envoys" },
-    { id: "nc_assign",     label: "New Converts" },
+    { id: "nc_registry",   label: "Registry" },
     { id: "steward_care",  label: "Stewards Care" },
-    { id: "members_care", label: "Members Care" },
+    { id: "members_care",  label: "Members Care" },
     { id: "report",        label: "Report"        },
-    { id: "nc_qr",         label: "New Convert QR" },
+    { id: "nc_qr",         label: "QR Code" },
     { id: "nc_report",     label: "New Converts Retention" },
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
@@ -702,7 +702,11 @@ const NAV = {
     { id: "vip_contact",   label: "VIP Contact"   },
     { id: "addmember",     label: "Add Record"    },
     { id: "qrcode",        label: "QR Code"       },
-    { id: "nc_qr",         label: "New Convert QR" },
+    { id: "nc_registry",   label: "Registry" },
+    { id: "nc_qr",         label: "QR Code" },
+    { id: "megastars_checkinout", label: "Check In / Out" },
+    { id: "megastars_services",   label: "Services" },
+    { id: "megastars_roster",     label: "Roster" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -747,7 +751,7 @@ const NAV = {
     { id: "pe_mine",             label: "My Potential Envoys" },
     { id: "nc_assign",           label: "New Converts"        },
     { id: "nc_mine",             label: "My New Converts"     },
-    { id: "nc_qr",               label: "New Convert QR"      },
+    { id: "nc_qr",               label: "QR Code"      },
     { id: "nc_report",           label: "New Converts Retention" },
     { id: "soulcare_dashboard",  label: "Soul Care Dashboard" },
   ],
@@ -770,7 +774,6 @@ const NAV = {
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "testimony_qr",   label: "Testimony QR"   },
   ],
-
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
   { id: "completed_pipelines", label: "Completed Pipelines" },
@@ -790,6 +793,11 @@ const NAV = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NAV_GROUPS = {
+  dofficer: [
+    { title: "First-Timers", ids: ["firsttimers", "vip_contact", "addmember", "qrcode"] },
+    { title: "New Converts", ids: ["nc_registry", "nc_qr"] },
+    { title: "Megastars",    ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
+  ],
   admin: [
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
     { title: "First-Timers",     ids: ["firsttimers", "vip_contact", "qrcode"] },
@@ -5831,7 +5839,7 @@ function NewConvertQRPage() {
   };
   return (
     <div className="page-enter">
-      <PageHeader title="New Convert QR Code" subtitle="Display at the altar call station — new believers scan this to connect with Soul Care." />
+      <PageHeader title="QR Code" subtitle="Display at the altar call station — new believers scan this to connect with Soul Care." />
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
         <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
           <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
@@ -5929,7 +5937,7 @@ function AddNewConvertPage({ currentUser, onCancel, onDone }) {
   );
 }
 
-function NewConvertsAssignView({ currentUser }) {
+function NewConvertsAssignView({ currentUser, role }) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo]     = useState("");
   const { data, loading, err, reload } = useNewConvertData(dateFrom, dateTo);
@@ -6027,24 +6035,26 @@ function NewConvertsAssignView({ currentUser }) {
         <StatCard label="Completed"  value={completedCount}   icon={Star}        accent={C.goldDark} sub="3 months + training" />
       </div>
 
-      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>Bulk Assignment</div>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>Assign all <strong>{unassignedCount}</strong> unassigned to:</div>
-            {teamLoading ? <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div> : (
-              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
-                <option value="">Select team member</option>
-                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            )}
+      {role !== "dofficer" && (
+        <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>Bulk Assignment</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>Assign all <strong>{unassignedCount}</strong> unassigned to:</div>
+              {teamLoading ? <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div> : (
+                <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
+                  <option value="">Select team member</option>
+                  {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              )}
+            </div>
+            <button style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
+              onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
+              <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount}`}
+            </button>
           </div>
-          <button style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
-            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
-            <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount}`}
-          </button>
         </div>
-      </div>
+      )}
 
       <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
       <Alert type="error" msg={err} onClose={() => {}} />
@@ -6298,6 +6308,122 @@ function MyNewConverts({ currentUser, onLogCheckin }) {
               <div style={{ fontWeight: 600, fontFamily: F.head }}>{mine.length === 0 ? "No New Converts assigned to you yet." : "Nothing in this category."}</div>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NewConvertsRegistry() {
+  const [data, setData] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const clearDates = () => { setDateFrom(""); setDateTo(""); };
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      let q = "new_converts?order=created_at.desc&limit=300";
+      if (dateFrom) q += `&conversion_date=gte.${dateFrom}`;
+      if (dateTo)   q += `&conversion_date=lte.${dateTo}`;
+      setData((await sb(q)) || []);
+    }
+    catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, [dateFrom, dateTo]);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = data.filter(r =>
+    r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
+  );
+
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+
+  const dc = {
+    "New Salvation": [C.green,    C.greenLight],
+    "Rededication":  [C.goldDark, C.goldLight],
+  };
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Registry" subtitle={`${data.length} record${data.length !== 1 ? "s" : ""}${(dateFrom || dateTo) ? " in date range" : " total"}`}
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div style={{ position: "relative" }}>
+              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
+                style={{ ...inputBase, width: 200, paddingLeft: 32 }} />
+            </div>
+            <button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>
+          </div>
+        } />
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}22`,
+      }}>
+        <Calendar size={14} color={C.soul} style={{ flexShrink: 0 }} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+          Filter by conversion date:
+        </span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              style={{ ...inputBase, width: 148 }} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
+              <X size={12} />Clear dates
+            </button>
+          )}
+        </div>
+      </div>
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.slice(0, visibleCount).map(r => {
+            const [col, bg] = dc[r.conversion_type] || [C.textMuted, C.bg];
+            return (
+              <div key={r.id} {...lift} style={{
+                ...card, display: "flex", justifyContent: "space-between",
+                alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Avatar name={r.full_name} size={40} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.conversion_date}</div>
+                  </div>
+                </div>
+                <span style={badge(col, bg)}><span style={dot(col)} />{r.conversion_type || "–"}</span>
+              </div>
+            );
+          })}
+          {!loading && filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Search size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No records found</div>
+            </div>
+          )}
+        </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
+          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> record{filtered.length !== 1 ? "s" : ""}
+          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -6952,9 +7078,14 @@ function MegastarsCheckInOut({ currentUser }) {
           </div>
         </div>
       ) : (
-        <div style={{ ...card, background: C.greenXLight, border: `1px solid ${C.greenBorder}`, marginBottom: 20, padding: "10px 16px" }}>
-          <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>{service.label}</span>
-          <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 10 }}>{service.service_date} · {activeList.length} currently checked in</span>
+        <div style={{ ...card, background: C.greenXLight, border: `1px solid ${C.greenBorder}`, marginBottom: 20, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>{service.label}</span>
+            <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 10 }}>{service.service_date} · {activeList.length} currently checked in</span>
+          </div>
+          <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => downloadMegastarAttendanceCSV(service)}>
+            <Download size={12} />Download Attendance
+          </button>
         </div>
       )}
 
@@ -7074,38 +7205,80 @@ function MegastarsCheckInOut({ currentUser }) {
         <div style={{ fontSize: 13, color: C.textMuted }}>No one checked in yet for this service.</div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
-            gap: 10, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-          }}>
-            {["Child", "Class", "Guardian", "Checked In", ""].map(h => (
-              <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+          <div className="mc-scroll" style={{ overflow: "auto" }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
+              gap: 10, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
+              minWidth: 680,
+            }}>
+              {["Child", "Class", "Guardian", "Checked In", ""].map(h => (
+                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+              ))}
+            </div>
+            {activeList.map((row, i) => (
+              <div key={row.id} style={{
+                display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
+                gap: 10, alignItems: "center", padding: "10px 16px", minWidth: 680,
+                borderBottom: i < activeList.length - 1 ? `1px solid ${C.border}` : "none",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Avatar name={row.megastars?.full_name} size={26} />
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{row.megastars?.full_name}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.textSecondary }}>{row.class_at_checkin || "—"}</div>
+                <div style={{ fontSize: 12, color: C.textSecondary }}>{row.megastar_guardians?.full_name || "—"}</div>
+                <div style={{ fontSize: 12, color: C.textMuted }}>
+                  {new Date(row.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </div>
+                <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => checkOutOne(row)} disabled={processing}>
+                  <CheckCircle size={11} />Check Out
+                </button>
+              </div>
             ))}
           </div>
-          {activeList.map((row, i) => (
-            <div key={row.id} style={{
-              display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
-              gap: 10, alignItems: "center", padding: "10px 16px",
-              borderBottom: i < activeList.length - 1 ? `1px solid ${C.border}` : "none",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Avatar name={row.megastars?.full_name} size={26} />
-                <span style={{ fontWeight: 600, fontSize: 13 }}>{row.megastars?.full_name}</span>
-              </div>
-              <div style={{ fontSize: 12, color: C.textSecondary }}>{row.class_at_checkin || "—"}</div>
-              <div style={{ fontSize: 12, color: C.textSecondary }}>{row.megastar_guardians?.full_name || "—"}</div>
-              <div style={{ fontSize: 12, color: C.textMuted }}>
-                {new Date(row.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </div>
-              <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => checkOutOne(row)} disabled={processing}>
-                <CheckCircle size={11} />Check Out
-              </button>
-            </div>
-          ))}
         </div>
       )}
     </div>
   );
+}
+
+async function downloadMegastarAttendanceCSV(service) {
+  const escape = (v) => {
+    if (v === null || v === undefined) return "";
+    const str = String(v).replace(/"/g, '""');
+    return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+  };
+  try {
+    const rows = await sb(
+      `megastar_checkins?service_id=eq.${service.id}&select=*,megastars(full_name,class),dropoff:megastar_guardians!megastar_checkins_guardian_id_fkey(full_name,phone),pickup:megastar_guardians!megastar_checkins_checkout_guardian_id_fkey(full_name,phone)&order=check_in_time.asc`
+    );
+    if (!rows || rows.length === 0) {
+      toast.error("No attendance records for this service yet.");
+      return;
+    }
+    const header = ["Child Name", "Class", "Dropped Off By", "Guardian Phone", "Check-In Time", "Checked In By", "Picked Up By", "Check-Out Time", "Checked Out By"];
+    const csvRows = [
+      header.join(","),
+      ...rows.map(r => [
+        escape(r.megastars?.full_name),
+        escape(r.class_at_checkin || r.megastars?.class),
+        escape(r.dropoff?.full_name),
+        escape(r.dropoff?.phone),
+        escape(r.check_in_time ? new Date(r.check_in_time).toLocaleString() : ""),
+        escape(r.checked_in_by),
+        escape(r.pickup?.full_name || r.dropoff?.full_name),
+        escape(r.check_out_time ? new Date(r.check_out_time).toLocaleString() : "Still checked in"),
+        escape(r.checked_out_by),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `megastars_attendance_${service.label.replace(/[^a-z0-9]/gi, "_")}_${service.service_date}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast.error(`Could not export: ${e.message}`);
+  }
 }
 
 function MegastarsServices({ currentUser }) {
@@ -7182,6 +7355,9 @@ function MegastarsServices({ currentUser }) {
                 <span style={badge(svc.status === "Open" ? C.green : C.textMuted, svc.status === "Open" ? C.greenLight : C.bg, { fontSize: 11 })}>
                   {svc.status}
                 </span>
+                <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => downloadMegastarAttendanceCSV(svc)}>
+                  <Download size={12} />CSV
+                </button>
                 {svc.status === "Open" && (
                   <button style={btn("danger", { padding: "6px 12px", fontSize: 12 })} onClick={() => closeService(svc)}>Close</button>
                 )}
@@ -7195,7 +7371,7 @@ function MegastarsServices({ currentUser }) {
 }
 
 function MegastarsRoster({ currentUser, role }) {
-  const isAdmin = role === "megastarsadmin" || role === "admin";
+  const isAdmin = role === "megastarsadmin" || role === "admin" || role === "dofficer";
   const [children, setChildren] = useState([]);
   const [linksMap, setLinksMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -14086,6 +14262,7 @@ function App() {
     }
 
     if (active === "addmember") return <FirstTimerForm onSuccess={() => navTo("firsttimers")} />;
+    if (active === "nc_registry") return <NewConvertsRegistry />;
     if (active === "qrcode") return <QRCodePage />;
     if (active === "vip_contact") return <VipContactView currentUser={user} />;
     if (active === "allfeedback") return <AllFeedback />;
