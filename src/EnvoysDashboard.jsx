@@ -637,6 +637,7 @@ const NAV_ICONS = {
   research_feedback: FileText,
   general_feedback: MessageSquare,
   assign_calls: UserCheck,
+  experience_dashboard: BarChart2,
   completed_pipelines: FileText,
   sc_assign: UserCheck,
   sc_flagged: Flag,
@@ -672,6 +673,7 @@ const NAV = {
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "callqueue",           label: "Call Queue"          },
+    { id: "experience_dashboard", label: "Analytics Dashboard" },
     { id: "add_visit",     label: "Add Visit"     },
     { id: "sc_assign",     label: "Assign Visits" },
     { id: "sc_queue",      label: "Visit Queue"   },
@@ -714,6 +716,7 @@ const NAV = {
     { id: "callbacks",     label: "Call Backs"    },
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
+    { id: "experience_dashboard", label: "Analytics Dashboard" },
   ],
   pasteam: [
     { id: "report",        label: "Report"        },
@@ -782,6 +785,7 @@ const NAV = {
   { id: "callqueue",           label: "Call Queue"          },
   { id: "allfeedback",         label: "All Feedback"        },
   { id: "flagged",             label: "Flagged"             },
+  { id: "experience_dashboard", label: "Analytics Dashboard" },
 ],
 };
 
@@ -801,7 +805,7 @@ const NAV_GROUPS = {
   admin: [
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
     { title: "First-Timers",     ids: ["firsttimers", "vip_contact", "qrcode"] },
-    { title: "Experience Team",  ids: ["assign_calls", "callqueue"] },
+    { title: "Experience Team",  ids: ["assign_calls", "callqueue", "experience_dashboard"] },
     { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "visitation_tab"] },
     { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors"] },
     { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
@@ -824,7 +828,7 @@ const NAV_GROUPS = {
   ],
 
   experienceadmin: [
-    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors"] },
+    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors", "experience_dashboard"] },
     { title: "Feedback", ids: ["allfeedback", "flagged"] },
   ],
 };
@@ -9345,6 +9349,167 @@ function Report() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Experience Dashboard — call pipeline analytics for Experience Team /
+// Experience Admin / Admin. Reuses PasDonut / PasOutcomeBars / PasTrendChart /
+// PasBarRow / PasEmpty from the Pastoral Report module rather than
+// reinventing chart rendering.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useExperienceAnalytics(dateFrom, dateTo) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        let ftQ = "first_timers?select=id,service_date";
+        if (dateFrom) ftQ += `&service_date=gte.${dateFrom}`;
+        if (dateTo)   ftQ += `&service_date=lte.${dateTo}`;
+
+        let fbQ = "call_feedback?select=call_status,caller_name,week_number,flagged_for_pastoral,created_at";
+        if (dateFrom) fbQ += `&created_at=gte.${dateFrom}`;
+        if (dateTo)   fbQ += `&created_at=lte.${dateTo}T23:59:59`;
+
+        let ovQ = "pipeline_overviews?select=id,move_to_membership,submitted_at";
+        if (dateFrom) ovQ += `&submitted_at=gte.${dateFrom}`;
+        if (dateTo)   ovQ += `&submitted_at=lte.${dateTo}T23:59:59`;
+
+        const [ftRows, fbRows, ovRows] = await Promise.all([
+          sb(ftQ).catch(() => []),
+          sb(fbQ).catch(() => []),
+          sb(ovQ).catch(() => []),
+        ]);
+
+        const callStatusTally = {};
+        (fbRows || []).forEach(f => {
+          const n = normaliseStatus(f.call_status) || "Unknown";
+          callStatusTally[n] = (callStatusTally[n] || 0) + 1;
+        });
+
+        const callerTally = {};
+        (fbRows || []).forEach(f => {
+          if (!f.caller_name) return;
+          if (!callerTally[f.caller_name]) callerTally[f.caller_name] = { total: 0, reached: 0 };
+          callerTally[f.caller_name].total++;
+          if (normaliseStatus(f.call_status) === "Reached") callerTally[f.caller_name].reached++;
+        });
+
+        const weekKey = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+        const weekBuckets = {};
+        (fbRows || []).filter(f => f.created_at).forEach(f => {
+          const label = weekKey(f.created_at);
+          if (!weekBuckets[label]) weekBuckets[label] = { week: label, ts: new Date(f.created_at).getTime(), Reached: 0, "Call Back": 0, "Incorrect Contact": 0 };
+          const norm = normaliseStatus(f.call_status) || "Call Back";
+          weekBuckets[label][norm] = (weekBuckets[label][norm] || 0) + 1;
+        });
+        const trend = Object.values(weekBuckets).sort((a, b) => a.ts - b.ts).slice(-10);
+
+        const totalOverviews = (ovRows || []).length;
+        const recommended = (ovRows || []).filter(o => o.move_to_membership).length;
+
+        if (!cancelled) {
+          setStats({
+            totalFirstTimers: (ftRows || []).length,
+            totalCalls: (fbRows || []).length,
+            callStatusTally,
+            flaggedCount: (fbRows || []).filter(f => f.flagged_for_pastoral).length,
+            callerTally,
+            trend,
+            totalOverviews, recommended,
+            recommendationRate: totalOverviews > 0 ? Math.round((recommended / totalOverviews) * 100) : 0,
+          });
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [dateFrom, dateTo]);
+
+  return { stats, loading, err };
+}
+
+function ExperienceAnalyticsDashboard() {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const { stats, loading, err } = useExperienceAnalytics(dateFrom, dateTo);
+
+  const dateFilterAction = (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
+      <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 140 }} />
+    </div>
+  );
+
+  if (loading || !stats) {
+    return (
+      <div className="page-enter">
+        <PageHeader title="Experience Dashboard" subtitle="Call pipeline performance and trends" action={dateFilterAction} />
+        <SkeletonReport />
+      </div>
+    );
+  }
+
+  const callOutcomeColor = k => k === "Reached" ? C.green : k === "Call Back" ? C.amber : C.danger;
+  const callOutcomeBars = Object.entries(stats.callStatusTally).map(([k, v]) => ({ name: k, value: v, color: callOutcomeColor(k) }));
+
+  const decisionDonut = [
+    { name: "Recommended",     value: stats.recommended, color: C.green },
+    { name: "Not Recommended", value: stats.totalOverviews - stats.recommended, color: C.amber },
+  ].filter(d => d.value > 0);
+
+  const topCallers = Object.entries(stats.callerTally).sort((a, b) => b[1].total - a[1].total).slice(0, 6);
+  const maxCallerTotal = Math.max(...topCallers.map(([, s]) => s.total), 1);
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Experience Dashboard" subtitle="Call pipeline performance and trends" action={dateFilterAction} />
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="First-Timers"        value={stats.totalFirstTimers} icon={Users}    accent={C.green} />
+        <StatCard label="Calls Logged"        value={stats.totalCalls}       icon={Phone}    accent={C.greenMid} />
+        <StatCard label="Overviews Submitted" value={stats.totalOverviews}   icon={FileText} accent={C.blue}
+          sub={`${stats.recommendationRate}% recommended`} />
+        <StatCard label="Flagged"             value={stats.flaggedCount}     icon={Flag}     accent={C.flag}
+          sub={stats.flaggedCount > 0 ? "Needs pastoral attention" : ""} />
+      </div>
+
+      <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={card}>
+          <SH title="Call Outcomes" icon={Phone} />
+          {callOutcomeBars.length === 0 ? <PasEmpty label="No calls logged in this range" /> : <PasOutcomeBars data={callOutcomeBars} />}
+        </div>
+
+        <div style={card}>
+          <SH title="VIP Decision Split" icon={UserCheck} />
+          {decisionDonut.length === 0
+            ? <PasEmpty label="No overviews submitted in this range" />
+            : <PasDonut data={decisionDonut} centerValue={`${stats.recommendationRate}%`} centerLabel="recommended" />}
+        </div>
+
+        <div style={{ ...card, gridColumn: "1 / -1" }}>
+          <SH title="Weekly Call Activity" icon={Activity} />
+          <PasTrendChart rows={stats.trend} />
+        </div>
+
+        <div style={{ ...card, gridColumn: "1 / -1" }}>
+          <SH title="Caller Leaderboard" icon={UserCheck} />
+          {topCallers.length === 0 ? <PasEmpty label="No calls logged yet" /> : topCallers.map(([name, s]) => (
+            <PasBarRow key={name} label={name}
+              value={s.total} max={maxCallerTotal} color={C.green}
+              sub={`${s.reached}/${s.total} reached (${Math.round((s.reached / s.total) * 100)}%)`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  END MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT  (v6.1)              ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
@@ -14276,6 +14441,7 @@ function App() {
     if (active === "general_feedback")  return <GeneralFeedback />;
     if (active === "feedback_qr")       return <FeedbackQRPage />;
     if (active === "testimony_qr")      return <TestimonyQRPage />;
+    if (active === "experience_dashboard") return <ExperienceAnalyticsDashboard />;
 
     if (active === "firsttimers") {
       if (editTarget) {
