@@ -5519,7 +5519,7 @@ function PublicEnvoysFCForm() {
         method: "POST",
         body: JSON.stringify({
           full_name: fullName.trim(), team,
-          jersey_name: jerseyName.trim().toUpperCase().slice(0, 8),
+          jersey_name: jerseyName.trim().toUpperCase().slice(0, 10),
           jersey_no: jerseyNo,
         }),
       });
@@ -5544,7 +5544,7 @@ function PublicEnvoysFCForm() {
         </div>
         <h2 style={{ color: C.green, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>You're registered!</h2>
         <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
-          Welcome to <strong>{team}</strong>! Your jersey will read <strong>{jerseyName.toUpperCase().slice(0, 8)}</strong> — #{jerseyNo}.
+          Welcome to <strong>{team}</strong>! Your jersey will read <strong>{jerseyName.toUpperCase().slice(0, 10)}</strong> — #{jerseyNo}.
         </p>
       </div>
     </div>
@@ -5574,7 +5574,7 @@ function PublicEnvoysFCForm() {
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
               Jersey Number <span style={{ color: C.danger }}>*</span>
-            </label>
+            </label> 
             <JerseyNumberPicker key={pickerKey} team={team} selected={jerseyNo} onSelect={setJerseyNo} />
             {jerseyNo && <div style={{ fontSize: 12, color: C.green, marginTop: 6, fontWeight: 600 }}>Selected: #{jerseyNo}</div>}
           </div>
