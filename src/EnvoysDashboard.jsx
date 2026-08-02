@@ -660,6 +660,8 @@ const NAV_ICONS = {
   megastars_checkinout: UserCheck,
   megastars_roster: Heart,
   megastars_services: Calendar,
+  envoysfc_qr: QrCode,
+  envoysfc_roster: Shield,
 };
 
 const NAV = {
@@ -698,6 +700,8 @@ const NAV = {
     { id: "qrcode",        label: "VIPs QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
+    { id: "envoysfc_qr",      label: "Envoys FC QR" },
+    { id: "envoysfc_roster",  label: "Envoys FC Roster" },
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -709,6 +713,8 @@ const NAV = {
     { id: "megastars_checkinout", label: "Check In / Out" },
     { id: "megastars_services",   label: "Services" },
     { id: "megastars_roster",     label: "Roster" },
+    { id: "envoysfc_qr",      label: "Envoys FC QR" },
+    { id: "envoysfc_roster",  label: "Envoys FC Roster" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -801,6 +807,7 @@ const NAV_GROUPS = {
     { title: "First-Timers", ids: ["firsttimers", "vip_contact", "addmember", "qrcode"] },
     { title: "New Converts", ids: ["nc_registry", "nc_qr"] },
     { title: "Megastars",    ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
+    { title: "Envoys FC (Temporary)", ids: ["envoysfc_qr", "envoysfc_roster"] },
   ],
   admin: [
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
@@ -813,6 +820,7 @@ const NAV_GROUPS = {
     { title: "Megastars",        ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",      ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
+    { title: "Envoys FC (Temporary)", ids: ["envoysfc_qr", "envoysfc_roster"] },
   ],
   soulcareadmin: [
     { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "sc_flagged"] },
@@ -4048,7 +4056,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
                 ...card, padding: "12px 16px",
                 borderLeft: `3px solid ${complete ? C.green : r.assignment ? C.blue : C.gold}`,
               }}>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                <div className="et-head" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
                     <Avatar name={r.full_name} />
                     <div>
@@ -4058,7 +4066,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
                       <div style={{ marginTop: 5 }}><PipelineBar fbRows={r.fbRows} compact /></div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                  <div className="et-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
                     {complete && (
                       <span style={badge(C.green, C.greenLight, { fontSize: 11 })}>
                         <CheckCircle size={10} />Pipeline Complete
@@ -4364,6 +4372,11 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
                                 )}
                               </div>
                               <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>
+                                {fb.created_at && (
+                                  <span style={{ color: C.textMuted, marginRight: 8 }}>
+                                    {new Date(fb.created_at).toLocaleDateString()} {new Date(fb.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·
+                                  </span>
+                                )}
                                 Called by <strong>{fb.caller_name || "—"}</strong>
                                 {fb.experience_rating && <span style={{ marginLeft: 8 }}>· Rating: {fb.experience_rating}</span>}
                                 {fb.returning && <span style={{ marginLeft: 8 }}>· Returning: {fb.returning}</span>}
@@ -4716,6 +4729,11 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
                                 )}
                               </div>
                               <div style={{ fontSize: 12, color: C.textSecondary }}>
+                                {fb.created_at && (
+                                  <span style={{ color: C.textMuted, marginRight: 8 }}>
+                                    {new Date(fb.created_at).toLocaleDateString()} {new Date(fb.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} ·
+                                  </span>
+                                )}
                                 Called by <strong>{fb.caller_name || "—"}</strong>
                                 {fb.experience_rating && <span style={{ marginLeft: 8 }}>Rating: {fb.experience_rating}</span>}
                                 {fb.returning && <span style={{ marginLeft: 8, color: C.goldDark }}>Returning: {fb.returning}</span>}
@@ -5416,6 +5434,288 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
 // internal scrollbar, ONLY the Full Name column pinned while the rest
 // scrolls horizontally.
 // ─────────────────────────────────────────────────────────────────────────────
+
+const ENVOYSFC_TEAMS = ["Solid Rock FC", "Interphaze FC"];
+
+function JerseyNumberPicker({ team, selected, onSelect }) {
+  const [taken, setTaken] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+
+  const loadTaken = useCallback(async () => {
+    if (!team) { setTaken(new Set()); setLoading(false); return; }
+    setLoading(true);
+    try {
+      const rows = await sb(`envoysfc_players?team=eq.${encodeURIComponent(team)}&select=jersey_no`).catch(() => []);
+      setTaken(new Set((rows || []).map(r => r.jersey_no)));
+    } catch { setTaken(new Set()); }
+    setLoading(false);
+  }, [team]);
+
+  useEffect(() => { loadTaken(); }, [loadTaken]);
+
+  if (!team) {
+    return <div style={{ fontSize: 13, color: C.textMuted, padding: "12px 0" }}>Select a team first to see available numbers.</div>;
+  }
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <span style={{ fontSize: 12, color: C.textMuted }}>
+          {loading ? "Checking availability…" : `${99 - taken.size} of 99 numbers available for ${team}`}
+        </span>
+        <button type="button" onClick={loadTaken} style={{ background: "none", border: "none", color: C.green, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+          <RefreshCw size={11} style={{ verticalAlign: "middle", marginRight: 3 }} />Refresh
+        </button>
+      </div>
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(38px, 1fr))", gap: 6,
+        maxHeight: 280, overflowY: "auto", padding: 4, border: `1px solid ${C.border}`, borderRadius: 8,
+      }}>
+        {Array.from({ length: 99 }, (_, i) => i + 1).map(n => {
+          const isTaken = taken.has(n);
+          const isSelected = selected === n;
+          return (
+            <button key={n} type="button" disabled={isTaken}
+              onClick={() => onSelect(n)}
+              style={{
+                padding: "8px 0", borderRadius: 6, fontSize: 13, fontWeight: 700, fontFamily: F.head,
+                cursor: isTaken ? "not-allowed" : "pointer",
+                background: isSelected ? C.green : isTaken ? C.bg : C.surface,
+                color: isSelected ? "#fff" : isTaken ? C.textMuted : C.textPrimary,
+                border: `1.5px solid ${isSelected ? C.green : isTaken ? C.border : C.greenBorder}`,
+                textDecoration: isTaken ? "line-through" : "none",
+                opacity: isTaken ? .5 : 1,
+              }}>
+              {n}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
+function PublicEnvoysFCForm() {
+  const [fullName, setFullName] = useState("");
+  const [team, setTeam] = useState("");
+  const [jerseyName, setJerseyName] = useState("");
+  const [jerseyNo, setJerseyNo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const [pickerKey, setPickerKey] = useState(0);
+
+  const changeTeam = (t) => { setTeam(t); setJerseyNo(null); setPickerKey(k => k + 1); };
+
+  const submit = async () => {
+    if (!fullName.trim()) { setErr("Full name is required."); return; }
+    if (!team) { setErr("Select a team."); return; }
+    if (!jerseyName.trim()) { setErr("Jersey name is required."); return; }
+    if (!jerseyNo) { setErr("Select a jersey number."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("envoysfc_players", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: fullName.trim(), team,
+          jersey_name: jerseyName.trim().toUpperCase().slice(0, 8),
+          jersey_no: jerseyNo,
+        }),
+      });
+      setDone(true);
+    } catch (e) {
+      if (e.message && e.message.toLowerCase().includes("duplicate")) {
+        setErr(`Jersey #${jerseyNo} was just taken by someone else — please pick another number.`);
+        setJerseyNo(null);
+        setPickerKey(k => k + 1);
+      } else {
+        setErr(e.message);
+      }
+    }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.greenLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <CheckCircle size={32} color={C.green} />
+        </div>
+        <h2 style={{ color: C.green, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>You're registered!</h2>
+        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
+          Welcome to <strong>{team}</strong>! Your jersey will read <strong>{jerseyName.toUpperCase().slice(0, 8)}</strong> — #{jerseyNo}.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
+          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
+            Envoys <span style={{ color: C.green }}>FC</span> Registration
+          </h1>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+            Pick your team and claim your jersey number.
+          </p>
+        </div>
+        <div style={card}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          <FieldInput label="Full Name" id="fcn" required value={fullName} onChange={e => setFullName(e.target.value)} />
+          <FieldInput label="Team" id="fct" type="select" required value={team} onChange={e => changeTeam(e.target.value)}
+            options={ENVOYSFC_TEAMS.map(t => ({ value: t, label: t }))} />
+          <FieldInput label="Jersey Name" id="fcjn" required value={jerseyName}
+            onChange={e => setJerseyName(e.target.value.slice(0, 10))}
+            placeholder="e.g. STRIKER" hint={`${jerseyName.length}/10 characters — shown on your jersey`} />
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+              Jersey Number <span style={{ color: C.danger }}>*</span>
+            </label>
+            <JerseyNumberPicker key={pickerKey} team={team} selected={jerseyNo} onSelect={setJerseyNo} />
+            {jerseyNo && <div style={{ fontSize: 12, color: C.green, marginTop: 6, fontWeight: 600 }}>Selected: #{jerseyNo}</div>}
+          </div>
+          <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
+            {loading ? "Registering…" : "Submit Your Details"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EnvoysFCQRPage() {
+  const fcUrl = window.location.origin + "/envoysfc";
+  const [custom, setCustom] = useState(fcUrl);
+  const [display, setDisplay] = useState(fcUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+    a.download = "envoysfc-registration-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="Envoys FC QR Code" subtitle="Temporary — share this so players can register for Solid Rock FC or Interphaze FC" />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={btn("primary")} onClick={download}><Download size={14} />Download PNG</button>
+            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
+          <FieldInput label="Registration URL" id="fcurl" value={custom} onChange={e => setCustom(e.target.value)} />
+          <button style={{ ...btn("primary"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EnvoysFCRoster() {
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [fTeam, setFTeam] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try { setPlayers((await sb("envoysfc_players?order=team.asc,jersey_no.asc&limit=500")) || []); }
+    catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = players.filter(p => {
+    if (fTeam && p.team !== fTeam) return false;
+    if (search && !p.full_name?.toLowerCase().includes(search.toLowerCase()) && !p.jersey_name?.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const downloadCSV = () => {
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name", "Team", "Jersey Name", "Jersey No", "Registered At"];
+    const csvRows = [
+      header.join(","),
+      ...filtered.map(p => [
+        escape(p.full_name), escape(p.team), escape(p.jersey_name), escape(p.jersey_no),
+        escape(p.created_at ? p.created_at.slice(0, 10) : ""),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `envoysfc_roster_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const teamCounts = {};
+  ENVOYSFC_TEAMS.forEach(t => { teamCounts[t] = players.filter(p => p.team === t).length; });
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Envoys FC Roster" subtitle="Temporary — delete this page once data collection is complete"
+        action={
+          <button style={btn("primary")} onClick={downloadCSV} disabled={filtered.length === 0}>
+            <Download size={14} />Download CSV
+          </button>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
+        <StatCard label="Total Registered" value={players.length} icon={Users} accent={C.green} />
+        {ENVOYSFC_TEAMS.map(t => (
+          <StatCard key={t} label={t} value={teamCounts[t]} icon={Shield} accent={C.soul} sub={`${99 - teamCounts[t]} numbers left`} />
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        <select value={fTeam} onChange={e => setFTeam(e.target.value)} style={{ ...inputBase, width: 200, cursor: "pointer" }}>
+          <option value="">All teams</option>
+          {ENVOYSFC_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or jersey name…" style={{ ...inputBase, width: 220, paddingLeft: 30 }} />
+        </div>
+        <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>No players registered yet.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map(p => (
+            <div key={p.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Avatar name={p.full_name} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{p.full_name}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}>{p.team}</div>
+                </div>
+              </div>
+              <span style={badge(C.green, C.greenLight)}>{p.jersey_name} · #{p.jersey_no}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EnvoysVisitors() {
   const [rows, setRows] = useState([]);
@@ -14318,6 +14618,7 @@ function App() {
   const [showFeedback,    setShowFeedback]    = useState(false);
   const [showTestimony,   setShowTestimony]   = useState(false);
   const [showNewConvert,  setShowNewConvert]  = useState(false);
+  const [showEnvoysFC,    setShowEnvoysFC]    = useState(false);
 
   useEffect(() => {
     const onPopState = (e) => {
@@ -14334,6 +14635,7 @@ function App() {
     if (p === "/feedback"  || p === "/feedback/"  || h === "#feedback")  setShowFeedback(true);
     if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
     if (p === "/new-convert" || p === "/new-convert/" || h === "#new-convert") setShowNewConvert(true);
+    if (p === "/envoysfc" || p === "/envoysfc/" || h === "#envoysfc") setShowEnvoysFC(true);
   }, []);
 
   useEffect(() => {
@@ -14375,6 +14677,7 @@ function App() {
   if (showFeedback)  return <PublicFeedbackForm />;
   if (showTestimony)   return <PublicTestimonyForm />;
   if (showNewConvert)  return <PublicNewConvertForm />;
+  if (showEnvoysFC)    return <PublicEnvoysFCForm />;
   if (!session)        return <Login onLogin={login} />;
 
   const { role, user, username } = session;
@@ -14442,6 +14745,8 @@ function App() {
     if (active === "feedback_qr")       return <FeedbackQRPage />;
     if (active === "testimony_qr")      return <TestimonyQRPage />;
     if (active === "experience_dashboard") return <ExperienceAnalyticsDashboard />;
+    if (active === "envoysfc_qr")     return <EnvoysFCQRPage />;
+    if (active === "envoysfc_roster") return <EnvoysFCRoster />;
 
     if (active === "firsttimers") {
       if (editTarget) {
