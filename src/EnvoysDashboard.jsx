@@ -5570,7 +5570,7 @@ function PublicEnvoysFCForm() {
             options={ENVOYSFC_TEAMS.map(t => ({ value: t, label: t }))} />
           <FieldInput label="Jersey Name" id="fcjn" required value={jerseyName}
             onChange={e => setJerseyName(e.target.value.slice(0, 10))}
-            placeholder="e.g. STRIKER" hint={`${jerseyName.length}/10 characters — shown on your jersey`} />
+            placeholder="e.g. BALLER" hint={`${jerseyName.length}/10 characters — shown on your jersey`} />
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
               Jersey Number <span style={{ color: C.danger }}>*</span>
