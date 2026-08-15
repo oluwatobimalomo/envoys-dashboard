@@ -662,6 +662,8 @@ const NAV_ICONS = {
   megastars_services: Calendar,
   envoysfc_qr: QrCode,
   envoysfc_roster: Shield,
+  solidrock_registrations: BarChart2,
+  solidrock_qr: QrCode,
 };
 
 const NAV = {
@@ -702,6 +704,8 @@ const NAV = {
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
     { id: "envoysfc_qr",      label: "Envoys FC QR" },
     { id: "envoysfc_roster",  label: "Envoys FC Roster" },
+    { id: "solidrock_registrations", label: "Solid Rock Registrations" },
+    { id: "solidrock_qr", label: "Solid Rock QR" },
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -715,6 +719,8 @@ const NAV = {
     { id: "megastars_roster",     label: "Roster" },
     { id: "envoysfc_qr",      label: "Envoys FC QR" },
     { id: "envoysfc_roster",  label: "Envoys FC Roster" },
+    { id: "solidrock_registrations", label: "Solid Rock Registrations" },
+    { id: "solidrock_qr", label: "Solid Rock QR" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -5713,6 +5719,309 @@ function EnvoysFCRoster() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Solid Rock Conference — public registration, no login. Self-contained:
+// its own table, its own components, minimal touchpoints elsewhere.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SolidRockAdminStats() {
+  const [stats, setStats] = useState({ total: 0, envoys: 0, nonEnvoys: 0, married: 0 });
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const rows = await sb("solidrock_registrations?select=membership_status,marital_status").catch(() => []);
+      setStats({
+        total: (rows || []).length,
+        envoys: (rows || []).filter(r => r.membership_status === "Envoys").length,
+        nonEnvoys: (rows || []).filter(r => r.membership_status === "Non Envoys").length,
+        married: (rows || []).filter(r => r.marital_status === "Married").length,
+      });
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  return (
+    <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+      <StatCard label="Total Registered"   value={loading ? 0 : stats.total}     icon={Users}    accent={C.goldDark} />
+      <StatCard label="Envoys Members"      value={loading ? 0 : stats.envoys}    icon={Shield}   accent={C.goldDark} />
+      <StatCard label="Guests (Non-Envoys)" value={loading ? 0 : stats.nonEnvoys} icon={UserPlus} accent={C.goldDark} />
+      <StatCard label="Married Attendees"   value={loading ? 0 : stats.married}   icon={Heart}    accent={C.goldDark} />
+    </div>
+  );
+}
+
+function SolidRockRegistrations() {
+  const [regs, setRegs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [fMembership, setFMembership] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try { setRegs((await sb("solidrock_registrations?order=created_at.desc&limit=1000")) || []); }
+    catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = regs.filter(r => {
+    if (fMembership && r.membership_status !== fMembership) return false;
+    if (search && !r.full_name?.toLowerCase().includes(search.toLowerCase()) && !r.phone?.includes(search)) return false;
+    return true;
+  });
+
+  const total     = regs.length;
+  const envoys    = regs.filter(r => r.membership_status === "Envoys").length;
+  const nonEnvoys = regs.filter(r => r.membership_status === "Non Envoys").length;
+  const married   = regs.filter(r => r.marital_status === "Married").length;
+
+  const downloadCSV = () => {
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name", "Email", "Phone", "Marital Status", "Membership Status", "Registered At"];
+    const csvRows = [
+      header.join(","),
+      ...filtered.map(r => [
+        escape(r.full_name), escape(r.email), escape(r.phone), escape(r.marital_status), escape(r.membership_status),
+        escape(r.created_at ? new Date(r.created_at).toLocaleString() : ""),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `solidrock_registrations_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Solid Rock Registrations" subtitle="Live registration count — staff view only, never shown to registrants"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
+            <button style={btn("primary")} onClick={downloadCSV} disabled={filtered.length === 0}>
+              <Download size={14} />Download CSV
+            </button>
+          </div>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
+        <StatCard label="Total Registered"    value={total}     icon={Users}    accent={C.goldDark} />
+        <StatCard label="Envoys Members"      value={envoys}    icon={Shield}   accent={C.green}    />
+        <StatCard label="Guests (Non-Envoys)" value={nonEnvoys} icon={UserPlus} accent={C.blue}      />
+        <StatCard label="Married Attendees"   value={married}   icon={Heart}    accent={C.soul}      />
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        <select value={fMembership} onChange={e => setFMembership(e.target.value)} style={{ ...inputBase, width: 200, cursor: "pointer" }}>
+          <option value="">All attendees</option>
+          <option value="Envoys">Envoys Members</option>
+          <option value="Non Envoys">Non-Envoys (Guests)</option>
+        </select>
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 220, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>No registrations yet.</div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.map(r => (
+            <div key={r.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Avatar name={r.full_name} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> {r.email ? `· ${r.email}` : ""}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <span style={badge(r.membership_status === "Envoys" ? C.green : C.blue, r.membership_status === "Envoys" ? C.greenLight : C.blueLight, { fontSize: 11 })}>
+                  {r.membership_status}
+                </span>
+                <span style={badge(C.textMuted, C.bg, { fontSize: 11 })}>{r.marital_status}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PublicSolidRockForm() {
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", marital_status: "", membership_status: "" });
+  const [dupes, setDupes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
+
+  useEffect(() => {
+    if (!phoneKey(form.phone)) { setDupes([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const key = phoneKey(form.phone);
+      const rows = await sb("solidrock_registrations?select=id,full_name,phone").catch(() => []);
+      const found = (rows || []).filter(r => phoneKey(r.phone) === key);
+      if (!cancelled) setDupes(found);
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone]);
+
+  const submit = async () => {
+    if (!form.full_name.trim() || !form.phone.trim()) { setErr("Full name and phone number are required."); return; }
+    if (!form.marital_status)    { setErr("Select your marital status."); return; }
+    if (!form.membership_status) { setErr("Select your membership status."); return; }
+    setLoading(true); setErr("");
+    try {
+      await sb("solidrock_registrations", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: form.full_name.trim(),
+          email: form.email.trim() || null,
+          phone: form.phone.trim(),
+          marital_status: form.marital_status,
+          membership_status: form.membership_status,
+        }),
+      });
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  const pageStyle = {
+    minHeight: "100vh",
+    background: "linear-gradient(160deg, #0a0a0a 0%, #1a1408 55%, #0a0a0a 100%)",
+    fontFamily: F.body, padding: "2.5rem 1rem", color: "#fff",
+  };
+
+  if (done) return (
+    <div style={{ ...pageStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{
+        maxWidth: 480, textAlign: "center", padding: "3rem 2rem",
+        background: "rgba(255,255,255,.05)", border: "1px solid rgba(212,175,55,.35)", borderRadius: 16,
+      }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: "50%", background: "rgba(212,175,55,.15)",
+          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
+        }}>
+          <CheckCircle size={32} color="#D4AF37" />
+        </div>
+        <h2 style={{ color: "#D4AF37", margin: "0 0 10px", fontFamily: F.head, fontWeight: 900, fontSize: 22 }}>You're Checked In!</h2>
+        <p style={{ color: "rgba(255,255,255,.75)", fontSize: 14, lineHeight: 1.7 }}>
+          Welcome to <strong>Day 1 of Solid Rock Conference 2026</strong>! Get set to become <strong>The Complete Man</strong>.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a0a0a 0%, #1a1408 55%, #0a0a0a 100%)", fontFamily: F.body, color: "#fff" }}>
+      <img src="/solidrock-banner.png" alt="Solid Rock Conference"
+        style={{ width: "100%", height: "clamp(90px, 16vw, 170px)", display: "block", objectFit: "contain", objectPosition: "center" }}
+        onError={e => { e.target.style.display = "none"; }} />
+      <div style={{ padding: "2rem 1rem 2.5rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, fontFamily: F.head, lineHeight: 1.05 }}>
+            <span style={{ color: "#F5D061" }}>THE COMPLETE</span><br />
+            <span style={{ color: "#fff" }}>MAN</span>
+          </h1>
+          <div style={{ marginTop: 14, fontSize: 15, color: "#F5D061", fontWeight: 700, letterSpacing: ".03em" }}>
+            Solid Rock Conf. Day 1 Check-In
+          </div>
+        </div>
+
+        <div style={{ background: "#fff", borderRadius: 16, padding: "1.75rem", color: C.textPrimary }}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          <FieldInput label="Full Name" id="srn" required value={form.full_name} onChange={set("full_name")} />
+          <FieldInput label="Phone Number" id="srp" required value={form.phone} onChange={set("phone")} />
+          {dupes.length > 0 && (
+            <div style={{
+              background: C.amberLight, border: `1px solid ${C.amber}35`, borderLeft: `3px solid ${C.amber}`,
+              borderRadius: 8, padding: "10px 14px", marginTop: -6, marginBottom: 14, fontSize: 12.5, color: C.amber,
+            }}>
+              This number may already be registered ({dupes[0].full_name}) — you can still submit if this is genuinely a different registration.
+            </div>
+          )}
+          <FieldInput label="Email Address" id="sre" type="email" value={form.email} onChange={set("email")} placeholder="Optional" />
+          <FieldInput label="Marital Status" id="srm" type="select" required value={form.marital_status} onChange={set("marital_status")}
+            options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }]} />
+          <FieldInput label="Membership Status" id="srms" type="select" required value={form.membership_status} onChange={set("membership_status")}
+            options={[{ value: "Envoys", label: "Envoys Member" }, { value: "Non Envoys", label: "Non-Envoys (Guest)" }]} />
+          <button
+            style={{
+              width: "100%", padding: 13, fontSize: 15, fontWeight: 700, borderRadius: 8, border: "none",
+              cursor: "pointer", background: "#D4AF37", color: "#0a0a0a", fontFamily: F.body,
+            }}
+            onClick={submit} disabled={loading}>
+            {loading ? "Registering…" : "Register Now"}
+          </button>
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+function SolidRockQRPage() {
+  const srUrl = window.location.origin + "/solidrock";
+  const [custom, setCustom] = useState(srUrl);
+  const [display, setDisplay] = useState(srUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=D4AF37&bgcolor=0a0a0a&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=D4AF37&bgcolor=0a0a0a&data=${encodeURIComponent(display)}`;
+    a.download = "solidrock-registration-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="Solid Rock Conference QR Code" subtitle="Display or print this — attendees scan it to register on the spot" />
+      <SolidRockAdminStats />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto", background: "#0a0a0a" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240}
+            style={{ display: "block", borderRadius: 8, border: "1px solid rgba(212,175,55,.35)" }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,.6)", wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={{ ...btn("primary"), background: "#D4AF37", color: "#0a0a0a", border: "none" }} onClick={download}>
+              <Download size={14} />Download PNG
+            </button>
+            <button style={{ ...btn("outline"), color: "#D4AF37", border: "1.5px solid #D4AF37" }} onClick={() => window.open(display, "_blank")}>
+              Open Link
+            </button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
+          <FieldInput label="Registration URL" id="srqrurl" value={custom} onChange={e => setCustom(e.target.value)} />
+          <button style={{ ...btn("primary"), width: "100%", background: "#D4AF37", color: "#0a0a0a", border: "none" }} onClick={() => setDisplay(custom)}>
+            Update QR Code
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -14619,6 +14928,7 @@ function App() {
   const [showTestimony,   setShowTestimony]   = useState(false);
   const [showNewConvert,  setShowNewConvert]  = useState(false);
   const [showEnvoysFC,    setShowEnvoysFC]    = useState(false);
+  const [showSolidRock,   setShowSolidRock]   = useState(false);
 
   useEffect(() => {
     const onPopState = (e) => {
@@ -14636,6 +14946,7 @@ function App() {
     if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
     if (p === "/new-convert" || p === "/new-convert/" || h === "#new-convert") setShowNewConvert(true);
     if (p === "/envoysfc" || p === "/envoysfc/" || h === "#envoysfc") setShowEnvoysFC(true);
+    if (p === "/solidrock" || p === "/solidrock/" || h === "#solidrock") setShowSolidRock(true);
   }, []);
 
   useEffect(() => {
@@ -14678,6 +14989,7 @@ function App() {
   if (showTestimony)   return <PublicTestimonyForm />;
   if (showNewConvert)  return <PublicNewConvertForm />;
   if (showEnvoysFC)    return <PublicEnvoysFCForm />;
+  if (showSolidRock)   return <PublicSolidRockForm />;
   if (!session)        return <Login onLogin={login} />;
 
   const { role, user, username } = session;
@@ -14747,6 +15059,8 @@ function App() {
     if (active === "experience_dashboard") return <ExperienceAnalyticsDashboard />;
     if (active === "envoysfc_qr")     return <EnvoysFCQRPage />;
     if (active === "envoysfc_roster") return <EnvoysFCRoster />;
+    if (active === "solidrock_registrations") return <SolidRockRegistrations />;
+    if (active === "solidrock_qr") return <SolidRockQRPage />;
 
     if (active === "firsttimers") {
       if (editTarget) {
