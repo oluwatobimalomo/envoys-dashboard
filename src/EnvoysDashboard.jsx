@@ -5870,7 +5870,7 @@ function SolidRockRegistrations() {
 }
 
 function PublicSolidRockForm() {
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", marital_status: "", membership_status: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", marital_status: "", location: "", membership_status: "" });
   const [dupes, setDupes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -5891,7 +5891,9 @@ function PublicSolidRockForm() {
 
   const submit = async () => {
     if (!form.full_name.trim() || !form.phone.trim()) { setErr("Full name and phone number are required."); return; }
+    if (!form.email.trim())      { setErr("Email address is required."); return; }
     if (!form.marital_status)    { setErr("Select your marital status."); return; }
+    if (!form.location.trim())   { setErr("Location/City is required."); return; }
     if (!form.membership_status) { setErr("Select your membership status."); return; }
     setLoading(true); setErr("");
     try {
@@ -5899,9 +5901,10 @@ function PublicSolidRockForm() {
         method: "POST",
         body: JSON.stringify({
           full_name: form.full_name.trim(),
-          email: form.email.trim() || null,
+          email: form.email.trim(),
           phone: form.phone.trim(),
           marital_status: form.marital_status,
+          location: form.location.trim(),
           membership_status: form.membership_status,
         }),
       });
@@ -5956,8 +5959,8 @@ function PublicSolidRockForm() {
         <div style={{ background: "#fff", borderRadius: 16, padding: "1.75rem", color: C.textPrimary }}>
           {CREDS_MISSING && <CredsBanner />}
           <Alert type="error" msg={err} onClose={() => setErr("")} />
-          <FieldInput label="Full Name" id="srn" required value={form.full_name} onChange={set("full_name")} />
-          <FieldInput label="Phone Number" id="srp" required value={form.phone} onChange={set("phone")} />
+          <FieldInput label="Full Name" id="srn" required value={form.full_name} onChange={set("full_name")} placeholder="Ayo Ogunlana" />
+          <FieldInput label="Phone Number" id="srp" required value={form.phone} onChange={set("phone")} placeholder="+234..."/> 
           {dupes.length > 0 && (
             <div style={{
               background: C.amberLight, border: `1px solid ${C.amber}35`, borderLeft: `3px solid ${C.amber}`,
@@ -5966,9 +5969,10 @@ function PublicSolidRockForm() {
               This number may already be registered ({dupes[0].full_name}) — you can still submit if this is genuinely a different registration.
             </div>
           )}
-          <FieldInput label="Email Address" id="sre" type="email" value={form.email} onChange={set("email")} placeholder="Optional" />
+          <FieldInput label="Email Address" id="sre" type="email" required value={form.email} onChange={set("email")} placeholder="name@xyz.com" />
           <FieldInput label="Marital Status" id="srm" type="select" required value={form.marital_status} onChange={set("marital_status")}
             options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }]} />
+          <FieldInput label="Location/City" id="srl" required value={form.location} onChange={set("location")} placeholder="Ikeja, Lagos" />
           <FieldInput label="Membership Status" id="srms" type="select" required value={form.membership_status} onChange={set("membership_status")}
             options={[{ value: "Envoys", label: "Envoys Member" }, { value: "Non Envoys", label: "Non-Envoys (Guest)" }]} />
           <button
