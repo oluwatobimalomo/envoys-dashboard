@@ -458,6 +458,18 @@ function loadSession() {
   } catch { return null; }
 }
 
+const LAST_ACTIVE_KEY = "envoys_last_active_v1";
+
+function saveLastActive(activeId) {
+  try { localStorage.setItem(LAST_ACTIVE_KEY, activeId || ""); } catch {}
+}
+function loadLastActive() {
+  try { return localStorage.getItem(LAST_ACTIVE_KEY) || null; } catch { return null; }
+}
+function clearLastActive() {
+  try { localStorage.removeItem(LAST_ACTIVE_KEY); } catch {}
+}
+
 function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch {}
 }
@@ -625,6 +637,7 @@ const ROLE_META = {
   testimonyteam:   { label: "Testimony Team",  color: C.goldDark, bg: C.goldLight   },
   megastars:      { label: "Megastars Team",  color: C.soul,  bg: C.soulLight },
   megastarsadmin: { label: "Megastars Admin",  color: C.soul,  bg: C.soulLight },
+  connectcentre: { label: "Connect Centre", color: C.soul, bg: C.soulLight },
 };
 
 const NAV_ICONS = {
@@ -657,13 +670,12 @@ const NAV_ICONS = {
   nc_report: TrendingUp,
   soulcare_dashboard: BarChart2,
   steward_care: Shield,
+  care_priority_list: AlertCircle,
   megastars_checkinout: UserCheck,
   megastars_roster: Heart,
   megastars_services: Calendar,
-  envoysfc_qr: QrCode,
-  envoysfc_roster: Shield,
-  solidrock_registrations: BarChart2,
-  solidrock_qr: QrCode,
+  connect_centre_prospects: MapPin,
+  vip_journey_dashboard: TrendingUp,
 };
 
 const NAV = {
@@ -679,12 +691,14 @@ const NAV = {
     { id: "callqueue",           label: "Call Queue"          },
     { id: "experience_dashboard", label: "Analytics Dashboard" },
     { id: "add_visit",     label: "Add Visit"     },
+    { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
     { id: "sc_assign",     label: "Assign Visits" },
     { id: "sc_queue",      label: "Visit Queue"   },
     { id: "pe_assign",     label: "Potential Envoys" },
     { id: "nc_registry",   label: "Registry" },
     { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",  label: "Members Care" },
+    { id: "care_priority_list", label: "Care Priority List" },
     { id: "report",        label: "Report"        },
     { id: "nc_qr",         label: "QR Code" },
     { id: "nc_report",     label: "New Converts Retention" },
@@ -702,10 +716,7 @@ const NAV = {
     { id: "qrcode",        label: "VIPs QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
-    { id: "envoysfc_qr",      label: "Envoys FC QR" },
-    { id: "envoysfc_roster",  label: "Envoys FC Roster" },
-    { id: "solidrock_registrations", label: "Solid Rock Registrations" },
-    { id: "solidrock_qr", label: "Solid Rock QR" },
+    { id: "connect_centre_prospects", label: "Connect Centre" },    
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -717,10 +728,6 @@ const NAV = {
     { id: "megastars_checkinout", label: "Check In / Out" },
     { id: "megastars_services",   label: "Services" },
     { id: "megastars_roster",     label: "Roster" },
-    { id: "envoysfc_qr",      label: "Envoys FC QR" },
-    { id: "envoysfc_roster",  label: "Envoys FC Roster" },
-    { id: "solidrock_registrations", label: "Solid Rock Registrations" },
-    { id: "solidrock_qr", label: "Solid Rock QR" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -738,6 +745,7 @@ const NAV = {
     { id: "report",        label: "Report"        },
     { id: "nc_report",     label: "New Converts Retention" },
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
+    { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
   ],
   soulcare: [
     { id: "sc_queue",         label: "Visit Queue" },
@@ -746,6 +754,7 @@ const NAV = {
     { id: "envoys_visitors",  label: "Envoys Visitors" },
     { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",     label: "Members Care" },
+    { id: "care_priority_list", label: "Care Priority List" },
     { id: "sc_flagged",       label: "Flagged"     },
     { id: "pe_mine",          label: "My Potential Envoys" },
     { id: "nc_mine",          label: "My New Converts" },
@@ -760,6 +769,7 @@ const NAV = {
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "steward_care",        label: "Stewards Care" },
     { id: "members_care",        label: "Members Care" },
+    { id: "care_priority_list", label: "Care Priority List" },
     { id: "completed_pipelines", label: "Completed Pipelines" },
     { id: "sc_flagged",          label: "Flagged"             },
     { id: "sc_testimonies",      label: "Care Testimonies"    },
@@ -769,6 +779,7 @@ const NAV = {
     { id: "nc_qr",               label: "QR Code"      },
     { id: "nc_report",           label: "New Converts Retention" },
     { id: "soulcare_dashboard",  label: "Soul Care Dashboard" },
+    { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
   ],
   megastars: [
     { id: "megastars_checkinout", label: "Check In / Out" },
@@ -798,7 +809,11 @@ const NAV = {
   { id: "allfeedback",         label: "All Feedback"        },
   { id: "flagged",             label: "Flagged"             },
   { id: "experience_dashboard", label: "Analytics Dashboard" },
+  { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
 ],
+connectcentre: [
+  { id: "connect_centre_prospects", label: "Prospective Members" },
+  ],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -813,7 +828,6 @@ const NAV_GROUPS = {
     { title: "First-Timers", ids: ["firsttimers", "vip_contact", "addmember", "qrcode"] },
     { title: "New Converts", ids: ["nc_registry", "nc_qr"] },
     { title: "Megastars",    ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
-    { title: "Envoys FC (Temporary)", ids: ["envoysfc_qr", "envoysfc_roster"] },
   ],
   admin: [
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
@@ -821,28 +835,29 @@ const NAV_GROUPS = {
     { title: "Experience Team",  ids: ["assign_calls", "callqueue", "experience_dashboard"] },
     { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "visitation_tab"] },
     { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
-    { title: "Pastoral",         ids: ["report", "allfeedback", "flagged"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
+    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged", "nc_report"] },
     { title: "Megastars",        ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",      ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
-    { title: "Envoys FC (Temporary)", ids: ["envoysfc_qr", "envoysfc_roster"] },
+    { title: "Connect Centre",   ids: ["connect_centre_prospects"] },
   ],
   soulcareadmin: [
     { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "sc_flagged"] },
     { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "pe_mine", "envoys_visitors"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_assign", "nc_mine", "nc_qr", "nc_report", "soulcare_dashboard"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
     { title: "Testimonies",      ids: ["sc_testimonies"] },
+    { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged", "soulcare_dashboard", "vip_journey_dashboard"] },
   ],
 
   soulcare: [
     { title: "Visits",           ids: ["add_visit", "sc_queue", "sc_mine", "sc_flagged"] },
     { title: "Retention Funnel", ids: ["envoys_visitors", "pe_mine"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "nc_mine"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
   ],
 
   experienceadmin: [
-    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors", "experience_dashboard"] },
+    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors", "experience_dashboard", "vip_journey_dashboard"] },
     { title: "Feedback", ids: ["allfeedback", "flagged"] },
   ],
 };
@@ -2311,6 +2326,18 @@ const AREAS = [
   { value: "indecisive",     label: "Indecisive" },
 ];
 
+const FEEDBACK_FOCUS_POINTS = [
+  { value: "Spiritual Growth & Discipleship",     label: "Spiritual Growth & Discipleship" },
+  { value: "Message/Teaching",                    label: "Message/Teaching" },
+  { value: "Worship Experience",                  label: "Worship Experience" },
+  { value: "Community & Belonging",                label: "Community & Belonging" },
+  { value: "Leadership & Stewardship",             label: "Leadership & Stewardship" },
+  { value: "Volunteer/Service Opportunities",      label: "Volunteer/Service Opportunities" },
+  { value: "Events & Special Programs",            label: "Events & Special Programs" },
+  { value: "Service Flow & Timing",                label: "Service Flow & Timing" },
+  { value: "Church Environment",                   label: "Church Environment" },
+  { value: "Digital Engagement",                   label: "Digital Engagement" },
+];
 // ─────────────────────────────────────────────────────────────────────────────
 // Soul Care Revamp Phase 4 — Reporting Dashboard: VIP funnel aggregation.
 // Deliberately separate from useCallData/usePotentialEnvoyData — this only
@@ -5441,595 +5468,6 @@ function PipelineOverviewForm({ person, callerName = "", onBack, onDone }) {
 // scrolls horizontally.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ENVOYSFC_TEAMS = ["Solid Rock FC", "Interphaze FC"];
-
-function JerseyNumberPicker({ team, selected, onSelect }) {
-  const [taken, setTaken] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-
-  const loadTaken = useCallback(async () => {
-    if (!team) { setTaken(new Set()); setLoading(false); return; }
-    setLoading(true);
-    try {
-      const rows = await sb(`envoysfc_players?team=eq.${encodeURIComponent(team)}&select=jersey_no`).catch(() => []);
-      setTaken(new Set((rows || []).map(r => r.jersey_no)));
-    } catch { setTaken(new Set()); }
-    setLoading(false);
-  }, [team]);
-
-  useEffect(() => { loadTaken(); }, [loadTaken]);
-
-  if (!team) {
-    return <div style={{ fontSize: 13, color: C.textMuted, padding: "12px 0" }}>Select a team first to see available numbers.</div>;
-  }
-
-  return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontSize: 12, color: C.textMuted }}>
-          {loading ? "Checking availability…" : `${99 - taken.size} of 99 numbers available for ${team}`}
-        </span>
-        <button type="button" onClick={loadTaken} style={{ background: "none", border: "none", color: C.green, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
-          <RefreshCw size={11} style={{ verticalAlign: "middle", marginRight: 3 }} />Refresh
-        </button>
-      </div>
-      <div style={{
-        display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(38px, 1fr))", gap: 6,
-        maxHeight: 280, overflowY: "auto", padding: 4, border: `1px solid ${C.border}`, borderRadius: 8,
-      }}>
-        {Array.from({ length: 99 }, (_, i) => i + 1).map(n => {
-          const isTaken = taken.has(n);
-          const isSelected = selected === n;
-          return (
-            <button key={n} type="button" disabled={isTaken}
-              onClick={() => onSelect(n)}
-              style={{
-                padding: "8px 0", borderRadius: 6, fontSize: 13, fontWeight: 700, fontFamily: F.head,
-                cursor: isTaken ? "not-allowed" : "pointer",
-                background: isSelected ? C.green : isTaken ? C.bg : C.surface,
-                color: isSelected ? "#fff" : isTaken ? C.textMuted : C.textPrimary,
-                border: `1.5px solid ${isSelected ? C.green : isTaken ? C.border : C.greenBorder}`,
-                textDecoration: isTaken ? "line-through" : "none",
-                opacity: isTaken ? .5 : 1,
-              }}>
-              {n}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-
-function PublicEnvoysFCForm() {
-  const [fullName, setFullName] = useState("");
-  const [team, setTeam] = useState("");
-  const [jerseyName, setJerseyName] = useState("");
-  const [jerseyNo, setJerseyNo] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState("");
-  const [pickerKey, setPickerKey] = useState(0);
-
-  const changeTeam = (t) => { setTeam(t); setJerseyNo(null); setPickerKey(k => k + 1); };
-
-  const submit = async () => {
-    if (!fullName.trim()) { setErr("Full name is required."); return; }
-    if (!team) { setErr("Select a team."); return; }
-    if (!jerseyName.trim()) { setErr("Jersey name is required."); return; }
-    if (!jerseyNo) { setErr("Select a jersey number."); return; }
-    setLoading(true); setErr("");
-    try {
-      await sb("envoysfc_players", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: fullName.trim(), team,
-          jersey_name: jerseyName.trim().toUpperCase().slice(0, 10),
-          jersey_no: jerseyNo,
-        }),
-      });
-      setDone(true);
-    } catch (e) {
-      if (e.message && e.message.toLowerCase().includes("duplicate")) {
-        setErr(`Jersey #${jerseyNo} was just taken by someone else — please pick another number.`);
-        setJerseyNo(null);
-        setPickerKey(k => k + 1);
-      } else {
-        setErr(e.message);
-      }
-    }
-    setLoading(false);
-  };
-
-  if (done) return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.greenLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-          <CheckCircle size={32} color={C.green} />
-        </div>
-        <h2 style={{ color: C.green, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>You're registered!</h2>
-        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
-          Welcome to <strong>{team}</strong>! Your jersey will read <strong>{jerseyName.toUpperCase().slice(0, 10)}</strong> — #{jerseyNo}.
-        </p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
-          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
-            Envoys <span style={{ color: C.green }}>FC</span> Registration
-          </h1>
-          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-            Pick your team and claim your jersey number.
-          </p>
-        </div>
-        <div style={card}>
-          {CREDS_MISSING && <CredsBanner />}
-          <Alert type="error" msg={err} onClose={() => setErr("")} />
-          <FieldInput label="Full Name" id="fcn" required value={fullName} onChange={e => setFullName(e.target.value)} />
-          <FieldInput label="Team" id="fct" type="select" required value={team} onChange={e => changeTeam(e.target.value)}
-            options={ENVOYSFC_TEAMS.map(t => ({ value: t, label: t }))} />
-          <FieldInput label="Jersey Name" id="fcjn" required value={jerseyName}
-            onChange={e => setJerseyName(e.target.value.slice(0, 10))}
-            placeholder="e.g. BALLER" hint={`${jerseyName.length}/10 characters — shown on your jersey`} />
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
-              Jersey Number <span style={{ color: C.danger }}>*</span>
-            </label> 
-            <JerseyNumberPicker key={pickerKey} team={team} selected={jerseyNo} onSelect={setJerseyNo} />
-            {jerseyNo && <div style={{ fontSize: 12, color: C.green, marginTop: 6, fontWeight: 600 }}>Selected: #{jerseyNo}</div>}
-          </div>
-          <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
-            {loading ? "Registering…" : "Submit Your Details"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EnvoysFCQRPage() {
-  const fcUrl = window.location.origin + "/envoysfc";
-  const [custom, setCustom] = useState(fcUrl);
-  const [display, setDisplay] = useState(fcUrl);
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
-  const download = () => {
-    const a = document.createElement("a");
-    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
-    a.download = "envoysfc-registration-qr.png"; a.target = "_blank"; a.click();
-  };
-  return (
-    <div className="page-enter">
-      <PageHeader title="Envoys FC QR Code" subtitle="Temporary — share this so players can register for Solid Rock FC or Interphaze FC" />
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
-        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
-          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
-          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
-            <button style={btn("primary")} onClick={download}><Download size={14} />Download PNG</button>
-            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
-          </div>
-        </div>
-        <div style={{ ...card, flex: 1, minWidth: 260 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
-          <FieldInput label="Registration URL" id="fcurl" value={custom} onChange={e => setCustom(e.target.value)} />
-          <button style={{ ...btn("primary"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EnvoysFCRoster() {
-  const [players, setPlayers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  const [search, setSearch] = useState("");
-  const [fTeam, setFTeam] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr("");
-    try { setPlayers((await sb("envoysfc_players?order=team.asc,jersey_no.asc&limit=500")) || []); }
-    catch (e) { setErr(e.message); }
-    setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = players.filter(p => {
-    if (fTeam && p.team !== fTeam) return false;
-    if (search && !p.full_name?.toLowerCase().includes(search.toLowerCase()) && !p.jersey_name?.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const downloadCSV = () => {
-    const escape = (v) => {
-      if (v === null || v === undefined) return "";
-      const str = String(v).replace(/"/g, '""');
-      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
-    };
-    const header = ["Full Name", "Team", "Jersey Name", "Jersey No", "Registered At"];
-    const csvRows = [
-      header.join(","),
-      ...filtered.map(p => [
-        escape(p.full_name), escape(p.team), escape(p.jersey_name), escape(p.jersey_no),
-        escape(p.created_at ? p.created_at.slice(0, 10) : ""),
-      ].join(",")),
-    ];
-    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `envoysfc_roster_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const teamCounts = {};
-  ENVOYSFC_TEAMS.forEach(t => { teamCounts[t] = players.filter(p => p.team === t).length; });
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Envoys FC Roster" subtitle="Temporary — delete this page once data collection is complete"
-        action={
-          <button style={btn("primary")} onClick={downloadCSV} disabled={filtered.length === 0}>
-            <Download size={14} />Download CSV
-          </button>
-        } />
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
-        <StatCard label="Total Registered" value={players.length} icon={Users} accent={C.green} />
-        {ENVOYSFC_TEAMS.map(t => (
-          <StatCard key={t} label={t} value={teamCounts[t]} icon={Shield} accent={C.soul} sub={`${99 - teamCounts[t]} numbers left`} />
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
-        <select value={fTeam} onChange={e => setFTeam(e.target.value)} style={{ ...inputBase, width: 200, cursor: "pointer" }}>
-          <option value="">All teams</option>
-          {ENVOYSFC_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <div style={{ marginLeft: "auto", position: "relative" }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or jersey name…" style={{ ...inputBase, width: 220, paddingLeft: 30 }} />
-        </div>
-        <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
-      </div>
-
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>No players registered yet.</div>
-      ) : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(p => (
-            <div key={p.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={p.full_name} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{p.full_name}</div>
-                  <div style={{ fontSize: 12, color: C.textMuted }}>{p.team}</div>
-                </div>
-              </div>
-              <span style={badge(C.green, C.greenLight)}>{p.jersey_name} · #{p.jersey_no}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Solid Rock Conference — public registration, no login. Self-contained:
-// its own table, its own components, minimal touchpoints elsewhere.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SolidRockAdminStats() {
-  const [stats, setStats] = useState({ total: 0, envoys: 0, nonEnvoys: 0, married: 0 });
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    try {
-      const rows = await sb("solidrock_registrations?select=membership_status,marital_status").catch(() => []);
-      setStats({
-        total: (rows || []).length,
-        envoys: (rows || []).filter(r => r.membership_status === "Envoys").length,
-        nonEnvoys: (rows || []).filter(r => r.membership_status === "Non Envoys").length,
-        married: (rows || []).filter(r => r.marital_status === "Married").length,
-      });
-    } catch {}
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 10000);
-    return () => clearInterval(interval);
-  }, [load]);
-
-  return (
-    <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-      <StatCard label="Total Registered"   value={loading ? 0 : stats.total}     icon={Users}    accent={C.goldDark} />
-      <StatCard label="Envoys Members"      value={loading ? 0 : stats.envoys}    icon={Shield}   accent={C.goldDark} />
-      <StatCard label="Guests (Non-Envoys)" value={loading ? 0 : stats.nonEnvoys} icon={UserPlus} accent={C.goldDark} />
-      <StatCard label="Married Attendees"   value={loading ? 0 : stats.married}   icon={Heart}    accent={C.goldDark} />
-    </div>
-  );
-}
-
-function SolidRockRegistrations() {
-  const [regs, setRegs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
-  const [search, setSearch] = useState("");
-  const [fMembership, setFMembership] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr("");
-    try { setRegs((await sb("solidrock_registrations?order=created_at.desc&limit=1000")) || []); }
-    catch (e) { setErr(e.message); }
-    setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = regs.filter(r => {
-    if (fMembership && r.membership_status !== fMembership) return false;
-    if (search && !r.full_name?.toLowerCase().includes(search.toLowerCase()) && !r.phone?.includes(search)) return false;
-    return true;
-  });
-
-  const total     = regs.length;
-  const envoys    = regs.filter(r => r.membership_status === "Envoys").length;
-  const nonEnvoys = regs.filter(r => r.membership_status === "Non Envoys").length;
-  const married   = regs.filter(r => r.marital_status === "Married").length;
-
-  const downloadCSV = () => {
-    const escape = (v) => {
-      if (v === null || v === undefined) return "";
-      const str = String(v).replace(/"/g, '""');
-      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
-    };
-    const header = ["Full Name", "Email", "Phone", "Marital Status", "Membership Status", "Registered At"];
-    const csvRows = [
-      header.join(","),
-      ...filtered.map(r => [
-        escape(r.full_name), escape(r.email), escape(r.phone), escape(r.marital_status), escape(r.membership_status),
-        escape(r.created_at ? new Date(r.created_at).toLocaleString() : ""),
-      ].join(",")),
-    ];
-    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `solidrock_registrations_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Solid Rock Registrations" subtitle="Live registration count — staff view only, never shown to registrants"
-        action={
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
-            <button style={btn("primary")} onClick={downloadCSV} disabled={filtered.length === 0}>
-              <Download size={14} />Download CSV
-            </button>
-          </div>
-        } />
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20 }}>
-        <StatCard label="Total Registered"    value={total}     icon={Users}    accent={C.goldDark} />
-        <StatCard label="Envoys Members"      value={envoys}    icon={Shield}   accent={C.green}    />
-        <StatCard label="Guests (Non-Envoys)" value={nonEnvoys} icon={UserPlus} accent={C.blue}      />
-        <StatCard label="Married Attendees"   value={married}   icon={Heart}    accent={C.soul}      />
-      </div>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
-        <select value={fMembership} onChange={e => setFMembership(e.target.value)} style={{ ...inputBase, width: 200, cursor: "pointer" }}>
-          <option value="">All attendees</option>
-          <option value="Envoys">Envoys Members</option>
-          <option value="Non Envoys">Non-Envoys (Guests)</option>
-        </select>
-        <div style={{ marginLeft: "auto", position: "relative" }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 220, paddingLeft: 30 }} />
-        </div>
-      </div>
-
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>No registrations yet.</div>
-      ) : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(r => (
-            <div key={r.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={r.full_name} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
-                  <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> {r.email ? `· ${r.email}` : ""}</div>
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <span style={badge(r.membership_status === "Envoys" ? C.green : C.blue, r.membership_status === "Envoys" ? C.greenLight : C.blueLight, { fontSize: 11 })}>
-                  {r.membership_status}
-                </span>
-                <span style={badge(C.textMuted, C.bg, { fontSize: 11 })}>{r.marital_status}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PublicSolidRockForm() {
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", marital_status: "", location: "", membership_status: "" });
-  const [dupes, setDupes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState("");
-  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
-
-  useEffect(() => {
-    if (!phoneKey(form.phone)) { setDupes([]); return; }
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      const key = phoneKey(form.phone);
-      const rows = await sb("solidrock_registrations?select=id,full_name,phone").catch(() => []);
-      const found = (rows || []).filter(r => phoneKey(r.phone) === key);
-      if (!cancelled) setDupes(found);
-    }, 600);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [form.phone]);
-
-  const submit = async () => {
-    if (!form.full_name.trim() || !form.phone.trim()) { setErr("Full name and phone number are required."); return; }
-    if (!form.email.trim())      { setErr("Email address is required."); return; }
-    if (!form.marital_status)    { setErr("Select your marital status."); return; }
-    if (!form.location.trim())   { setErr("Location/City is required."); return; }
-    if (!form.membership_status) { setErr("Select your membership status."); return; }
-    setLoading(true); setErr("");
-    try {
-      await sb("solidrock_registrations", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: form.full_name.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim(),
-          marital_status: form.marital_status,
-          location: form.location.trim(),
-          membership_status: form.membership_status,
-        }),
-      });
-      setDone(true);
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  const pageStyle = {
-    minHeight: "100vh",
-    background: "linear-gradient(160deg, #0a0a0a 0%, #1a1408 55%, #0a0a0a 100%)",
-    fontFamily: F.body, padding: "2.5rem 1rem", color: "#fff",
-  };
-
-  if (done) return (
-    <div style={{ ...pageStyle, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{
-        maxWidth: 480, textAlign: "center", padding: "3rem 2rem",
-        background: "rgba(255,255,255,.05)", border: "1px solid rgba(212,175,55,.35)", borderRadius: 16,
-      }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: "50%", background: "rgba(212,175,55,.15)",
-          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
-        }}>
-          <CheckCircle size={32} color="#D4AF37" />
-        </div>
-        <h2 style={{ color: "#D4AF37", margin: "0 0 10px", fontFamily: F.head, fontWeight: 900, fontSize: 22 }}>You're Checked In!</h2>
-        <p style={{ color: "rgba(255,255,255,.75)", fontSize: 14, lineHeight: 1.7 }}>
-          Welcome to <strong>Day 1 of Solid Rock Conference 2026</strong>! Get set to become <strong>The Complete Man</strong>.
-        </p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a0a0a 0%, #1a1408 55%, #0a0a0a 100%)", fontFamily: F.body, color: "#fff" }}>
-      <img src="/solidrock-banner.png" alt="Solid Rock Conference"
-        style={{ width: "100%", height: "clamp(90px, 16vw, 170px)", display: "block", objectFit: "contain", objectPosition: "center" }}
-        onError={e => { e.target.style.display = "none"; }} />
-      <div style={{ padding: "2rem 1rem 2.5rem" }}>
-      <div style={{ maxWidth: 560, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <h1 style={{ margin: 0, fontSize: 36, fontWeight: 900, fontFamily: F.head, lineHeight: 1.05 }}>
-            <span style={{ color: "#F5D061" }}>THE COMPLETE</span><br />
-            <span style={{ color: "#fff" }}>MAN</span>
-          </h1>
-          <div style={{ marginTop: 14, fontSize: 15, color: "#F5D061", fontWeight: 700, letterSpacing: ".03em" }}>
-            Solid Rock Conf. Day 1 Check-In
-          </div>
-        </div>
-
-        <div style={{ background: "#fff", borderRadius: 16, padding: "1.75rem", color: C.textPrimary }}>
-          {CREDS_MISSING && <CredsBanner />}
-          <Alert type="error" msg={err} onClose={() => setErr("")} />
-          <FieldInput label="Full Name" id="srn" required value={form.full_name} onChange={set("full_name")} placeholder="Ayo Ogunlana" />
-          <FieldInput label="Phone Number" id="srp" required value={form.phone} onChange={set("phone")} placeholder="+234..."/> 
-          {dupes.length > 0 && (
-            <div style={{
-              background: C.amberLight, border: `1px solid ${C.amber}35`, borderLeft: `3px solid ${C.amber}`,
-              borderRadius: 8, padding: "10px 14px", marginTop: -6, marginBottom: 14, fontSize: 12.5, color: C.amber,
-            }}>
-              This number may already be registered ({dupes[0].full_name}) — you can still submit if this is genuinely a different registration.
-            </div>
-          )}
-          <FieldInput label="Email Address" id="sre" type="email" required value={form.email} onChange={set("email")} placeholder="name@xyz.com" />
-          <FieldInput label="Marital Status" id="srm" type="select" required value={form.marital_status} onChange={set("marital_status")}
-            options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }]} />
-          <FieldInput label="Location/City" id="srl" required value={form.location} onChange={set("location")} placeholder="Ikeja, Lagos" />
-          <FieldInput label="Membership Status" id="srms" type="select" required value={form.membership_status} onChange={set("membership_status")}
-            options={[{ value: "Envoys", label: "Envoys Member" }, { value: "Non Envoys", label: "Non-Envoys (Guest)" }]} />
-          <button
-            style={{
-              width: "100%", padding: 13, fontSize: 15, fontWeight: 700, borderRadius: 8, border: "none",
-              cursor: "pointer", background: "#D4AF37", color: "#0a0a0a", fontFamily: F.body,
-            }}
-            onClick={submit} disabled={loading}>
-            {loading ? "Registering…" : "Register Now"}
-          </button>
-        </div>
-      </div>
-      </div>
-    </div>
-  );
-}
-
-function SolidRockQRPage() {
-  const srUrl = window.location.origin + "/solidrock";
-  const [custom, setCustom] = useState(srUrl);
-  const [display, setDisplay] = useState(srUrl);
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=D4AF37&bgcolor=0a0a0a&data=${encodeURIComponent(display)}`;
-  const download = () => {
-    const a = document.createElement("a");
-    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=D4AF37&bgcolor=0a0a0a&data=${encodeURIComponent(display)}`;
-    a.download = "solidrock-registration-qr.png"; a.target = "_blank"; a.click();
-  };
-  return (
-    <div className="page-enter">
-      <PageHeader title="Solid Rock Conference QR Code" subtitle="Display or print this — attendees scan it to register on the spot" />
-      <SolidRockAdminStats />
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
-        <div style={{ ...card, textAlign: "center", flex: "0 0 auto", background: "#0a0a0a" }}>
-          <img src={qrSrc} alt="QR Code" width={240} height={240}
-            style={{ display: "block", borderRadius: 8, border: "1px solid rgba(212,175,55,.35)" }} />
-          <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,.6)", wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
-            <button style={{ ...btn("primary"), background: "#D4AF37", color: "#0a0a0a", border: "none" }} onClick={download}>
-              <Download size={14} />Download PNG
-            </button>
-            <button style={{ ...btn("outline"), color: "#D4AF37", border: "1.5px solid #D4AF37" }} onClick={() => window.open(display, "_blank")}>
-              Open Link
-            </button>
-          </div>
-        </div>
-        <div style={{ ...card, flex: 1, minWidth: 260 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
-          <FieldInput label="Registration URL" id="srqrurl" value={custom} onChange={e => setCustom(e.target.value)} />
-          <button style={{ ...btn("primary"), width: "100%", background: "#D4AF37", color: "#0a0a0a", border: "none" }} onClick={() => setDisplay(custom)}>
-            Update QR Code
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function EnvoysVisitors() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6726,7 +6164,7 @@ function NewConvertsAssignView({ currentUser, role }) {
                       <>
                         {teamLoading ? <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span> : (
                           <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))} style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Select follower-upper</option>
+                            <option value="">Allocatenpm</option>
                             {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         )}
@@ -7170,8 +6608,459 @@ function NewConvertsRetentionReport() {
   );
 }
 
+function ConnectCentreProspects({ currentUser }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [fCentre, setFCentre] = useState("");
+  const [filter, setFilter] = useState("all"); // all | confirmed | unconfirmed
+  const [selected, setSelected] = useState(new Set());
+  const [savingId, setSavingId] = useState(null);
 
+  const load = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      setRows((await sb("connect_centre_prospects?order=created_at.desc&limit=2000")) || []);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
+  const toggleConfirmed = async (row) => {
+    setSavingId(row.id);
+    try {
+      const next = !row.confirmed;
+      await sb(`connect_centre_prospects?id=eq.${row.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          confirmed: next,
+          confirmed_by: next ? (currentUser || null) : null,
+          confirmed_at: next ? new Date().toISOString() : null,
+        }),
+      });
+      toast.success(next ? `${row.full_name} marked as confirmed.` : `${row.full_name} unmarked.`);
+      load();
+    } catch (e) { toast.error(e.message); }
+    setSavingId(null);
+  };
+
+  const filtered = rows.filter(r => {
+    if (fCentre && r.connect_center !== fCentre) return false;
+    if (filter === "confirmed" && !r.confirmed) return false;
+    if (filter === "unconfirmed" && r.confirmed) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!r.full_name?.toLowerCase().includes(q) && !r.phone?.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected = allFilteredIds.some(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+
+  const totalCount = rows.length;
+  const confirmedCount = rows.filter(r => r.confirmed).length;
+  const unconfirmedCount = totalCount - confirmedCount;
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Connect Centre","Natural Groups","Confirmed","Confirmed By","Confirmed At","Submitted At"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name), escape(r.phone), escape(r.gender), escape(r.dob),
+        escape(r.marital_status), escape(r.life_stage), escape(r.connect_center),
+        escape(Array.isArray(r.natural_groups) ? r.natural_groups.join("; ") : (r.natural_groups || "")),
+        escape(r.confirmed ? "Yes" : "No"), escape(r.confirmed_by),
+        escape(r.confirmed_at ? r.confirmed_at.slice(0, 10) : ""),
+        escape(r.created_at ? r.created_at.slice(0, 10) : ""),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const centreLabel = fCentre ? `_${fCentre.replace(/[^a-z0-9]/gi, "_")}` : "_all_centres";
+    a.href = url; a.download = `prospective_connect_members${centreLabel}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Prospective Connect Members"
+        subtitle="VIPs recommended to a Connect Centre — confirm once they're added to the centre's WhatsApp group"
+        action={
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button style={btn("ghost", { padding: "8px 10px" })} onClick={load}><RefreshCw size={14} /></button>
+            <button
+              style={{
+                ...btn("primary"),
+                background: selectedCount > 0 ? C.soul : C.border,
+                color: "#fff", cursor: selectedCount > 0 ? "pointer" : "not-allowed", border: "none",
+              }}
+              onClick={downloadCSV} disabled={selectedCount === 0}>
+              <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+            </button>
+          </div>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
+        <StatCard label="Total Prospects"       value={totalCount}       icon={Users}       accent={C.soul} />
+        <StatCard label="Confirmed"             value={confirmedCount}   icon={CheckCircle} accent={C.green} />
+        <StatCard label="Awaiting Confirmation" value={unconfirmedCount} icon={AlertCircle} accent={C.gold} />
+      </div>
+
+      <div style={{
+        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
+        marginBottom: 16, padding: "12px 16px",
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}22`,
+      }}>
+        <select value={fCentre} onChange={e => setFCentre(e.target.value)} style={{ ...inputBase, width: 200, cursor: "pointer" }}>
+          <option value="">All Connect Centres</option>
+          {CONNECT_CENTERS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        {["all", "unconfirmed", "confirmed"].map(f => (
+          <button key={f} onClick={() => setFilter(f)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              background: filter === f ? C.soul : C.bg, color: filter === f ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === f ? C.soul : C.border}`,
+            }}>
+            {f === "all" ? "All" : f === "unconfirmed" ? "Awaiting" : "Confirmed"}
+          </button>
+        ))}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Users size={32} style={{ marginBottom: 10, opacity: .4 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>
+            {rows.length === 0 ? "No Connect Centre recommendations yet." : "No prospects match your filters."}
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
+          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: "40px minmax(160px,1.2fr) 140px 80px 90px 130px 170px 1fr 160px",
+              gap: 10, alignItems: "center", padding: "10px 16px", background: C.bg,
+              borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 3, minWidth: 1250,
+            }}>
+              <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"} style={{
+                width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                border: `2px solid ${someSelected ? C.soul : C.border}`,
+                background: allSelected ? C.soul : "transparent",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
+                {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: "#fff", borderRadius: 1 }} />}
+              </div>
+              {["Full Name", "Phone", "Gender", "DOB", "Life Stage", "Connect Centre", "Natural Groups", "Confirmed"].map(h => (
+                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
+              ))}
+            </div>
+            {filtered.map((r, i) => {
+              const isChecked = selected.has(r.id);
+              const groups = Array.isArray(r.natural_groups) ? r.natural_groups : (r.natural_groups ? [r.natural_groups] : []);
+              return (
+                <div key={r.id} style={{
+                  display: "grid", gridTemplateColumns: "40px minmax(160px,1.2fr) 140px 80px 90px 130px 170px 1fr 160px",
+                  gap: 10, alignItems: "center", padding: "10px 16px", minWidth: 1250,
+                  background: isChecked ? `${C.soul}08` : C.surface,
+                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                }}>
+                  <div onClick={() => toggleRow(r.id)} style={{
+                    width: 18, height: 18, borderRadius: 4, cursor: "pointer",
+                    border: `2px solid ${isChecked ? C.soul : C.border}`,
+                    background: isChecked ? C.soul : "transparent",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <Avatar name={r.full_name} size={28} />
+                    <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.full_name}</div>
+                  </div>
+                  <div style={{ fontSize: 12 }}><PhoneLink phone={r.phone} withWhatsApp /></div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.gender || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.dob || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.life_stage || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{r.connect_center || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{groups.length ? groups.join(", ") : "—"}</div>
+                  <div>
+                    {r.confirmed ? (
+                      <button style={{ ...badge(C.green, C.greenLight, { fontSize: 11 }), border: "none", cursor: "pointer" }}
+                        onClick={() => toggleConfirmed(r)} disabled={savingId === r.id}>
+                        <CheckCircle size={11} />Confirmed
+                      </button>
+                    ) : (
+                      <button style={btn("soul", { padding: "5px 10px", fontSize: 11 })}
+                        onClick={() => toggleConfirmed(r)} disabled={savingId === r.id}>
+                        {savingId === r.id ? "Saving…" : "Mark Confirmed"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {!loading && filtered.length > 0 && (
+        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
+          Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> prospect{rows.length !== 1 ? "s" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VIP Journey Dashboard — aggregates the full pipeline: First-Timer →
+// contacted within 48hrs → VIP Overview decision → Connect Centre
+// confirmation → Potential Envoys 5-week track → graduation. Reuses
+// PasDonut / PasOutcomeBars / PasEmpty already built for Pastoral Report.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useVipJourneyStats(dateFrom, dateTo) {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        let ftQ = "first_timers?select=id,service_date";
+        if (dateFrom) ftQ += `&service_date=gte.${dateFrom}`;
+        if (dateTo)   ftQ += `&service_date=lte.${dateTo}`;
+
+        const [ftRows, fbRows, ovRows, peRows, ccpRows] = await Promise.all([
+          sb(ftQ).catch(() => []),
+          sb("call_feedback?select=first_timer_id,created_at,church_attendance").catch(() => []),
+          sb("pipeline_overviews?select=first_timer_id,move_to_membership").catch(() => []),
+          sb("potential_envoys?select=original_first_timer_id,training_completed,promoted_to_membership").catch(() => []),
+          sb("connect_centre_prospects?select=original_first_timer_id,confirmed").catch(() => []),
+        ]);
+
+        const ftIds = new Set((ftRows || []).map(f => f.id));
+        const ftMap = {}; (ftRows || []).forEach(f => { ftMap[f.id] = f; });
+
+        // Stage: contacted within 48 hours of service_date
+        const earliestCallByFt = {};
+        (fbRows || []).forEach(f => {
+          if (!ftIds.has(f.first_timer_id) || !f.created_at) return;
+          if (!earliestCallByFt[f.first_timer_id] || f.created_at < earliestCallByFt[f.first_timer_id]) {
+            earliestCallByFt[f.first_timer_id] = f.created_at;
+          }
+        });
+        let contactedWithin48 = 0;
+        Object.entries(earliestCallByFt).forEach(([ftId, callTime]) => {
+          const ft = ftMap[ftId];
+          if (!ft || !ft.service_date) return;
+          const hoursDiff = (new Date(callTime) - new Date(ft.service_date)) / 36e5;
+          if (hoursDiff <= 48) contactedWithin48++;
+        });
+        const anyCalled = Object.keys(earliestCallByFt).length;
+
+        // Stage: returned within the follow-up window (any "Present" church_attendance)
+        const returnedSet = new Set();
+        (fbRows || []).forEach(f => {
+          if (ftIds.has(f.first_timer_id) && f.church_attendance === "Present") returnedSet.add(f.first_timer_id);
+        });
+
+        // Stage: VIP Overview decision
+        const ovInCohort = (ovRows || []).filter(o => ftIds.has(o.first_timer_id));
+        const recommended = ovInCohort.filter(o => o.move_to_membership).length;
+        const declined = ovInCohort.length - recommended;
+
+        // Stage: Connect Centre confirmation
+        const ccpInCohort = (ccpRows || []).filter(c => ftIds.has(c.original_first_timer_id));
+        const connectTotal = ccpInCohort.length;
+        const connectConfirmed = ccpInCohort.filter(c => c.confirmed).length;
+
+        // Stage: Potential Envoys 5-week track + training + graduation
+        const peInCohort = (peRows || []).filter(p => ftIds.has(p.original_first_timer_id));
+        const trainingDone = peInCohort.filter(p => p.training_completed).length;
+        const graduated = peInCohort.filter(p => p.promoted_to_membership).length;
+
+        const totalRegistered = (ftRows || []).length;
+
+        if (!cancelled) {
+          setStats({
+            totalRegistered,
+            anyCalled,
+            contactedWithin48,
+            contactedWithin48Pct: totalRegistered > 0 ? Math.round((contactedWithin48 / totalRegistered) * 100) : 0,
+            returnedCount: returnedSet.size,
+            returnedPct: totalRegistered > 0 ? Math.round((returnedSet.size / totalRegistered) * 100) : 0,
+            overviewsSubmitted: ovInCohort.length,
+            recommended, declined,
+            connectTotal, connectConfirmed,
+            connectConfirmedPct: connectTotal > 0 ? Math.round((connectConfirmed / connectTotal) * 100) : 0,
+            peTotal: peInCohort.length,
+            trainingDone,
+            graduated,
+            graduatedPct: recommended > 0 ? Math.round((graduated / recommended) * 100) : 0,
+            overallConversionPct: totalRegistered > 0 ? Math.round((graduated / totalRegistered) * 100) : 0,
+          });
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [dateFrom, dateTo]);
+
+  return { stats, loading, err };
+}
+
+function generateVipJourneySummary(stats) {
+  if (!stats || stats.totalRegistered === 0) {
+    return "No First-Timers registered in this period.";
+  }
+  const sentences = [];
+  sentences.push(
+    `This period, ${stats.totalRegistered} First-Timer${stats.totalRegistered !== 1 ? "s" : ""} registered, with ${stats.contactedWithin48} (${stats.contactedWithin48Pct}%) contacted within the first 48 hours.`
+  );
+  if (stats.contactedWithin48Pct >= 70) {
+    sentences.push(`A ${stats.contactedWithin48Pct}% same-window contact rate reflects strong responsiveness from the Experience Team.`);
+  } else if (stats.totalRegistered > 0 && stats.contactedWithin48Pct < 40) {
+    sentences.push(`A ${stats.contactedWithin48Pct}% contact-within-48-hours rate may be worth a closer look — first impressions matter most in this early window.`);
+  }
+  if (stats.overviewsSubmitted > 0) {
+    sentences.push(`${stats.overviewsSubmitted} VIP Retention Overview${stats.overviewsSubmitted !== 1 ? "s were" : " was"} submitted, recommending ${stats.recommended} for membership.`);
+  }
+  if (stats.connectTotal > 0) {
+    sentences.push(`Of those recommended to a Connect Centre, ${stats.connectConfirmed} of ${stats.connectTotal} (${stats.connectConfirmedPct}%) have been confirmed as added to their centre's WhatsApp group.`);
+  }
+  if (stats.recommended > 0) {
+    sentences.push(`${stats.graduated} of ${stats.recommended} Potential Envoys (${stats.graduatedPct}%) have completed the full journey and graduated to Membership.`);
+  }
+  return sentences.join(" ");
+}
+
+function VipJourneyDashboard() {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const { stats, loading, err } = useVipJourneyStats(dateFrom, dateTo);
+
+  const dateFilterAction = (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
+      <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 140 }} />
+    </div>
+  );
+
+  if (loading || !stats) {
+    return (
+      <div className="page-enter">
+        <PageHeader title="VIP Journey Dashboard" subtitle="The full 8-week journey, from first contact to Membership" action={dateFilterAction} />
+        <SkeletonReport />
+      </div>
+    );
+  }
+
+  const funnelBars = [
+    { name: "Registered",          value: stats.totalRegistered,     color: C.blue },
+    { name: "Contacted (48h)",     value: stats.contactedWithin48,   color: C.soul },
+    { name: "Overview Submitted",  value: stats.overviewsSubmitted,  color: C.green },
+    { name: "Recommended",         value: stats.recommended,         color: C.goldDark },
+    { name: "Connect Confirmed",   value: stats.connectConfirmed,    color: C.research },
+    { name: "Graduated",           value: stats.graduated,           color: C.flag },
+  ];
+
+  const decisionDonut = [
+    { name: "Recommended",     value: stats.recommended, color: C.green },
+    { name: "Not Recommended", value: stats.declined,    color: C.amber },
+  ].filter(d => d.value > 0);
+
+  const summaryText = generateVipJourneySummary(stats);
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="VIP Journey Dashboard" subtitle="The full 8-week journey, from first contact to Membership" action={dateFilterAction} />
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      <div style={{ marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+        Handover Metrics
+      </div>
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Contacted Within 48h"  value={`${stats.contactedWithin48Pct}%`} icon={Phone}      accent={C.soul}
+          sub={`${stats.contactedWithin48} of ${stats.totalRegistered}`} />
+        <StatCard label="Returned & Attended Service"   value={`${stats.returnedPct}%`}          icon={CheckCircle} accent={C.green}
+          sub={`${stats.returnedCount} of ${stats.totalRegistered}`} />
+        <StatCard label="Connected to Cells"    value={`${stats.connectConfirmedPct}%`}  icon={MapPin}     accent={C.research}
+          sub={`${stats.connectConfirmed} of ${stats.connectTotal} recommended`} />
+        <StatCard label="Active After 8 Weeks"  value={`${stats.overallConversionPct}%`} icon={Star}       accent={C.goldDark}
+          sub={`${stats.graduated} graduated to Membership`} />
+      </div>
+
+      <div style={{ marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+        Journey Funnel
+      </div>
+      <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+        <div style={{ ...card, gridColumn: "1 / -1" }}>
+          <SH title="First-Timer → Membership, Stage by Stage" icon={TrendingUp} />
+          {stats.totalRegistered === 0 ? <PasEmpty label="No First-Timers registered in this range" /> : <PasOutcomeBars data={funnelBars} height={260} />}
+        </div>
+
+        <div style={card}>
+          <SH title="VIP Decision Split" icon={UserCheck} />
+          {decisionDonut.length === 0
+            ? <PasEmpty label="No overviews submitted in this range" />
+            : <PasDonut data={decisionDonut} centerValue={stats.overviewsSubmitted} centerLabel="Overviews Submitted" />}
+        </div>
+
+        <div style={card}>
+          <SH title="Potential Envoys Progress" icon={Star} />
+          {stats.peTotal === 0 ? <PasEmpty label="No Potential Envoys in this range" /> : (
+            <>
+              <PasBarRow label="Training Completed" value={stats.trainingDone} max={stats.peTotal} color={C.gold} sub={`${stats.trainingDone} of ${stats.peTotal}`} />
+              <PasBarRow label="Graduated to Membership" value={stats.graduated} max={stats.peTotal} color={C.green} sub={`${stats.graduated} of ${stats.peTotal}`} />
+            </>
+          )}
+        </div>
+      </div>
+
+      <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <FileText size={15} color={C.goldDark} />
+          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head, color: C.goldDark }}>Period Summary</span>
+        </div>
+        <div style={{ fontSize: 14, color: C.textPrimary, lineHeight: 1.75, background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${C.gold}20` }}>
+          {summaryText}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 16, fontSize: 12, color: C.textMuted, lineHeight: 1.6 }}>
+        For call-level detail, see <strong>Pastoral Report</strong> or the <strong>Experience Dashboard</strong>. For Connect Centre specifics, see <strong>Prospective Connect Members</strong>.
+      </div>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Soul Care Revamp Phase 2 — Potential Envoys: shared helpers, data hook,
@@ -10161,6 +10050,7 @@ const SC_VISIT_TYPES = [
   { value: "Celebration",     label: "Celebration (New Born, Wedding, House Warming…)" },
   { value: "Pastoral Care",   label: "Pastoral Care" },
   { value: "Welfare Check",   label: "Welfare Check" },
+  { value: "Phone Call",      label: "Phone Call" },
 ];
 
 const VISIT_STATUS_META = {
@@ -11181,6 +11071,224 @@ function MembersCareCSVImport({ currentUser, onDone }) {
   );
 }
 
+function MemberProfile({ member, currentUser, role, onBack }) {
+  const [contacts, setContacts] = useState([]);
+  const [visits, setVisits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [addingToPool, setAddingToPool] = useState(false);
+  const [showLogVisit, setShowLogVisit] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(member.membership_status || "Active");
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [tick, setTick] = useState(0);
+  const reload = () => setTick(t => t + 1);
+
+  const changeStatus = async (newStatus) => {
+    if (newStatus === currentStatus) return;
+    setSavingStatus(true);
+    try {
+      await sb(`church_members?id=eq.${member.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ membership_status: newStatus }),
+      });
+      setCurrentStatus(newStatus);
+      toast.success(`${member.full_name}'s status updated to ${newStatus}.`);
+    } catch (e) { toast.error(e.message); }
+    setSavingStatus(false);
+  };
+
+  const isAdmin = role === "soulcareadmin" || role === "admin" || role === "soulcare";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const key = phoneKey(member.phone);
+        const allContacts = await sb("soul_care_contacts?select=*").catch(() => []);
+        const matchedContacts = (allContacts || []).filter(c => phoneKey(c.phone) === key);
+        const contactIds = matchedContacts.map(c => c.id);
+
+        let allVisits = [];
+        if (contactIds.length > 0) {
+          const orClause = contactIds.map(id => `contact_id.eq.${id}`).join(",");
+          allVisits = await sb(`soul_care_visits?or=(${orClause})&order=created_at.desc&limit=500`).catch(() => []);
+        }
+        if (!cancelled) {
+          setContacts(matchedContacts);
+          setVisits(allVisits || []);
+        }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [member.phone, tick]);
+
+  const addToPool = async () => {
+    setAddingToPool(true); setErr("");
+    try {
+      await sb("soul_care_contacts", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: member.full_name, phone: member.phone, email: member.email || null,
+          gender: member.gender || null, house_address: member.house_address || null,
+          nearest_landmark: member.nearest_landmark || null, marital_status: member.marital_status || null,
+          life_stage: member.life_stage || null, dob: member.dob || null, added_by: currentUser || null,
+        }),
+      });
+      toast.success(`${member.full_name} added to the visit pool.`);
+      reload();
+    } catch (e) { setErr(e.message); }
+    setAddingToPool(false);
+  };
+
+  const activeContact = contacts.find(c => c.is_active !== false) || contacts[0];
+
+  if (showLogVisit && activeContact) {
+    return (
+      <LogVisitForm
+        contact={activeContact}
+        loggedBy={currentUser}
+        onBack={() => setShowLogVisit(false)}
+        onDone={() => { setShowLogVisit(false); reload(); }}
+      />
+    );
+  }
+
+  const ageOf = (dob) => {
+    if (!dob) return null;
+    const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
+    if (!y) return null;
+    const t = new Date();
+    let a = t.getFullYear() - y;
+    if (t.getMonth() + 1 < m || (t.getMonth() + 1 === m && t.getDate() < d)) a--;
+    return a;
+  };
+
+  const statusMeta2 = MC_STATUS_META[currentStatus] || MC_STATUS_META.Active;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title={member.full_name}
+        subtitle={`${member.category || "Member"} · Full care history`}
+        action={<button style={btn("ghost")} onClick={onBack}><ArrowLeft size={14} />Back</button>}
+      />
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      <div style={{ ...card, marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <Avatar name={member.full_name} size={56} />
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+              <span style={{ fontWeight: 800, fontSize: 18, fontFamily: F.head }}>{member.full_name}</span>
+              <span style={badge(
+                member.category === "Steward" ? C.goldDark : C.soul,
+                member.category === "Steward" ? C.goldLight : C.soulLight, { fontSize: 11 }
+              )}>{member.category || "Member"}</span>
+              <span style={badge(statusMeta2.color, statusMeta2.bg, { fontSize: 11 })}>{currentStatus}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 12, color: C.textMuted }}>Change status:</span>
+              {["Active", "Inactive", "Travelled"].map(s => (
+                <button key={s}
+                  onClick={() => changeStatus(s)}
+                  disabled={savingStatus || s === currentStatus}
+                  style={{
+                    padding: "4px 12px", borderRadius: 16, fontSize: 11, fontWeight: 600,
+                    cursor: s === currentStatus ? "default" : "pointer",
+                    background: s === currentStatus ? (MC_STATUS_META[s]?.bg || C.bg) : C.surface,
+                    color: s === currentStatus ? (MC_STATUS_META[s]?.color || C.textMuted) : C.textSecondary,
+                    border: `1.5px solid ${s === currentStatus ? (MC_STATUS_META[s]?.color || C.border) : C.border}`,
+                  }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: "6px 20px", fontSize: 13, color: C.textSecondary }}>
+              <div><PhoneLink phone={member.phone} withWhatsApp bold /></div>
+              <div>{member.email || "No email on file"}</div>
+              <div>{member.gender || "—"} {ageOf(member.dob) !== null ? `· Age ${ageOf(member.dob)}` : ""}</div>
+              <div>{member.marital_status || "—"} · {member.life_stage || "—"}</div>
+              <div style={{ gridColumn: "1 / -1" }}>{member.house_address || "No address on file"}{member.nearest_landmark ? ` · Near ${member.nearest_landmark}` : ""}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
+          Care History ({visits.length})
+        </div>
+        {isAdmin && (
+          activeContact ? (
+            <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => setShowLogVisit(true)}>
+              <MapPin size={13} />Log New Visit
+            </button>
+          ) : (
+            <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={addToPool} disabled={addingToPool}>
+              <UserPlus size={13} />{addingToPool ? "Adding…" : "Add to Visit Pool to Enable Logging"}
+            </button>
+          )
+        )}
+      </div>
+
+      {loading ? <SkeletonList rows={3} /> : visits.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Heart size={28} color={C.soul} style={{ marginBottom: 8, opacity: .5 }} />
+          <div style={{ fontWeight: 600, fontFamily: F.head }}>No visits logged yet</div>
+          <div style={{ fontSize: 13, marginTop: 4 }}>Once a visit is logged, the full history will appear here.</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {visits.map(v => {
+            const vsm = VISIT_STATUS_META[v.visit_status] || { color: C.textMuted, bg: C.bg };
+            const um = URGENCY_META[v.urgency] || {};
+            return (
+              <div key={v.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${v.escalate_to_pastorate ? C.flag : vsm.color}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={badge(vsm.color, vsm.bg, { fontSize: 11, fontFamily: F.head })}>{v.visit_type || "Visit"} · {v.visit_status}</span>
+                    {v.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{v.urgency}</span>}
+                    {v.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Escalated</span>}
+                    {v.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}>
+                    {v.visit_date || (v.created_at ? v.created_at.slice(0, 10) : "—")}
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 6 }}>
+                  Logged by <strong>{v.logged_by || "—"}</strong>
+                </div>
+                {v.reason_for_care && <div style={{ fontSize: 13, color: C.textSecondary, marginBottom: 4 }}><strong>Reason:</strong> {v.reason_for_care}</div>}
+                {v.meeting_notes && <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, marginBottom: 4 }}>{v.meeting_notes}</div>}
+                {v.prayer_requests && <div style={{ fontSize: 12, color: C.soul, marginBottom: 4 }}><strong>Prayer:</strong> {v.prayer_requests}</div>}
+                {v.testimony && <div style={{ fontSize: 12, color: C.goldDark, marginBottom: 4 }}><strong>Testimony:</strong> {v.testimony}</div>}
+                {v.material_support && v.material_support_notes && (
+                  <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}><strong>Support given:</strong> {v.material_support_notes}</div>
+                )}
+                {v.follow_up_required && v.next_follow_up_date && (
+                  <div style={{ fontSize: 12, color: C.amber, marginBottom: 4 }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> Follow-up: {v.next_follow_up_date}</div>
+                )}
+                {v.escalate_to_pastorate && v.escalation_reason && (
+                  <div style={{ fontSize: 12, color: C.flag, marginTop: 6, background: C.flagLight, padding: "6px 10px", borderRadius: 5 }}>
+                    🚩 {v.escalation_reason}
+                  </div>
+                )}
+                {v.visit_photo_url && (
+                  <img src={v.visit_photo_url} alt="Visit" style={{ width: 120, height: 90, objectFit: "cover", borderRadius: 8, marginTop: 8, cursor: "pointer", border: `1px solid ${C.border}` }}
+                    onClick={() => window.open(v.visit_photo_url, "_blank")} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // v6.4 — MembersCare: the full-congregation care registry.
 // Last Visitation is DERIVED: members are matched to the visit pool by
@@ -11193,11 +11301,12 @@ const MC_STATUS_META = {
   Travelled: { color: C.amber,  bg: C.amberLight  },
 };
 
-function StewardsCare({ currentUser, role }) {
+function StewardsCare({ currentUser, role, onViewProfile }) {
   const isAdmin = role === "soulcareadmin" || role === "admin";
   const [stewards, setStewards]         = useState([]);
   const [poolKeys, setPoolKeys]         = useState(new Set());
   const [lastVisitByKey, setLastVisit]  = useState({});
+  const [lastCallByKey, setLastCall]    = useState({});
   const [loading, setLoading]           = useState(true);
   const [err, setErr]                   = useState("");
   const [msg, setMsg]                   = useState("");
@@ -11217,20 +11326,27 @@ function StewardsCare({ currentUser, role }) {
         const [cm, pool, visits] = await Promise.all([
           sb("church_members?select=*&order=created_at.desc&limit=3000"),
           sb("soul_care_contacts?select=id,phone&is_active=eq.true").catch(() => []),
-          sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
+          sb("soul_care_visits?select=contact_id,visit_date,visit_type").catch(() => []),
         ]);
         if (cancelled) return;
         const keys = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
         const contactKey = {};
         (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
         const lv = {};
+        const lc = {};
         (visits || []).forEach(v => {
           const k = contactKey[v.contact_id];
-          if (k && v.visit_date && (!lv[k] || v.visit_date > lv[k])) lv[k] = v.visit_date;
+          if (!k || !v.visit_date) return;
+          if (v.visit_type === "Phone Call") {
+            if (!lc[k] || v.visit_date > lc[k]) lc[k] = v.visit_date;
+          } else {
+            if (!lv[k] || v.visit_date > lv[k]) lv[k] = v.visit_date;
+          }
         });
         setStewards((cm || []).filter(m => m.category === "Steward"));
         setPoolKeys(keys);
         setLastVisit(lv);
+        setLastCall(lc);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
     })();
@@ -11271,6 +11387,18 @@ function StewardsCare({ currentUser, role }) {
     return true;
   });
 
+  const toggleQuickStatus = async (m) => {
+    const next = (m.membership_status || "Active") === "Active" ? "Inactive" : "Active";
+    try {
+      await sb(`church_members?id=eq.${m.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ membership_status: next }),
+      });
+      toast.success(`${m.full_name} marked ${next}.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+  };
+
   const addToPool = async (m) => {
     setAddingId(m.id); setErr("");
     try {
@@ -11290,7 +11418,7 @@ function StewardsCare({ currentUser, role }) {
     setAddingId(null);
   };
 
-  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 100px 175px";
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 100px 100px 175px";
   const headCell = {
     fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
     letterSpacing: ".07em", fontFamily: F.head,
@@ -11376,30 +11504,34 @@ function StewardsCare({ currentUser, role }) {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1000,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1100,
             }}>
               <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
-              {["Phone", "Email", "Gender", "DOB", "Status", "Last Visit"].map(h => (
+              {["Phone", "Email", "Gender", "DOB", "Status", "Last Visit", "Last Called"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
               <div style={headCell}>Visit Pool</div>
             </div>
 
             {filtered.map((m, i) => {
-              const k       = phoneKey(m.phone);
-              const inPool  = k && poolKeys.has(k);
-              const lastVis = k ? lastVisitByKey[k] : null;
-              const stm     = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
+              const k        = phoneKey(m.phone);
+              const inPool   = k && poolKeys.has(k);
+              const lastVis  = k ? lastVisitByKey[k] : null;
+              const lastCall = k ? lastCallByKey[k] : null;
+              const stm      = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
               return (
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 0", background: C.surface, minWidth: 1000,
+                  padding: "10px 0", background: C.surface, minWidth: 1100,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div style={stickyLeft(C.surface)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <div onClick={() => onViewProfile && onViewProfile(m)} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, cursor: onViewProfile ? "pointer" : "default" }}>
                       <Avatar name={m.full_name} size={30} />
-                      <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{
+                        fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
+                      }}>
                         {m.full_name}
                       </div>
                     </div>
@@ -11411,12 +11543,16 @@ function StewardsCare({ currentUser, role }) {
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "—"}</div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
                   <div>
-                    <span style={badge(stm.color, stm.bg, { fontSize: 10 })}>
+                    <button onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
+                      style={{ ...badge(stm.color, stm.bg, { fontSize: 10 }), border: "none", cursor: "pointer" }}>
                       <span style={dot(stm.color)} />{m.membership_status || "Active"}
-                    </span>
+                    </button>
                   </div>
                   <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
                     {lastVis || "Never"}
+                  </div>
+                  <div style={{ fontSize: 12, color: lastCall ? C.textSecondary : C.textMuted }}>
+                    {lastCall || "Never"}
                   </div>
                   <div style={{ paddingLeft: 6, minWidth: 0, overflow: "hidden" }}>
                     {inPool ? (
@@ -11446,11 +11582,12 @@ function StewardsCare({ currentUser, role }) {
   );
 }
 
-function MembersCare({ currentUser, role }) {
+function MembersCare({ currentUser, role, onViewProfile }) {
   const isAdmin = role === "soulcareadmin" || role === "admin";
   const [members, setMembers]           = useState([]);
   const [poolKeys, setPoolKeys]         = useState(new Set());
   const [lastVisitByKey, setLastVisit]  = useState({});
+  const [lastCallByKey, setLastCall]    = useState({});
   const [loading, setLoading]           = useState(true);
   const [err, setErr]                   = useState("");
   const [msg, setMsg]                   = useState("");
@@ -11471,20 +11608,27 @@ function MembersCare({ currentUser, role }) {
         const [cm, pool, visits] = await Promise.all([
           sb("church_members?select=*&order=created_at.desc&limit=3000"),
           sb("soul_care_contacts?select=id,phone").catch(() => []),
-          sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
+          sb("soul_care_visits?select=contact_id,visit_date,visit_type").catch(() => []),
         ]);
         if (cancelled) return;
         const keys = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
         const contactKey = {};
         (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
         const lv = {};
+        const lc = {};
         (visits || []).forEach(v => {
           const k = contactKey[v.contact_id];
-          if (k && v.visit_date && (!lv[k] || v.visit_date > lv[k])) lv[k] = v.visit_date;
+          if (!k || !v.visit_date) return;
+          if (v.visit_type === "Phone Call") {
+            if (!lc[k] || v.visit_date > lc[k]) lc[k] = v.visit_date;
+          } else {
+            if (!lv[k] || v.visit_date > lv[k]) lv[k] = v.visit_date;
+          }
         });
         setMembers((cm || []).filter(m => m.category !== "Steward"));
         setPoolKeys(keys);
         setLastVisit(lv);
+        setLastCall(lc);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
     })();
@@ -11527,6 +11671,18 @@ function MembersCare({ currentUser, role }) {
   const { visibleCount, onScroll } = usePagedScroll(`${fStatus}|${fMarital}|${fLife}|${search}`, filtered.length, 15);
   const pageRows = filtered.slice(0, visibleCount);
 
+  const toggleQuickStatus = async (m) => {
+    const next = (m.membership_status || "Active") === "Active" ? "Inactive" : "Active";
+    try {
+      await sb(`church_members?id=eq.${m.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ membership_status: next }),
+      });
+      toast.success(`${m.full_name} marked ${next}.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+  };
+
   const addToPool = async (m) => {
     setAddingId(m.id); setErr("");
     try {
@@ -11546,7 +11702,7 @@ function MembersCare({ currentUser, role }) {
     setAddingId(null);
   };
 
-  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 200px";
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 100px 200px";
   const headCell = {
     fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
     letterSpacing: ".07em", fontFamily: F.head,
@@ -11648,10 +11804,10 @@ function MembersCare({ currentUser, role }) {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1050,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1150,
             }}>
               <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
-              {["Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit"].map(h => (
+              {["Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit", "Last Called"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
               <div style={headCell}>Visit Pool</div>
@@ -11659,10 +11815,11 @@ function MembersCare({ currentUser, role }) {
 
             {/* Rows */}
             {pageRows.map((m, i) => {
-              const k       = phoneKey(m.phone);
-              const inPool  = k && poolKeys.has(k);
-              const lastVis = k ? lastVisitByKey[k] : null;
-              const stm     = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
+              const k        = phoneKey(m.phone);
+              const inPool   = k && poolKeys.has(k);
+              const lastVis  = k ? lastVisitByKey[k] : null;
+              const lastCall = k ? lastCallByKey[k] : null;
+              const stm      = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
               return (
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
@@ -11670,9 +11827,12 @@ function MembersCare({ currentUser, role }) {
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div style={stickyLeft(C.surface)}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <div onClick={() => onViewProfile && onViewProfile(m)} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, cursor: onViewProfile ? "pointer" : "default" }}>
                       <Avatar name={m.full_name} size={30} />
-                      <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{
+                        fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
+                      }}>
                         {m.full_name}
                       </div>
                     </div>
@@ -11691,12 +11851,16 @@ function MembersCare({ currentUser, role }) {
                     )}>{m.category || "Member"}</span>
                   </div>
                   <div>
-                    <span style={badge(stm.color, stm.bg, { fontSize: 10 })}>
+                    <button onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
+                      style={{ ...badge(stm.color, stm.bg, { fontSize: 10 }), border: "none", cursor: "pointer" }}>
                       <span style={dot(stm.color)} />{m.membership_status || "Active"}
-                    </span>
+                    </button>
                   </div>
                   <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
                     {lastVis || "Never"}
+                  </div>
+                  <div style={{ fontSize: 12, color: lastCall ? C.textSecondary : C.textMuted }}>
+                    {lastCall || "Never"}
                   </div>
                   <div style={{ paddingLeft: 6, minWidth: 0, overflow: "hidden" }}>
                     {inPool ? (
@@ -11726,6 +11890,129 @@ function MembersCare({ currentUser, role }) {
           {filtered.length > 10 && (
             <span>Name and Visit Pool columns stay pinned while scrolling</span>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CarePriorityList({ onViewProfile }) {
+  const [members, setMembers] = useState([]);
+  const [lastContactByKey, setLastContactByKey] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [inactive, pool, visits] = await Promise.all([
+          sb("church_members?membership_status=eq.Inactive&order=full_name.asc&limit=1000"),
+          sb("soul_care_contacts?select=id,phone").catch(() => []),
+          sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
+        ]);
+        if (cancelled) return;
+        const contactKey = {};
+        (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
+        const lc = {};
+        // Any interaction counts here — visit or call — since this list is
+        // about "how long since ANY contact," not visits specifically.
+        (visits || []).forEach(v => {
+          const k = contactKey[v.contact_id];
+          if (k && v.visit_date && (!lc[k] || v.visit_date > lc[k])) lc[k] = v.visit_date;
+        });
+        setMembers(inactive || []);
+        setLastContactByKey(lc);
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const withUrgency = members
+    .filter(m => !search || m.full_name?.toLowerCase().includes(search.toLowerCase()) || m.phone?.includes(search))
+    .map(m => {
+      const key = phoneKey(m.phone);
+      const lastContact = key ? lastContactByKey[key] : null;
+      const daysSince = lastContact
+        ? Math.floor((Date.now() - new Date(lastContact).getTime()) / 86400000)
+        : null; // null = never contacted at all — highest priority
+      return { ...m, lastContact, daysSince };
+    })
+    .sort((a, b) => {
+      if (a.daysSince === null && b.daysSince === null) return 0;
+      if (a.daysSince === null) return -1;
+      if (b.daysSince === null) return 1;
+      return b.daysSince - a.daysSince;
+    });
+
+  const totalInactive   = members.length;
+  const stewardCount    = members.filter(m => m.category === "Steward").length;
+  const memberCount     = totalInactive - stewardCount;
+  const neverContacted  = withUrgency.filter(m => m.daysSince === null).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Care Priority List" subtitle="Inactive Members and Stewards — sorted by how long it's been since contact"
+        action={
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          </div>
+        } />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total Inactive"    value={totalInactive}   icon={AlertCircle} accent={C.danger} />
+        <StatCard label="Inactive Members"  value={memberCount}     icon={Users}       accent={C.soul} />
+        <StatCard label="Inactive Stewards" value={stewardCount}    icon={Shield}      accent={C.goldDark} />
+        <StatCard label="Never Contacted"   value={neverContacted}  icon={Heart}       accent={C.flag}
+          sub={neverContacted > 0 ? "No visit or call on record" : ""} />
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <SkeletonList rows={6} /> : withUrgency.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <CheckCircle size={32} color={C.green} style={{ marginBottom: 10, opacity: .6 }} />
+          <div style={{ fontWeight: 700, fontFamily: F.head }}>No one is currently marked Inactive.</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {withUrgency.map(m => (
+            <div key={m.id} {...lift} style={{
+              ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
+              alignItems: "center", flexWrap: "wrap", gap: 12,
+              borderLeft: `3px solid ${m.daysSince === null ? C.flag : m.daysSince > 60 ? C.danger : C.amber}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Avatar name={m.full_name} size={40} />
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{m.full_name}</span>
+                    <span style={badge(m.category === "Steward" ? C.goldDark : C.soul, m.category === "Steward" ? C.goldLight : C.soulLight, { fontSize: 10 })}>
+                      {m.category || "Member"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={m.phone} withWhatsApp /></div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {m.daysSince === null ? (
+                  <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><AlertCircle size={10} />Never contacted</span>
+                ) : (
+                  <span style={badge(m.daysSince > 60 ? C.danger : C.amber, m.daysSince > 60 ? C.dangerLight : C.amberLight, { fontSize: 11 })}>
+                    <Clock size={10} />{m.daysSince}d since last contact
+                  </span>
+                )}
+                <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => onViewProfile(m)}>
+                  View Profile
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -13526,23 +13813,27 @@ function TestimonyQRPage() {
 }
 
 function PublicFeedbackForm() {
-  const [form, setForm] = useState({ name: "", gender: "", phone: "", feedback: "" });
+  const [form, setForm] = useState({ name: "", gender: "", phone: "", membership_status: "", focus_points: [], feedback: "" });
   const [loading, setLoading] = useState(false);
   const [done, setDone]       = useState(false);
   const [err, setErr]         = useState("");
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target ? e.target.value : e }));
 
   const submit = async () => {
+    if (!form.membership_status) { setErr("Select your membership status."); return; }
+    if (!form.focus_points.length) { setErr("Select at least one feedback focus point."); return; }
     if (!form.feedback.trim()) { setErr("Feedback is required."); return; }
     setLoading(true); setErr("");
     try {
       await sb("feedback_submissions", {
         method: "POST",
         body: JSON.stringify({
-          name:     form.name.trim()  || null,
-          gender:   form.gender       || null,
-          phone:    form.phone.trim() || null,
-          feedback: form.feedback.trim(),
+          name:                   form.name.trim()  || null,
+          gender:                 form.gender       || null,
+          phone:                  form.phone.trim() || null,
+          membership_status:      form.membership_status,
+          feedback_focus_points:  form.focus_points,
+          feedback:               form.feedback.trim(),
         }),
       });
       setDone(true);
@@ -13585,9 +13876,13 @@ function PublicFeedbackForm() {
             options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
           <FieldInput label="Phone Number" id="pfp" value={form.phone} onChange={set("phone")}
             placeholder="Optional" />
+          <FieldInput label="Membership Status" id="pfms" type="select" required value={form.membership_status} onChange={set("membership_status")}
+            options={[{ value: "Member", label: "Member" }, { value: "Steward", label: "Steward" }]} />
+          <FieldInput label="Feedback Focus Points" id="pffp" type="multicheck" required value={form.focus_points} onChange={set("focus_points")}
+            options={FEEDBACK_FOCUS_POINTS} />
           <FieldInput label="Your Feedback" id="pff" type="textarea" required value={form.feedback} onChange={set("feedback")}
             placeholder="Share your experience, suggestions, or thoughts about our services…" />
-          <button
+          <button 
             style={{ ...btn("primary", { background: C.research, border: "none" }), width: "100%", padding: 13, fontSize: 15 }}
             onClick={submit} disabled={loading}>
             {loading ? "Submitting…" : "Submit Feedback"}
@@ -14640,6 +14935,7 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
           { value: "soulcareadmin",   label: "Soul Care Admin"  },
           { value: "megastars",      label: "Megastars Team"  },
           { value: "megastarsadmin", label: "Megastars Admin" },
+          { value: "connectcentre", label: "Connect Centre" },
         ]} />
       <div style={{
         background: C.greenXLight, borderRadius: 8, padding: "12px 14px", marginBottom: 16,
@@ -14657,6 +14953,9 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong>Testimony Team</strong> — View and download Soul Care member testimonies (CSV export)<br />
         <strong>Admin</strong> — All of the above + user management + bulk import<br />
         <strong>Experience Admin</strong> — Assign contacts to team members, view call queue and all feedback<br />
+        <strong>Megastars Team</strong> — View and download Megastars feedback responses (CSV export)<br />
+        <strong>Megastars Admin</strong> — View and download Megastars feedback responses (CSV export) + user management<br />
+        <strong>Connect Centre</strong> — View and download Connect Centre feedback responses (CSV export) + user management<br />
       </div>
 
       <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15 }}
@@ -14684,6 +14983,7 @@ const SIGNUP_ROLES = [
   { value: "megastars",     label: "Megastars Team"  },
   { value: "research",      label: "Research Team"   },
   { value: "testimonyteam", label: "Testimony Team"  },
+  { value: "connectcentre", label: "Connect Centre" },
 ];
 
 function Login({ onLogin }) {
@@ -14916,7 +15216,11 @@ function App() {
   const [session, setSession] = useState(() => loadSession());
   const [active, setActive] = useState(() => {
     const s = loadSession();
-    return s ? (NAV[s.role]?.[0]?.id ?? null) : null;
+    if (!s) return null;
+    const validIds = (NAV[s.role] || []).map(n => n.id);
+    const last = loadLastActive();
+    if (last && validIds.includes(last)) return last;
+    return NAV[s.role]?.[0]?.id ?? null;
   });
   const [editTarget,     setEditTarget]     = useState(null);
   const [feedbackTarget, setFeedbackTarget] = useState(null);
@@ -14928,11 +15232,10 @@ function App() {
   const [editOverviewTarget, setEditOverviewTarget] = useState(null);
   const [visitLogTarget,  setVisitLogTarget]  = useState(null);
   const [visitEditTarget, setVisitEditTarget] = useState(null);
+  const [memberProfileTarget, setMemberProfileTarget] = useState(null);
   const [showFeedback,    setShowFeedback]    = useState(false);
   const [showTestimony,   setShowTestimony]   = useState(false);
   const [showNewConvert,  setShowNewConvert]  = useState(false);
-  const [showEnvoysFC,    setShowEnvoysFC]    = useState(false);
-  const [showSolidRock,   setShowSolidRock]   = useState(false);
 
   useEffect(() => {
     const onPopState = (e) => {
@@ -14949,8 +15252,6 @@ function App() {
     if (p === "/feedback"  || p === "/feedback/"  || h === "#feedback")  setShowFeedback(true);
     if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
     if (p === "/new-convert" || p === "/new-convert/" || h === "#new-convert") setShowNewConvert(true);
-    if (p === "/envoysfc" || p === "/envoysfc/" || h === "#envoysfc") setShowEnvoysFC(true);
-    if (p === "/solidrock" || p === "/solidrock/" || h === "#solidrock") setShowSolidRock(true);
   }, []);
 
   useEffect(() => {
@@ -14973,6 +15274,7 @@ function App() {
 
   const logout = () => {
     clearSession();
+    clearLastActive();
     setSession(null);
     setActive(null);
   };
@@ -14982,18 +15284,18 @@ function App() {
   setEditTarget(null); setFeedbackTarget(null); setEditUser(null);
   setEditWeekTarget(null); setEditOverviewTarget(null);
   setVisitLogTarget(null); setVisitEditTarget(null);
+  setMemberProfileTarget(null);
   setMobileOpen(false);
   if (v !== active) {
     window.history.pushState({ active: v }, "", window.location.pathname);
   }
+  saveLastActive(v);
 };
 
   if (showPublic)    return <PublicForm />;
   if (showFeedback)  return <PublicFeedbackForm />;
   if (showTestimony)   return <PublicTestimonyForm />;
   if (showNewConvert)  return <PublicNewConvertForm />;
-  if (showEnvoysFC)    return <PublicEnvoysFCForm />;
-  if (showSolidRock)   return <PublicSolidRockForm />;
   if (!session)        return <Login onLogin={login} />;
 
   const { role, user, username } = session;
@@ -15061,10 +15363,8 @@ function App() {
     if (active === "feedback_qr")       return <FeedbackQRPage />;
     if (active === "testimony_qr")      return <TestimonyQRPage />;
     if (active === "experience_dashboard") return <ExperienceAnalyticsDashboard />;
-    if (active === "envoysfc_qr")     return <EnvoysFCQRPage />;
-    if (active === "envoysfc_roster") return <EnvoysFCRoster />;
-    if (active === "solidrock_registrations") return <SolidRockRegistrations />;
-    if (active === "solidrock_qr") return <SolidRockQRPage />;
+    if (active === "connect_centre_prospects") return <ConnectCentreProspects currentUser={user} />;
+    if (active === "vip_journey_dashboard") return <VipJourneyDashboard />;
 
     if (active === "firsttimers") {
       if (editTarget) {
@@ -15219,6 +15519,13 @@ function App() {
     if (active === "nc_qr")     return <NewConvertQRPage />;
     if (active === "nc_report") return <NewConvertsRetentionReport />;
 
+    if (active === "care_priority_list") {
+      if (memberProfileTarget) {
+        return <MemberProfile member={memberProfileTarget} currentUser={user} role={role} onBack={() => setMemberProfileTarget(null)} />;
+      }
+      return <CarePriorityList onViewProfile={m => setMemberProfileTarget(m)} />;
+    }
+
     if (active === "nc_mine") {
       if (feedbackTarget) {
         return (
@@ -15232,8 +15539,18 @@ function App() {
       return <MyNewConverts currentUser={user} onLogCheckin={r => setFeedbackTarget(r)} />;
     }
 
-    if (active === "steward_care") return <StewardsCare currentUser={user} role={role} />;
-    if (active === "members_care") return <MembersCare currentUser={user} role={role} />;
+    if (active === "steward_care") {
+      if (memberProfileTarget) {
+        return <MemberProfile member={memberProfileTarget} currentUser={user} role={role} onBack={() => setMemberProfileTarget(null)} />;
+      }
+      return <StewardsCare currentUser={user} role={role} onViewProfile={m => setMemberProfileTarget(m)} />;
+    }
+    if (active === "members_care") {
+      if (memberProfileTarget) {
+        return <MemberProfile member={memberProfileTarget} currentUser={user} role={role} onBack={() => setMemberProfileTarget(null)} />;
+      }
+      return <MembersCare currentUser={user} role={role} onViewProfile={m => setMemberProfileTarget(m)} />;
+    }
     if (active === "sc_flagged") return <SoulCareFlagged />;
     if (active === "sc_testimonies") return <Testimonies />;
     if (active === "testimony_bank") return <TestimonyBank currentUser={user} />;
