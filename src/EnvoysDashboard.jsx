@@ -12,7 +12,7 @@ import {
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
   Star, TrendingUp, Activity, Shield, Edit3, UserCheck,
   FileText, Filter, Download, ChevronDown, Info, Zap, Camera,
-  MessageCircle, Gift, Maximize2, Bell, 
+  MessageCircle, Gift, Maximize2, Bell, Award, Trophy, Moon,
 } from "lucide-react";
 
 import {
@@ -676,6 +676,9 @@ const NAV_ICONS = {
   megastars_services: Calendar,
   connect_centre_prospects: MapPin,
   vip_journey_dashboard: TrendingUp,
+  nom_registry: Moon,
+  nom_qr: QrCode,
+  steward_appraisal_results: Trophy,
 };
 
 const NAV = {
@@ -716,7 +719,10 @@ const NAV = {
     { id: "qrcode",        label: "VIPs QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
-    { id: "connect_centre_prospects", label: "Connect Centre" },    
+    { id: "connect_centre_prospects", label: "Connect Centre" },
+    { id: "nom_registry",  label: "Night of Mercy" },
+    { id: "nom_qr",        label: "NOM QR Code" },
+    { id: "steward_appraisal_results", label: "Steward Appraisal" },
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -725,6 +731,8 @@ const NAV = {
     { id: "qrcode",        label: "QR Code"       },
     { id: "nc_registry",   label: "Registry" },
     { id: "nc_qr",         label: "QR Code" },
+    { id: "nom_registry",  label: "Night of Mercy" },
+    { id: "nom_qr",        label: "NOM QR Code" },
     { id: "megastars_checkinout", label: "Check In / Out" },
     { id: "megastars_services",   label: "Services" },
     { id: "megastars_roster",     label: "Roster" },
@@ -746,6 +754,7 @@ const NAV = {
     { id: "nc_report",     label: "New Converts Retention" },
     { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
     { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
+    { id: "steward_appraisal_results", label: "Steward Appraisal" },
   ],
   soulcare: [
     { id: "sc_queue",         label: "Visit Queue" },
@@ -827,6 +836,7 @@ const NAV_GROUPS = {
   dofficer: [
     { title: "First-Timers", ids: ["firsttimers", "vip_contact", "addmember", "qrcode"] },
     { title: "New Converts", ids: ["nc_registry", "nc_qr"] },
+    { title: "Night of Mercy", ids: ["nom_registry", "nom_qr"] },
     { title: "Megastars",    ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
   ],
   admin: [
@@ -841,6 +851,8 @@ const NAV_GROUPS = {
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",      ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
     { title: "Connect Centre",   ids: ["connect_centre_prospects"] },
+    { title: "Night of Mercy",   ids: ["nom_registry", "nom_qr"] },
+    { title: "Steward Appraisal", ids: ["steward_appraisal_results"] },
   ],
   soulcareadmin: [
     { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "sc_flagged"] },
@@ -3122,17 +3134,7 @@ function CSVImport({ onDone }) {
   const [success, setSuccess] = useState("");
   const fileRef = useRef();
 
-  const parseCSV = (text) => {
-    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
-      return obj;
-    });
-  };
+  const parseCSV = (text) => parseCSVText(text);
 
   const onFile = (e) => {
     const file = e.target.files[0];
@@ -7256,17 +7258,7 @@ function MegastarsCSVImport({ currentUser, onDone }) {
   const [report, setReport] = useState(null);
   const fileRef = useRef();
 
-  const parseCSV = (text) => {
-    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
-      return obj;
-    });
-  };
+  const parseCSV = (text) => parseCSVText(text);
 
   const onFile = (e) => {
     const file = e.target.files[0];
@@ -10200,6 +10192,51 @@ function useVisitData(dateFrom, dateTo) {
 // v6.4 — downloadable CSV templates for bulk imports
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Proper CSV parser — handles quoted fields (so commas and newlines INSIDE
+// quotes, e.g. dates like "Aug 25, 1998" or multi-line addresses, don't get
+// treated as delimiters), and "" as an escaped quote inside a quoted field.
+// A naive `line.split(",")` breaks on any such field and silently shifts
+// every column after it — this is the single parser every CSV importer in
+// the app uses so that bug can't recur.
+function parseCSVText(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  const src = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { field += '"'; i++; }
+        else { inQuotes = false; }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ",") {
+      row.push(field); field = "";
+    } else if (c === "\n") {
+      row.push(field); field = "";
+      rows.push(row); row = [];
+    } else {
+      field += c;
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+
+  const nonEmpty = rows.filter(r => r.some(v => v.trim() !== ""));
+  if (nonEmpty.length < 2) return [];
+  const headers = nonEmpty[0].map(h => h.trim().toLowerCase());
+  return nonEmpty.slice(1).map(vals => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] ?? "").trim(); });
+    return obj;
+  });
+}
+
 function downloadCSVTemplate(filename, headers, example) {
   const csv = [headers.join(","), example.join(",")].join("\r\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -10224,7 +10261,7 @@ const MEMBERS_TEMPLATE_HEADERS = [
 ];
 const MEMBERS_TEMPLATE_EXAMPLE = [
   "Tunde Adeyemi", "08065554321", "tunde@example.com", "Male", "1988-11-02", "Single", "Business Owner",
-  "Steward", "Active", "2024-06-01", "5 Unity Close Ogba", "Opposite Excel Mall",
+  "Member", "Active", "2024-06-01", "5 Unity Close Ogba", "Opposite Excel Mall",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10240,17 +10277,7 @@ function SoulCareCSVImport({ currentUser, onDone }) {
   const [success, setSuccess] = useState("");
   const fileRef = useRef();
 
-  const parseCSV = (text) => {
-    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
-      return obj;
-    });
-  };
+  const parseCSV = (text) => parseCSVText(text);
 
   const onFile = (e) => {
     const file = e.target.files[0];
@@ -10862,7 +10889,7 @@ function AssignVisitsView({ currentUser }) {
                         ) : (
                           <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [c.id]: e.target.value }))}
                             style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Select visitor</option>
+                            <option value="">Assign Visitor</option>
                             {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         )}
@@ -10918,17 +10945,7 @@ function MembersCareCSVImport({ currentUser, onDone }) {
   const [success, setSuccess] = useState("");
   const fileRef = useRef();
 
-  const parseCSV = (text) => {
-    const lines = text.trim().split("\n").map(l => l.trim()).filter(Boolean);
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, "").toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.split(",").map(v => v.trim().replace(/"/g, ""));
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = vals[i] || ""; });
-      return obj;
-    });
-  };
+  const parseCSV = (text) => parseCSVText(text);
 
   const onFile = (e) => {
     const file = e.target.files[0];
@@ -10966,7 +10983,7 @@ function MembersCareCSVImport({ currentUser, onDone }) {
           dob:               cleanDate(r.dob || r.date_of_birth),
           marital_status:    oneOf(r.marital_status, ["Single", "Married", "Divorced", "Widowed"]),
           life_stage:        oneOf(r.life_stage, ["Student", "Employee", "Business Owner"]),
-          category:          oneOf(r.category, ["Steward", "Member"]) || "Member",
+          category:          "Member",
           membership_status: oneOf(r.membership_status, ["Active", "Inactive", "Travelled"]) || "Active",
           date_joined:       cleanDate(r.date_joined || r.joined),
           house_address:     n((r.house_address || r.address || "").toString().trim()),
@@ -11012,11 +11029,11 @@ function MembersCareCSVImport({ currentUser, onDone }) {
     <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
       <SH title="Bulk CSV Import — Church Members" icon={Upload} />
       <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
-        Required columns:{" "}
+        For regular Members only — Stewards now have their own registry and bulk import under{" "}
+        <strong>Stewards Care</strong>. Required columns:{" "}
         <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
         <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: email, gender, dob,
-        marital_status, life_stage, category (Steward/Member), membership_status (Active/Inactive/Travelled),
-        date_joined, house_address, nearest_landmark.
+        marital_status, life_stage, membership_status (Active/Inactive/Travelled), date_joined, house_address, nearest_landmark.
       </p>
       <Alert type="error"   msg={err}     onClose={() => setErr("")} />
       <Alert type="success" msg={success} onClose={() => setSuccess("")} />
@@ -11080,14 +11097,19 @@ function MemberProfile({ member, currentUser, role, onBack }) {
   const [showLogVisit, setShowLogVisit] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(member.membership_status || "Active");
   const [savingStatus, setSavingStatus] = useState(false);
+  const [department, setDepartment] = useState(member.department || "");
+  const [savingDept, setSavingDept] = useState(false);
+  const [position, setPosition] = useState(member.position || "");
+  const [savingPosition, setSavingPosition] = useState(false);
   const [tick, setTick] = useState(0);
   const reload = () => setTick(t => t + 1);
+  const table = member._table || "church_members";
 
   const changeStatus = async (newStatus) => {
     if (newStatus === currentStatus) return;
     setSavingStatus(true);
     try {
-      await sb(`church_members?id=eq.${member.id}`, {
+      await sb(`${table}?id=eq.${member.id}`, {
         method: "PATCH",
         body: JSON.stringify({ membership_status: newStatus }),
       });
@@ -11095,6 +11117,30 @@ function MemberProfile({ member, currentUser, role, onBack }) {
       toast.success(`${member.full_name}'s status updated to ${newStatus}.`);
     } catch (e) { toast.error(e.message); }
     setSavingStatus(false);
+  };
+
+  const saveDepartment = async () => {
+    setSavingDept(true);
+    try {
+      await sb(`${table}?id=eq.${member.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ department: department.trim() || null }),
+      });
+      toast.success(`Department updated for ${member.full_name}.`);
+    } catch (e) { toast.error(e.message); }
+    setSavingDept(false);
+  };
+
+  const savePosition = async () => {
+    setSavingPosition(true);
+    try {
+      await sb(`${table}?id=eq.${member.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ position: position.trim() || "Steward" }),
+      });
+      toast.success(`Position updated for ${member.full_name}.`);
+    } catch (e) { toast.error(e.message); }
+    setSavingPosition(false);
   };
 
   const isAdmin = role === "soulcareadmin" || role === "admin" || role === "soulcare";
@@ -11172,7 +11218,7 @@ function MemberProfile({ member, currentUser, role, onBack }) {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title={member.full_name}
-        subtitle={`${member.category || "Member"} · Full care history`}
+        subtitle={`${member.category || "Member"}${member.position && member.position !== "Steward" ? ` · ${member.position}` : ""} · Full care history`}
         action={<button style={btn("ghost")} onClick={onBack}><ArrowLeft size={14} />Back</button>}
       />
 
@@ -11188,6 +11234,9 @@ function MemberProfile({ member, currentUser, role, onBack }) {
                 member.category === "Steward" ? C.goldDark : C.soul,
                 member.category === "Steward" ? C.goldLight : C.soulLight, { fontSize: 11 }
               )}>{member.category || "Member"}</span>
+              {table === "stewards" && member.position && member.position !== "Steward" && (
+                <span style={badge(C.gold, C.goldLight, { fontSize: 11 })}>{member.position}</span>
+              )}
               <span style={badge(statusMeta2.color, statusMeta2.bg, { fontSize: 11 })}>{currentStatus}</span>
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10 }}>
@@ -11207,6 +11256,32 @@ function MemberProfile({ member, currentUser, role, onBack }) {
                 </button>
               ))}
             </div>
+            {table === "stewards" && (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: C.textMuted }}>Department:</span>
+                <input value={department} onChange={e => setDepartment(e.target.value)}
+                  placeholder="e.g. Ushering, Media, Choir"
+                  style={{ ...inputBase, width: 200, padding: "4px 10px", fontSize: 12 }} />
+                <button style={btn("gold", { padding: "4px 12px", fontSize: 11 })}
+                  onClick={saveDepartment} disabled={savingDept || department === (member.department || "")}>
+                  {savingDept ? "…" : "Save"}
+                </button>
+                <span style={{ fontSize: 11, color: C.textMuted }}>Used by the Steward Appraisal system.</span>
+              </div>
+            )}
+            {table === "stewards" && (
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, color: C.textMuted }}>Position:</span>
+                <input value={position} onChange={e => setPosition(e.target.value)}
+                  placeholder="Steward, Team Lead, etc."
+                  style={{ ...inputBase, width: 200, padding: "4px 10px", fontSize: 12 }} />
+                <button style={btn("gold", { padding: "4px 12px", fontSize: 11 })}
+                  onClick={savePosition} disabled={savingPosition || position === (member.position || "")}>
+                  {savingPosition ? "…" : "Save"}
+                </button>
+                <span style={{ fontSize: 11, color: C.textMuted }}>Anything other than "Steward" makes them appraisal-eligible.</span>
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px,1fr))", gap: "6px 20px", fontSize: 13, color: C.textSecondary }}>
               <div><PhoneLink phone={member.phone} withWhatsApp bold /></div>
               <div>{member.email || "No email on file"}</div>
@@ -11301,6 +11376,200 @@ const MC_STATUS_META = {
   Travelled: { color: C.amber,  bg: C.amberLight  },
 };
 
+function EditableCell({ member, table, field, placeholder, onSaved }) {
+  const [value, setValue] = useState(member[field] || "");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setValue(member[field] || ""); }, [member[field]]);
+
+  const save = async () => {
+    const next = value.trim();
+    if (next === (member[field] || "")) return;
+    setSaving(true);
+    try {
+      await sb(`${table}?id=eq.${member.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ [field]: next || null }),
+      });
+      toast.success(`${field === "position" ? "Position" : "Department"} set to "${next || "\u2014"}" for ${member.full_name}.`);
+      onSaved?.();
+    } catch (e) { toast.error(e.message); }
+    setSaving(false);
+  };
+
+  return (
+    <input
+      value={value}
+      onChange={e => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+      placeholder={placeholder}
+      disabled={saving}
+      style={{ ...inputBase, padding: "5px 9px", fontSize: 12, width: "100%", opacity: saving ? .6 : 1 }}
+    />
+  );
+}
+
+const STEWARDS_TEMPLATE_HEADERS = [
+  "full_name", "phone", "email", "gender", "dob", "marital_status", "life_stage",
+  "department", "position", "membership_status", "date_joined", "house_address", "nearest_landmark",
+];
+const STEWARDS_TEMPLATE_EXAMPLE = [
+  "Ngozi Eze", "08099998888", "ngozi@example.com", "Female", "1990-04-18", "Married", "Employee",
+  "Ushering", "Steward", "Active", "2023-01-15", "9 Adeola Street Ikeja", "Behind City Mall",
+];
+
+function StewardsCSVImport({ currentUser, onDone }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [success, setSuccess] = useState("");
+  const fileRef = useRef();
+
+  const parseCSV = (text) => parseCSVText(text);
+
+  const onFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { setRows(parseCSV(ev.target.result)); setErr(""); setSuccess(""); };
+    reader.readAsText(file);
+  };
+
+  const oneOf = (v, allowed) => {
+    if (!v) return null;
+    const s = v.toString().trim();
+    const hit = allowed.find(a => a.toLowerCase() === s.toLowerCase());
+    return hit || null;
+  };
+  const cleanDate = (dateStr) => {
+    if (!dateStr) return null;
+    const s = dateStr.toString().trim();
+    if (!s) return null;
+    // Numeric d/m/y or y/m/d style dates, e.g. "2024-06-01" or "01/06/2024"
+    const parts = s.split(/[/-]/);
+    if (parts.length === 3 && parts.every(p => /^\d+$/.test(p.trim()))) {
+      const [a, b, c2] = parts.map(p => p.trim());
+      if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
+      return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    }
+    // Fallback for spelled-out dates like "Aug 25, 1998"
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, "0");
+      const d = String(parsed.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
+    return null;
+  };
+
+  const importAll = async () => {
+    if (!rows.length) return;
+    setLoading(true); setErr(""); setSuccess("");
+    try {
+      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
+      const mapped = rows
+        .map(r => ({
+          full_name:         (r.full_name || r.name || "").toString().trim(),
+          phone:             n((r.phone || r.phone_number || "").toString().trim()),
+          email:             n(r.email?.toString().trim()),
+          gender:            oneOf(r.gender, ["Male", "Female"]),
+          dob:               cleanDate(r.dob || r.date_of_birth),
+          marital_status:    oneOf(r.marital_status, ["Single", "Married", "Divorced", "Widowed"]),
+          life_stage:        oneOf(r.life_stage, ["Student", "Employee", "Business Owner"]),
+          department:        n((r.department || r.dept || "").toString().trim()),
+          position:          (r.position || r.role || "").toString().trim() || "Steward",
+          membership_status: oneOf(r.membership_status, ["Active", "Inactive", "Travelled"]) || "Active",
+          date_joined:       cleanDate(r.date_joined || r.joined),
+          house_address:     n((r.house_address || r.address || "").toString().trim()),
+          nearest_landmark:  n((r.nearest_landmark || r.landmark || "").toString().trim()),
+          added_by:          currentUser || null,
+        }))
+        .filter(r => r.full_name);
+
+      if (!mapped.length) {
+        setErr("No valid rows found. Each row needs at least full_name.");
+        setLoading(false); return;
+      }
+
+      // A duplicate phone number WITHIN this file would make the whole batch
+      // insert fail (Postgres can't apply an upsert twice to the same
+      // conflict target in one statement). Keep the first occurrence of
+      // each phone and set the rest aside instead of blocking everyone else.
+      const seenPhones = new Map();
+      const payload = [];
+      const skippedDupes = [];
+      for (const r of mapped) {
+        const key = r.phone ? phoneKey(r.phone) : null;
+        if (key && seenPhones.has(key)) {
+          skippedDupes.push({ name: r.full_name, phone: r.phone, clashesWith: seenPhones.get(key) });
+          continue;
+        }
+        if (key) seenPhones.set(key, r.full_name);
+        payload.push(r);
+      }
+
+      // Upsert on phone so re-running an import (or a CSV that overlaps with
+      // existing Stewards) updates that person instead of erroring.
+      await sb("stewards?on_conflict=phone", {
+        method: "POST",
+        prefer: "resolution=merge-duplicates,return=representation",
+        body: JSON.stringify(payload),
+      });
+
+      let msg = `${payload.length} Steward record(s) imported.`;
+      if (skippedDupes.length) {
+        msg += ` ${skippedDupes.length} row(s) skipped \u2014 same phone number as someone else in this file: ` +
+          skippedDupes.map(d => `"${d.name}" (clashes with "${d.clashesWith}")`).join(", ") +
+          `. Fix the phone number and re-upload just those rows.`;
+      }
+      setSuccess(msg);
+      toast.success(skippedDupes.length ? "Import complete, with some rows skipped \u2014 see details." : "Import complete.");
+      setRows([]);
+      onDone?.();
+    } catch (e) {
+      if (/duplicate key value violates unique constraint/i.test(e.message || "")) {
+        setErr(`${e.message} \u2014 this usually means two rows in your file share the same phone number, or this file overlaps with a Steward already in the system under a differently-formatted (but equivalent) phone number.`);
+      } else {
+        setErr(e.message);
+      }
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.gold}30` }}>
+      <SH title="Bulk CSV Import \u2014 Stewards" icon={Upload} />
+      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
+        Required column: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>.
+        Optional: phone, email, gender, dob, marital_status, life_stage,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>department</code>,{" "}
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>position</code> (defaults to "Steward" if
+        left blank \u2014 anything else, e.g. "Team Lead" or "Assistant Team Lead", makes that person eligible to submit
+        Steward Appraisals for their department), membership_status, date_joined, house_address, nearest_landmark.
+      </p>
+      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
+      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <button style={btn("ghost", { padding: "8px 12px", fontSize: 12 })}
+          onClick={() => downloadCSVTemplate("envoys_stewards_import_template.csv", STEWARDS_TEMPLATE_HEADERS, STEWARDS_TEMPLATE_EXAMPLE)}>
+          <Download size={13} />Download Template
+        </button>
+        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
+        <button style={btn("outline", { color: C.goldDark, border: `1.5px solid ${C.gold}` })} onClick={() => fileRef.current.click()}>
+          <Upload size={14} />Choose CSV File
+        </button>
+        {rows.length > 0 && (
+          <>
+            <span style={{ fontSize: 13, color: C.textSecondary }}>{rows.length} row(s) ready</span>
+            <button style={btn("gold")} onClick={importAll} disabled={loading}>{loading ? "Importing\u2026" : `Import ${rows.length}`}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StewardsCare({ currentUser, role, onViewProfile }) {
   const isAdmin = role === "soulcareadmin" || role === "admin";
   const [stewards, setStewards]         = useState([]);
@@ -11314,7 +11583,14 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
   const [fStatus, setFStatus]           = useState("");
   const [fMarital, setFMarital]         = useState("");
   const [fLife, setFLife]               = useState("");
+  const [fPosition, setFPosition]       = useState("");
   const [addingId, setAddingId]         = useState(null);
+  const [showImport, setShowImport]     = useState(false);
+  const [quickName, setQuickName]       = useState("");
+  const [quickPhone, setQuickPhone]     = useState("");
+  const [quickDept, setQuickDept]       = useState("");
+  const [quickPosition, setQuickPosition] = useState("Steward");
+  const [savingQuick, setSavingQuick]   = useState(false);
   const [tick, setTick]                 = useState(0);
   const reload = () => setTick(t => t + 1);
 
@@ -11323,8 +11599,8 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const [cm, pool, visits] = await Promise.all([
-          sb("church_members?select=*&order=created_at.desc&limit=3000"),
+        const [sw, pool, visits] = await Promise.all([
+          sb("stewards?select=*&order=created_at.desc&limit=3000"),
           sb("soul_care_contacts?select=id,phone&is_active=eq.true").catch(() => []),
           sb("soul_care_visits?select=contact_id,visit_date,visit_type").catch(() => []),
         ]);
@@ -11343,7 +11619,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
             if (!lv[k] || v.visit_date > lv[k]) lv[k] = v.visit_date;
           }
         });
-        setStewards((cm || []).filter(m => m.category === "Steward"));
+        setStewards((sw || []).map(m => ({ ...m, _table: "stewards", category: "Steward" })));
         setPoolKeys(keys);
         setLastVisit(lv);
         setLastCall(lc);
@@ -11363,23 +11639,24 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
     return a;
   };
   const dobDayMonth = (dob) => {
-    if (!dob) return "—";
+    if (!dob) return "\u2014";
     const [, m, d] = String(dob).slice(0, 10).split("-").map(Number);
-    if (!m || !d) return "—";
+    if (!m || !d) return "\u2014";
     return new Date(2000, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   };
 
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const total        = stewards.length;
-  const activeCount  = stewards.filter(m => (m.membership_status || "Active") === "Active").length;
-  const newThisMonth = stewards.filter(m => ((m.date_joined || (m.created_at || "").slice(0, 10)) >= monthStart)).length;
-  const children      = stewards.filter(m => { const a = ageOf(m.dob); return a !== null && a < 18; }).length;
+  const total          = stewards.length;
+  const activeCount    = stewards.filter(m => (m.membership_status || "Active") === "Active").length;
+  const newThisMonth   = stewards.filter(m => ((m.date_joined || (m.created_at || "").slice(0, 10)) >= monthStart)).length;
+  const leadershipCount = stewards.filter(m => (m.position || "Steward") !== "Steward").length;
 
   const filtered = stewards.filter(m => {
-    if (fStatus  && (m.membership_status || "Active") !== fStatus) return false;
-    if (fMarital && m.marital_status !== fMarital) return false;
-    if (fLife    && m.life_stage !== fLife) return false;
+    if (fStatus   && (m.membership_status || "Active") !== fStatus) return false;
+    if (fMarital  && m.marital_status !== fMarital) return false;
+    if (fLife     && m.life_stage !== fLife) return false;
+    if (fPosition && (m.position || "Steward") !== fPosition) return false;
     if (search) {
       const q = search.toLowerCase();
       if (!m.full_name?.toLowerCase().includes(q) && !m.phone?.includes(search)) return false;
@@ -11390,7 +11667,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
   const toggleQuickStatus = async (m) => {
     const next = (m.membership_status || "Active") === "Active" ? "Inactive" : "Active";
     try {
-      await sb(`church_members?id=eq.${m.id}`, {
+      await sb(`stewards?id=eq.${m.id}`, {
         method: "PATCH",
         body: JSON.stringify({ membership_status: next }),
       });
@@ -11412,13 +11689,33 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
         }),
       });
       setPoolKeys(prev => { const n = new Set(prev); n.add(phoneKey(m.phone)); return n; });
-      setMsg(`${m.full_name} added to the visit pool — find them under Unassigned in Assign Visits.`);
+      setMsg(`${m.full_name} added to the visit pool \u2014 find them under Unassigned in Assign Visits.`);
       toast.success(`${m.full_name} added to the visit pool.`);
     } catch (e) { setErr(e.message); }
     setAddingId(null);
   };
 
-  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 100px 100px 175px";
+  const addQuickSteward = async () => {
+    if (!quickName.trim()) { toast.error("Full name is required."); return; }
+    setSavingQuick(true);
+    try {
+      await sb("stewards", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: quickName.trim(),
+          phone: quickPhone.trim() || null,
+          department: quickDept.trim() || null,
+          position: quickPosition.trim() || "Steward",
+        }),
+      });
+      setQuickName(""); setQuickPhone(""); setQuickDept(""); setQuickPosition("Steward");
+      toast.success("Steward added.");
+      reload();
+    } catch (e) { toast.error(e.message); }
+    setSavingQuick(false);
+  };
+
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 140px 130px 100px 100px 175px";
   const headCell = {
     fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
     letterSpacing: ".07em", fontFamily: F.head,
@@ -11434,19 +11731,39 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title="Stewards Care"
-        subtitle="Stewards registry — bulk import from Members Care using the Category column"
+        subtitle="Stewards & leadership registry \u2014 its own table, separate from Members Care. Position \u2260 Steward makes someone eligible to submit Steward Appraisals."
         action={<button style={btn("ghost", { padding: "8px 10px" })} onClick={reload}><RefreshCw size={14} /></button>}
       />
 
       <div style={{ marginBottom: 20 }}><BirthdaysFromList people={stewards} /></div>
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Stewards"        value={total}        icon={Shield}      accent={C.goldDark} />
-        <StatCard label="Active Stewards"       value={activeCount}  icon={CheckCircle} accent={C.green}    />
-        <StatCard label="New This Month"        value={newThisMonth} icon={UserPlus}    accent={C.soul}     />
-        <StatCard label="Children"              value={children}     icon={Heart}       accent={C.research}
-          sub={children === 0 && total > 0 ? "Counted from recorded DOBs" : ""} />
+        <StatCard label="Total Stewards"      value={total}           icon={Shield}      accent={C.goldDark} />
+        <StatCard label="Active Stewards"     value={activeCount}     icon={CheckCircle} accent={C.green}    />
+        <StatCard label="New This Month"      value={newThisMonth}    icon={UserPlus}    accent={C.soul}     />
+        <StatCard label="In Leadership Roles" value={leadershipCount} icon={Award}       accent={C.gold}
+          sub="Position \u2260 Steward \u2014 appraisal-eligible" />
       </div>
+
+      <div style={{ ...card, marginBottom: 20 }}>
+        <SH title="Quick Add" icon={UserPlus} />
+        <div className="g4" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: "0 16px" }}>
+          <FieldInput label="Full Name" id="qsname" value={quickName} onChange={e => setQuickName(e.target.value)} placeholder="e.g. Ngozi Eze" />
+          <FieldInput label="Phone" id="qsphone" value={quickPhone} onChange={e => setQuickPhone(e.target.value)} placeholder="Optional" />
+          <FieldInput label="Department" id="qsdept" value={quickDept} onChange={e => setQuickDept(e.target.value)} placeholder="e.g. Ushering" />
+          <FieldInput label="Position" id="qsposition" value={quickPosition} onChange={e => setQuickPosition(e.target.value)} placeholder="Steward, Team Lead, etc." />
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button style={btn("gold")} onClick={addQuickSteward} disabled={savingQuick}>
+            <UserPlus size={14} />{savingQuick ? "Saving\u2026" : "Add Steward"}
+          </button>
+          <button style={btn("ghost", { padding: "9px 14px" })} onClick={() => setShowImport(s => !s)}>
+            <Upload size={13} />{showImport ? "Hide Bulk Import" : "Bulk Import (CSV)"}
+          </button>
+        </div>
+      </div>
+
+      {showImport && <StewardsCSVImport currentUser={currentUser} onDone={() => { reload(); }} />}
 
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
@@ -11473,15 +11790,22 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
           <option value="Employee">Employee</option>
           <option value="Business Owner">Business Owner</option>
         </select>
-        {(fStatus || fMarital || fLife) && (
+        <select value={fPosition} onChange={e => setFPosition(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">All Positions</option>
+          <option value="Steward">Steward Only</option>
+          {[...new Set(stewards.map(s => s.position).filter(p => p && p !== "Steward"))].sort().map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        {(fStatus || fMarital || fLife || fPosition) && (
           <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })}
-            onClick={() => { setFStatus(""); setFMarital(""); setFLife(""); }}>
+            onClick={() => { setFStatus(""); setFMarital(""); setFLife(""); setFPosition(""); }}>
             <X size={12} />Clear
           </button>
         )}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name\u2026"
             style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
         </div>
       </div>
@@ -11494,7 +11818,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
           <Shield size={32} style={{ marginBottom: 10, opacity: .4 }} />
           <div style={{ fontWeight: 700, fontFamily: F.head }}>
             {stewards.length === 0
-              ? "No Stewards yet — import members via Members Care with Category set to Steward."
+              ? "No Stewards yet \u2014 use Quick Add or Bulk Import (CSV) above."
               : "No Stewards match your filters."}
           </div>
         </div>
@@ -11504,10 +11828,10 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1100,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1250,
             }}>
               <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
-              {["Phone", "Email", "Gender", "DOB", "Status", "Last Visit", "Last Called"].map(h => (
+              {["Phone", "Email", "Gender", "DOB", "Status", "Department", "Position", "Last Visit", "Last Called"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
               <div style={headCell}>Visit Pool</div>
@@ -11522,7 +11846,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
               return (
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 0", background: C.surface, minWidth: 1100,
+                  padding: "10px 0", background: C.surface, minWidth: 1250,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div style={stickyLeft(C.surface)}>
@@ -11538,9 +11862,9 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                   </div>
                   <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
                   <div style={{ fontSize: 12, color: C.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.email || <span style={{ color: C.textMuted }}>—</span>}
+                    {m.email || <span style={{ color: C.textMuted }}>\u2014</span>}
                   </div>
-                  <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "—"}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "\u2014"}</div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
                   <div>
                     <button onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
@@ -11548,6 +11872,8 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                       <span style={dot(stm.color)} />{m.membership_status || "Active"}
                     </button>
                   </div>
+                  <div><EditableCell member={m} table="stewards" field="department" placeholder="Set department\u2026" onSaved={reload} /></div>
+                  <div><EditableCell member={m} table="stewards" field="position" placeholder="Steward" onSaved={reload} /></div>
                   <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
                     {lastVis || "Never"}
                   </div>
@@ -11562,7 +11888,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                     ) : (
                       <button style={btn("soul", { padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" })}
                         onClick={() => addToPool(m)} disabled={addingId === m.id}>
-                        {addingId === m.id ? "Adding…" : "+ Add"}
+                        {addingId === m.id ? "Adding\u2026" : "+ Add"}
                       </button>
                     )}
                   </div>
@@ -11625,7 +11951,7 @@ function MembersCare({ currentUser, role, onViewProfile }) {
             if (!lv[k] || v.visit_date > lv[k]) lv[k] = v.visit_date;
           }
         });
-        setMembers((cm || []).filter(m => m.category !== "Steward"));
+        setMembers((cm || []).map(m => ({ ...m, _table: "church_members" })));
         setPoolKeys(keys);
         setLastVisit(lv);
         setLastCall(lc);
@@ -11908,8 +12234,9 @@ function CarePriorityList({ onViewProfile }) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const [inactive, pool, visits] = await Promise.all([
+        const [inactiveMembers, inactiveStewards, pool, visits] = await Promise.all([
           sb("church_members?membership_status=eq.Inactive&order=full_name.asc&limit=1000"),
+          sb("stewards?membership_status=eq.Inactive&order=full_name.asc&limit=1000"),
           sb("soul_care_contacts?select=id,phone").catch(() => []),
           sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
         ]);
@@ -11923,7 +12250,11 @@ function CarePriorityList({ onViewProfile }) {
           const k = contactKey[v.contact_id];
           if (k && v.visit_date && (!lc[k] || v.visit_date > lc[k])) lc[k] = v.visit_date;
         });
-        setMembers(inactive || []);
+        const merged = [
+          ...(inactiveMembers || []).map(m => ({ ...m, _table: "church_members" })),
+          ...(inactiveStewards || []).map(m => ({ ...m, _table: "stewards", category: "Steward" })),
+        ];
+        setMembers(merged);
         setLastContactByKey(lc);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
@@ -15212,6 +15543,662 @@ function Login({ onLogin }) {
 // ║  Includes: App (default export) — manages all state, routing, rendering   ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: NIGHT OF MERCY (NOM) FIRST-TIMERS                                 ║
+// ║  Fully separate from first_timers — own table, own public form, own QR,   ║
+// ║  own registry. Follow-up is a single Contacted / Not Contacted toggle.    ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+const BLANK_NOM = {
+  full_name: "", phone: "", gender: "", marital_status: "",
+  life_stage: "", house_address: "", nearest_landmark: "",
+  service_date: new Date().toISOString().slice(0, 10),
+};
+
+async function findNOMDupes(phone, excludeId) {
+  const key = phoneKey(phone);
+  if (!key) return [];
+  const rows = await sb(
+    "nom_first_timers?select=id,full_name,phone,service_date&limit=3000"
+  ).catch(() => []);
+  return (rows || []).filter(r => r.id !== excludeId && phoneKey(r.phone) === key);
+}
+
+function PublicNOMForm() {
+  const [form, setForm] = useState({ ...BLANK_NOM });
+  const [dupes, setDupes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [err, setErr] = useState("");
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e && e.target ? e.target.value : e }));
+
+  useEffect(() => {
+    if (!phoneKey(form.phone)) { setDupes([]); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const found = await findNOMDupes(form.phone, null);
+      if (!cancelled) setDupes(found);
+    }, 600);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [form.phone]);
+
+  const submit = async () => {
+    if (!form.full_name.trim() || !form.phone.trim()) {
+      setErr("Full name and phone are required."); return;
+    }
+    setLoading(true); setErr("");
+    try {
+      const nullIfEmpty = (v) => (v === "" || v === undefined) ? null : v;
+      await sb("nom_first_timers", {
+        method: "POST",
+        body: JSON.stringify({
+          full_name: form.full_name.trim(),
+          phone: form.phone.trim(),
+          gender: nullIfEmpty(form.gender),
+          marital_status: nullIfEmpty(form.marital_status),
+          life_stage: nullIfEmpty(form.life_stage),
+          house_address: nullIfEmpty(form.house_address),
+          nearest_landmark: nullIfEmpty(form.nearest_landmark),
+          service_date: form.service_date || new Date().toISOString().slice(0, 10),
+          source: "QR",
+        }),
+      });
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <Moon size={32} color={C.goldDark} />
+        </div>
+        <h2 style={{ color: C.goldDark, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>Thank You!</h2>
+        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7 }}>
+          We're glad you joined us for Night of Mercy. Someone from our team will be in touch soon.
+        </p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
+          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
+            Welcome to <span style={{ color: C.goldDark }}>Night of Mercy</span>
+          </h1>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+            So glad you came! Tell us a little about yourself.
+          </p>
+        </div>
+        <div style={card}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          <FieldInput label="Full Name" id="nomfn" required value={form.full_name} onChange={set("full_name")} placeholder="e.g. Adaeze Okafor" />
+          <FieldInput label="Phone Number" id="nomph" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
+          {dupes.length > 0 && (
+            <div style={{ background: C.goldLight, border: `1px solid ${C.gold}30`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.goldDark, marginBottom: 14, display: "flex", gap: 8 }}>
+              <Info size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>Looks like we may already have your details — no problem, go ahead and submit.</span>
+            </div>
+          )}
+          <FieldInput label="Gender" id="nomgd" type="select" value={form.gender} onChange={set("gender")}
+            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+          <FieldInput label="Marital Status" id="nomms" type="select" value={form.marital_status} onChange={set("marital_status")}
+            options={[
+              { value: "Single", label: "Single" }, { value: "Married", label: "Married" },
+              { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" },
+            ]} />
+          <FieldInput label="Life Stage" id="nomls" type="select" value={form.life_stage} onChange={set("life_stage")}
+            options={[
+              { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
+              { value: "Business Owner", label: "Business Owner" },
+            ]} />
+          <FieldInput label="House Address" id="nomha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
+          <FieldInput label="Nearest Landmark" id="nomnl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
+          <button style={{ ...btn("gold"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
+            {loading ? "Submitting…" : "Submit"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NOMQRCodePage() {
+  const nomUrl = window.location.origin + "/nom-register";
+  const [custom, setCustom] = useState(nomUrl);
+  const [display, setDisplay] = useState(nomUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=A3792B&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=A3792B&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+    a.download = "envoys-nom-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="Night of Mercy QR Code" subtitle="Display at NOM services — first-timers scan this to register." />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={btn("gold")} onClick={download}><Download size={14} />Download PNG</button>
+            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
+          <FieldInput label="NOM Registration URL" id="nomurl" value={custom} onChange={e => setCustom(e.target.value)} />
+          <button style={{ ...btn("gold"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NOMFirstTimersList({ currentUser }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [filter, setFilter] = useState("all"); // all | contacted | uncontacted
+  const [savingId, setSavingId] = useState(null);
+
+  const reload = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      let q = "nom_first_timers?select=*&order=created_at.desc&limit=3000";
+      if (dateFrom) q += `&service_date=gte.${dateFrom}`;
+      if (dateTo)   q += `&service_date=lte.${dateTo}`;
+      const rows = await sb(q);
+      setData(rows || []);
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, [dateFrom, dateTo]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const filtered = data.filter(r => {
+    const matchSearch = !search || r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search);
+    if (filter === "contacted")   return matchSearch && r.contacted;
+    if (filter === "uncontacted") return matchSearch && !r.contacted;
+    return matchSearch;
+  });
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
+
+  const contactedCount   = data.filter(r => r.contacted).length;
+  const uncontactedCount = data.length - contactedCount;
+
+  const toggleContacted = async (row) => {
+    setSavingId(row.id);
+    try {
+      const next = !row.contacted;
+      await sb(`nom_first_timers?id=eq.${row.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          contacted: next,
+          contacted_by: next ? (currentUser || null) : null,
+          contacted_at: next ? new Date().toISOString() : null,
+        }),
+      });
+      toast.success(next ? `${row.full_name} marked as contacted.` : `${row.full_name} marked as not contacted.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+    setSavingId(null);
+  };
+
+  const tabs = [
+    { k: "all",         label: "All",           count: data.length,     col: C.textMuted },
+    { k: "uncontacted", label: "Not Contacted", count: uncontactedCount, col: C.gold      },
+    { k: "contacted",   label: "Contacted",     count: contactedCount,   col: C.green     },
+  ];
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Night of Mercy" subtitle="First-timers registered at Night of Mercy — kept separate from Sunday VIPs." />
+
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by NOM service date:" />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total"          value={data.length}       icon={Moon}       accent={C.goldDark} />
+        <StatCard label="Contacted"      value={contactedCount}    icon={CheckCircle} accent={C.green}   />
+        <StatCard label="Not Contacted"  value={uncontactedCount}  icon={AlertCircle} accent={C.gold}     />
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+        <div style={{ marginLeft: "auto", position: "relative" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+        </div>
+        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
+      </div>
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+          <div style={{ display: "grid", gap: 8 }}>
+            {filtered.slice(0, visibleCount).map(r => (
+              <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${r.contacted ? C.green : C.gold}` }} {...lift}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 220 }}>
+                    <Avatar name={r.full_name} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}>
+                        <PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}
+                        {r.source === "QR" && <span style={{ marginLeft: 6 }}>· via QR</span>}
+                      </div>
+                      {r.contacted && r.contacted_by && (
+                        <div style={{ fontSize: 11, color: C.green, marginTop: 2 }}>Contacted by {r.contacted_by}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                    <span style={badge(r.contacted ? C.green : C.gold, r.contacted ? C.greenLight : C.goldLight, { fontSize: 11 })}>
+                      {r.contacted ? "Contacted" : "Not Contacted"}
+                    </span>
+                    <button
+                      style={btn(r.contacted ? "ghost" : "gold", { padding: "6px 12px", fontSize: 12 })}
+                      onClick={() => toggleContacted(r)}
+                      disabled={savingId === r.id}>
+                      {savingId === r.id ? "…" : r.contacted ? "Mark Not Contacted" : "Mark Contacted"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+                <Moon size={28} style={{ marginBottom: 8, opacity: .4 }} />
+                <div style={{ fontWeight: 600, fontFamily: F.head }}>No records in this category</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ╔═════════════════════════════════════════════════════════════════════════════╗
+// ║  MODULE: STEWARD APPRAISAL / VOTING SYSTEM                                 ║
+// ║  Team Leads (public link, no login) score Stewards on 10 metrics/month.   ║
+// ║  Admin manages the Team Lead roster; Admin + Pastoral see the leaderboard.║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+const APPRAISAL_METRICS = [
+  { key: "compliance_score",  label: "Compliance to Instructions" },
+  { key: "attendance_score",  label: "Attendance at Meetings/Duty" },
+  { key: "punctuality_score", label: "Service Punctuality" },
+  { key: "dressing_score",    label: "Comportment & Dress Code" },
+  { key: "teamwork_score",    label: "Team Spirit / Cooperation" },
+  { key: "initiative_score",  label: "Initiative & Proactiveness" },
+  { key: "courtesy_score",    label: "Courtesy & Communication" },
+  { key: "diligence_score",   label: "Diligence in Assigned Duty" },
+  { key: "spiritual_score",   label: "Spiritual Disposition" },
+  { key: "conduct_score",     label: "Overall Conduct" },
+];
+const APPRAISAL_MAX = APPRAISAL_METRICS.length * 10;
+
+function currentAppraisalMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+function monthLabel(isoMonth) {
+  if (!isoMonth) return "—";
+  const [y, m] = isoMonth.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function MetricScoreInput({ label, value, onChange }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <label style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, fontFamily: F.body }}>{label}</label>
+        <span style={{
+          fontSize: 13, fontWeight: 800, color: C.gold, fontFamily: F.head,
+          background: C.goldLight, padding: "2px 10px", borderRadius: 12, minWidth: 34, textAlign: "center",
+        }}>{value}/10</span>
+      </div>
+      <input
+        type="range" min={0} max={10} step={1} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        style={{ width: "100%", accentColor: C.gold, cursor: "pointer" }}
+      />
+    </div>
+  );
+}
+
+const BLANK_APPRAISAL_SCORES = APPRAISAL_METRICS.reduce((acc, m) => ({ ...acc, [m.key]: 5 }), {});
+
+function PublicAppraisalForm() {
+  const [teamLeads, setTeamLeads] = useState([]);
+  const [stewards, setStewards]   = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [department, setDepartment] = useState("");
+  const [teamLeadName, setTeamLeadName] = useState("");
+  const [stewardId, setStewardId] = useState("");
+  const [scores, setScores]       = useState({ ...BLANK_APPRAISAL_SCORES });
+  const [comments, setComments]   = useState("");
+  const [saving, setSaving]       = useState(false);
+  const [err, setErr]             = useState("");
+  const [done, setDone]           = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const all = await sb("stewards?select=id,full_name,department,position&membership_status=eq.Active&order=full_name.asc");
+        const rows = all || [];
+        // Anyone whose position is NOT "Steward" (Team Lead, Assistant Team
+        // Lead, HOD, etc.) is automatically eligible to submit an appraisal —
+        // no separate roster to maintain, and an assistant can stand in for
+        // their leader in an emergency simply by being in this list too.
+        setTeamLeads(rows.filter(s => (s.position || "Steward") !== "Steward"));
+        setStewards(rows.filter(s => (s.position || "Steward") === "Steward"));
+      } catch (e) { setErr(e.message); }
+      setLoading(false);
+    })();
+  }, []);
+
+  const departments = [...new Set(teamLeads.map(t => t.department).filter(Boolean))].sort();
+  const tlOptionsForDept = teamLeads.filter(t => t.department === department);
+  const stewardOptionsForDept = stewards.filter(s => s.department === department);
+
+  const resetForNext = () => {
+    setStewardId(""); setScores({ ...BLANK_APPRAISAL_SCORES }); setComments(""); setDone(false);
+  };
+
+  const submit = async () => {
+    if (!department || !teamLeadName || !stewardId) {
+      setErr("Please select your department, your name, and the steward you're appraising."); return;
+    }
+    setSaving(true); setErr("");
+    try {
+      await sb("steward_appraisals", {
+        method: "POST",
+        prefer: "resolution=merge-duplicates,return=representation",
+        body: JSON.stringify({
+          steward_id: stewardId,
+          department,
+          team_lead_name: teamLeadName,
+          appraisal_month: currentAppraisalMonth(),
+          comments: comments.trim() || null,
+          ...scores,
+        }),
+      });
+      setDone(true);
+    } catch (e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  if (done) return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ ...card, maxWidth: 480, textAlign: "center", padding: "3rem 2rem" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.goldLight, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <Trophy size={32} color={C.goldDark} />
+        </div>
+        <h2 style={{ color: C.goldDark, margin: "0 0 10px", fontFamily: F.head, fontWeight: 800 }}>Appraisal Submitted!</h2>
+        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>
+          Thank you for taking the time to score your steward for {monthLabel(currentAppraisalMonth())}.
+        </p>
+        <button style={btn("gold")} onClick={resetForNext}>Score Another Steward</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, padding: "2rem 1rem" }}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><Logo size={72} /></div>
+          <h1 style={{ margin: 0, color: C.textPrimary, fontSize: 22, fontFamily: F.head, fontWeight: 800 }}>
+            Steward <span style={{ color: C.goldDark }}>Appraisal</span>
+          </h1>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
+            {monthLabel(currentAppraisalMonth())} · Score your steward across 10 metrics (0–10 each, {APPRAISAL_MAX} points total).
+          </p>
+        </div>
+        <div style={card}>
+          {CREDS_MISSING && <CredsBanner />}
+          <Alert type="error" msg={err} onClose={() => setErr("")} />
+          {loading ? <SkeletonList rows={3} /> : (
+            <>
+              <FieldInput label="Your Department" id="apdept" type="select" required
+                value={department}
+                onChange={e => { setDepartment(e.target.value); setTeamLeadName(""); setStewardId(""); }}
+                options={departments.map(d => ({ value: d, label: d }))} />
+
+              {department && (
+                <FieldInput label="Your Name (Team Lead / Assistant)" id="aptl" type="select" required
+                  value={teamLeadName} onChange={e => setTeamLeadName(e.target.value)}
+                  options={tlOptionsForDept.map(t => ({
+                    value: t.full_name,
+                    label: t.position && t.position !== "Team Lead" ? `${t.full_name} (${t.position})` : t.full_name,
+                  }))} />
+              )}
+
+              {department && (
+                <FieldInput label="Steward Being Appraised" id="apstw" type="select" required
+                  value={stewardId} onChange={e => setStewardId(e.target.value)}
+                  options={stewardOptionsForDept.map(s => ({ value: s.id, label: s.full_name }))}
+                  hint={stewardOptionsForDept.length === 0 ? "No stewards found for this department yet." : undefined} />
+              )}
+
+              {department && teamLeadName && stewardId && (
+                <div style={{ marginTop: 20 }}>
+                  <SH title="Score Each Metric (0–10)" icon={Award} />
+                  {APPRAISAL_METRICS.map(m => (
+                    <MetricScoreInput key={m.key} label={m.label} value={scores[m.key]}
+                      onChange={v => setScores(s => ({ ...s, [m.key]: v }))} />
+                  ))}
+                  <FieldInput label="Comments (optional)" id="apcomments" type="textarea" value={comments} onChange={e => setComments(e.target.value)} />
+                  <div style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    background: C.goldLight, borderRadius: 8, padding: "10px 14px", marginBottom: 16,
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: C.goldDark, fontFamily: F.head }}>Total Score</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: C.goldDark, fontFamily: F.head }}>
+                      {Object.values(scores).reduce((a, b) => a + b, 0)} / {APPRAISAL_MAX}
+                    </span>
+                  </div>
+                  <button style={{ ...btn("gold"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={saving}>
+                    {saving ? "Submitting…" : "Submit Appraisal"}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function StewardAppraisalDashboard() {
+  const [month, setMonth] = useState(currentAppraisalMonth());
+  const [rows, setRows] = useState([]);
+  const [readiness, setReadiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+  const [deptFilter, setDeptFilter] = useState("");
+  const [expanded, setExpanded] = useState(null);
+
+  const reload = useCallback(async () => {
+    setLoading(true); setErr("");
+    try {
+      const [data, allStewards] = await Promise.all([
+        sb(`steward_appraisals?select=*,stewards(full_name)&appraisal_month=eq.${month}&order=total_score.desc`),
+        sb("stewards?select=position,department"),
+      ]);
+      setRows(data || []);
+      const rs = allStewards || [];
+      setReadiness({
+        stewardCount: rs.filter(s => (s.position || "Steward") === "Steward" && s.department).length,
+        leadCount:    rs.filter(s => (s.position || "Steward") !== "Steward" && s.department).length,
+      });
+    } catch (e) { setErr(e.message); }
+    setLoading(false);
+  }, [month]);
+  useEffect(() => { reload(); }, [reload]);
+
+  // Aggregate per steward: average total score across all Team Leads who voted.
+  const departments = [...new Set(rows.map(r => r.department).filter(Boolean))].sort();
+  const filteredRows = deptFilter ? rows.filter(r => r.department === deptFilter) : rows;
+
+  const agg = {};
+  filteredRows.forEach(r => {
+    const id = r.steward_id;
+    if (!agg[id]) {
+      agg[id] = {
+        steward_id: id,
+        full_name: r.stewards?.full_name || "Unknown",
+        department: r.department,
+        votes: [],
+      };
+    }
+    agg[id].votes.push(r);
+  });
+  const leaderboard = Object.values(agg).map(s => {
+    const totalSum = s.votes.reduce((a, v) => a + v.total_score, 0);
+    return { ...s, voteCount: s.votes.length, avgScore: Math.round((totalSum / s.votes.length) * 10) / 10 };
+  }).sort((a, b) => b.avgScore - a.avgScore);
+
+  const setupReady = readiness && readiness.stewardCount > 0 && readiness.leadCount > 0;
+
+  const totalVotes = filteredRows.length;
+  const stewardsAppraised = leaderboard.length;
+  const avgScoreOverall = leaderboard.length
+    ? Math.round((leaderboard.reduce((a, s) => a + s.avgScore, 0) / leaderboard.length) * 10) / 10
+    : 0;
+  const topScore = leaderboard.length ? leaderboard[0].avgScore : 0;
+
+  const { visibleCount, onScroll } = usePagedScroll(`${month}|${deptFilter}`, leaderboard.length, 10);
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title="Steward Appraisal"
+        subtitle="Team Lead scores, ranked by average total score for the month."
+        action={<button style={btn("ghost", { padding: "8px 10px" })} onClick={reload} title="Refresh"><RefreshCw size={14} /></button>}
+      />
+
+      {!loading && readiness && !setupReady && (
+        <div style={{
+          ...card, marginBottom: 20, background: C.amberLight, border: `1px solid ${C.amber}35`,
+          display: "flex", gap: 10, alignItems: "flex-start",
+        }}>
+          <AlertCircle size={16} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6 }}>
+            <strong>The public form ({window.location.origin}/appraisal) needs both of these, in the same department, in Stewards Care:</strong>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+              <li>{readiness.stewardCount > 0 ? "✅" : "❌"} At least one person with Position = "Steward" and a Department set ({readiness.stewardCount} so far)</li>
+              <li>{readiness.leadCount > 0 ? "✅" : "❌"} At least one person with a Position other than "Steward" (Team Lead, Assistant, HOD…) and a Department set ({readiness.leadCount} so far)</li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Votes This Month"    value={totalVotes}        icon={CheckCircle} accent={C.soul}     />
+        <StatCard label="Stewards Appraised"  value={stewardsAppraised} icon={Shield}      accent={C.goldDark} />
+        <StatCard label="Average Score"       value={`${avgScoreOverall}/${APPRAISAL_MAX}`} icon={TrendingUp} accent={C.green} />
+        <StatCard label="Top Score"           value={`${topScore}/${APPRAISAL_MAX}`}        icon={Trophy}     accent={C.gold}  />
+      </div>
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 20 }}>
+        <div style={{ minWidth: 200 }}>
+          <FieldInput label="Month" id="apmonth" type="month"
+            value={month.slice(0, 7)} onChange={e => setMonth(`${e.target.value}-01`)} />
+        </div>
+        <div style={{ minWidth: 200 }}>
+          <FieldInput label="Department" id="apdeptfilter" type="select" value={deptFilter} onChange={e => setDeptFilter(e.target.value)}
+            options={departments.map(d => ({ value: d, label: d }))} />
+        </div>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+
+      {loading ? <SkeletonList rows={5} /> : leaderboard.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Trophy size={28} style={{ marginBottom: 8, opacity: .4 }} />
+          <div style={{ fontWeight: 600, fontFamily: F.head }}>No appraisals submitted for {monthLabel(month)} yet</div>
+          <div style={{ fontSize: 13, marginTop: 6 }}>
+            Share {window.location.origin}/appraisal with your Team Leads. If the form has nothing to select, check
+            the readiness checklist above and set Department + Position for the relevant people in <strong>Stewards Care</strong>.
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+            <div style={{ display: "grid", gap: 8 }}>
+              {leaderboard.slice(0, visibleCount).map((s, idx) => {
+                const isTop3 = idx < 3;
+                const medalColor = idx === 0 ? C.gold : idx === 1 ? C.textMuted : C.goldDark;
+                return (
+                  <div key={s.steward_id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${isTop3 ? C.gold : C.border}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                          background: isTop3 ? C.goldLight : C.bg, color: isTop3 ? medalColor : C.textMuted, fontWeight: 800, fontFamily: F.head, flexShrink: 0,
+                        }}>
+                          {isTop3 ? <Trophy size={16} /> : `#${idx + 1}`}
+                        </div>
+                        <Avatar name={s.full_name} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{s.full_name}</div>
+                          <div style={{ fontSize: 12, color: C.textMuted }}>{s.department} · {s.voteCount} vote{s.voteCount !== 1 ? "s" : ""}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                        <span style={badge(C.goldDark, C.goldLight, { fontSize: 13, fontWeight: 800 })}>{s.avgScore} / {APPRAISAL_MAX}</span>
+                        <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })} onClick={() => setExpanded(expanded === s.steward_id ? null : s.steward_id)}>
+                          {expanded === s.steward_id ? "Hide" : "Details"}
+                        </button>
+                      </div>
+                    </div>
+                    {expanded === s.steward_id && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}`, display: "grid", gap: 8 }}>
+                        {s.votes.map(v => (
+                          <div key={v.id} style={{ fontSize: 12, color: C.textSecondary, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                            <span><strong>{v.team_lead_name}</strong> scored <strong>{v.total_score}/{APPRAISAL_MAX}</strong></span>
+                            {v.comments && <span style={{ color: C.textMuted, fontStyle: "italic" }}>"{v.comments}"</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
+            Showing <strong>{Math.min(visibleCount, leaderboard.length)}</strong> of <strong>{leaderboard.length}</strong> Steward{leaderboard.length !== 1 ? "s" : ""}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(() => loadSession());
   const [active, setActive] = useState(() => {
@@ -15236,6 +16223,8 @@ function App() {
   const [showFeedback,    setShowFeedback]    = useState(false);
   const [showTestimony,   setShowTestimony]   = useState(false);
   const [showNewConvert,  setShowNewConvert]  = useState(false);
+  const [showNOM,         setShowNOM]         = useState(false);
+  const [showAppraisal,   setShowAppraisal]   = useState(false);
 
   useEffect(() => {
     const onPopState = (e) => {
@@ -15252,6 +16241,8 @@ function App() {
     if (p === "/feedback"  || p === "/feedback/"  || h === "#feedback")  setShowFeedback(true);
     if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
     if (p === "/new-convert" || p === "/new-convert/" || h === "#new-convert") setShowNewConvert(true);
+    if (p === "/nom-register" || p === "/nom-register/" || h === "#nom-register") setShowNOM(true);
+    if (p === "/appraisal" || p === "/appraisal/" || h === "#appraisal") setShowAppraisal(true);
   }, []);
 
   useEffect(() => {
@@ -15296,6 +16287,8 @@ function App() {
   if (showFeedback)  return <PublicFeedbackForm />;
   if (showTestimony)   return <PublicTestimonyForm />;
   if (showNewConvert)  return <PublicNewConvertForm />;
+  if (showNOM)         return <PublicNOMForm />;
+  if (showAppraisal)   return <PublicAppraisalForm />;
   if (!session)        return <Login onLogin={login} />;
 
   const { role, user, username } = session;
@@ -15365,6 +16358,9 @@ function App() {
     if (active === "experience_dashboard") return <ExperienceAnalyticsDashboard />;
     if (active === "connect_centre_prospects") return <ConnectCentreProspects currentUser={user} />;
     if (active === "vip_journey_dashboard") return <VipJourneyDashboard />;
+    if (active === "nom_registry") return <NOMFirstTimersList currentUser={user} />;
+    if (active === "nom_qr") return <NOMQRCodePage />;
+    if (active === "steward_appraisal_results") return <StewardAppraisalDashboard />;
 
     if (active === "firsttimers") {
       if (editTarget) {
