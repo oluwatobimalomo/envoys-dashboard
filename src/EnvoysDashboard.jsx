@@ -415,9 +415,7 @@ async function cascadeRename(oldName, newName) {
   const enc = encodeURIComponent(oldName);
   const targets = [
     ["call_assignments",      "assigned_to"],
-    ["soul_care_assignments", "assigned_to"],
     ["call_feedback",         "caller_name"],
-    ["soul_care_visits",      "logged_by"],
     ["pipeline_overviews",    "submitted_by"],
   ];
   for (const [table, col] of targets) {
@@ -635,8 +633,7 @@ const ROLE_META = {
   experienceadmin: { label: "Exp. Admin",    color: C.blue,     bg: C.blueLight     },
   soulcareadmin:   { label: "Soul Care Admin", color: C.soul,   bg: C.soulLight     },
   testimonyteam:   { label: "Testimony Team",  color: C.goldDark, bg: C.goldLight   },
-  megastars:      { label: "Megastars Team",  color: C.soul,  bg: C.soulLight },
-  megastarsadmin: { label: "Megastars Admin",  color: C.soul,  bg: C.soulLight },
+  trainingteam:    { label: "Training Team",   color: C.gold,     bg: C.goldLight   },
   connectcentre: { label: "Connect Centre", color: C.soul, bg: C.soulLight },
 };
 
@@ -645,17 +642,11 @@ const NAV_ICONS = {
   firsttimers: Users, addmember: UserPlus, report: BarChart2,
   allfeedback: MessageSquare, flagged: Flag, qrcode: QrCode,
   callqueue: Phone, callbacks: RefreshCw, mycalls: Phone,
-  sc_queue: Heart, sc_mine: Clipboard,
-  visitation_tab: MapPin,
   research_feedback: FileText,
   general_feedback: MessageSquare,
   assign_calls: UserCheck,
   experience_dashboard: BarChart2,
   completed_pipelines: FileText,
-  sc_assign: UserCheck,
-  sc_flagged: Flag,
-  sc_testimonies: Star,
-  add_visit: UserPlus,
   feedback_qr: QrCode,
   testimony_qr: QrCode,
   testimony_bank: Star,
@@ -671,14 +662,17 @@ const NAV_ICONS = {
   soulcare_dashboard: BarChart2,
   steward_care: Shield,
   care_priority_list: AlertCircle,
-  megastars_checkinout: UserCheck,
-  megastars_roster: Heart,
-  megastars_services: Calendar,
+  sc_assign_calls: UserCheck,
+  sc_call_queue: Phone,
+  sc_calls_analytics: Activity,
+  sc_my_calls: Phone,
   connect_centre_prospects: MapPin,
   vip_journey_dashboard: TrendingUp,
   nom_registry: Moon,
   nom_qr: QrCode,
   steward_appraisal_results: Trophy,
+  appraisal_qr: QrCode,
+  training_module: Award,
 };
 
 const NAV = {
@@ -693,36 +687,32 @@ const NAV = {
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "callqueue",           label: "Call Queue"          },
     { id: "experience_dashboard", label: "Analytics Dashboard" },
-    { id: "add_visit",     label: "Add Visit"     },
     { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
-    { id: "sc_assign",     label: "Assign Visits" },
-    { id: "sc_queue",      label: "Visit Queue"   },
     { id: "pe_assign",     label: "Potential Envoys" },
     { id: "nc_registry",   label: "Registry" },
+    { id: "nc_qr",         label: "QR Code" },
+    { id: "nc_assign",     label: "Assign Calls" },
+    { id: "nc_mine",       label: "Call Queue" },
+    { id: "nc_report",     label: "New Converts Retention" },
     { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",  label: "Members Care" },
     { id: "care_priority_list", label: "Care Priority List" },
-    { id: "report",        label: "Report"        },
-    { id: "nc_qr",         label: "QR Code" },
-    { id: "nc_report",     label: "New Converts Retention" },
-    { id: "allfeedback",   label: "All Feedback"  },
+    { id: "sc_assign_calls", label: "Assign Calls" },
+    { id: "sc_call_queue",   label: "Call Queue" },
     { id: "flagged",       label: "Flagged"       },
-    { id: "visitation_tab",label: "Visitations"   },
-    { id: "megastars_checkinout", label: "Check In / Out" },
-    { id: "megastars_services",   label: "Services" },
-    { id: "megastars_roster",     label: "Roster" },
     { id: "research_feedback", label: "VIPs Feedback"  },
     { id: "general_feedback",  label: "General Feedback" },
     { id: "feedback_qr",   label: "Feedback QR"   },
-    { id: "sc_testimonies", label: "Visitation Testimony"   },
     { id: "testimony_qr", label: "Testimony QR"   },
     { id: "qrcode",        label: "VIPs QR Code"       },
     { id: "testimony_bank", label: "Testimony Bank" },
-    { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
+    { id: "soulcare_dashboard", label: "Retention Dashboard" },
+    { id: "sc_calls_analytics", label: "Calls Analytics" },
     { id: "connect_centre_prospects", label: "Connect Centre" },
     { id: "nom_registry",  label: "Night of Mercy" },
     { id: "nom_qr",        label: "NOM QR Code" },
-    { id: "steward_appraisal_results", label: "Steward Appraisal" },
+    { id: "appraisal_qr",  label: "Appraisal QR" },
+    { id: "steward_appraisal_results", label: "Stewards Appraisal" },
   ],
   dofficer: [
     { id: "firsttimers",   label: "First-Timers"  },
@@ -733,9 +723,6 @@ const NAV = {
     { id: "nc_qr",         label: "QR Code" },
     { id: "nom_registry",  label: "Night of Mercy" },
     { id: "nom_qr",        label: "NOM QR Code" },
-    { id: "megastars_checkinout", label: "Check In / Out" },
-    { id: "megastars_services",   label: "Services" },
-    { id: "megastars_roster",     label: "Roster" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -749,55 +736,41 @@ const NAV = {
     { id: "report",        label: "Report"        },
     { id: "allfeedback",   label: "All Feedback"  },
     { id: "flagged",       label: "Flagged"       },
-    { id: "visitation_tab",label: "Visitations"   },
-    { id: "report",        label: "Report"        },
     { id: "nc_report",     label: "New Converts Retention" },
-    { id: "soulcare_dashboard", label: "Soul Care Dashboard" },
+    { id: "soulcare_dashboard", label: "Retention Dashboard" },
+    { id: "sc_calls_analytics", label: "Calls Analytics" },
     { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
-    { id: "steward_appraisal_results", label: "Steward Appraisal" },
+    { id: "appraisal_qr",  label: "Appraisal QR" },
+    { id: "steward_appraisal_results", label: "Stewards Appraisal" },
   ],
   soulcare: [
-    { id: "sc_queue",         label: "Visit Queue" },
-    { id: "sc_mine",          label: "My Visits"  },
     { id: "pe_mine",          label: "My Potential Envoys" },
     { id: "envoys_visitors",  label: "Envoys Visitors" },
     { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",     label: "Members Care" },
     { id: "care_priority_list", label: "Care Priority List" },
-    { id: "sc_flagged",       label: "Flagged"     },
-    { id: "pe_mine",          label: "My Potential Envoys" },
-    { id: "nc_mine",          label: "My New Converts" },
+    { id: "sc_my_calls",     label: "My Assigned Calls" },
+    { id: "nc_mine",          label: "Call Queue" },
+    { id: "nc_report",        label: "New Converts Retention" },
   ],
   soulcareadmin: [
-    { id: "add_visit",           label: "Add Visit"           },
-    { id: "sc_assign",           label: "Assign Visits"       },
-    { id: "sc_queue",            label: "Visit Queue"         },
-    { id: "sc_mine",             label: "My Visits"         },
     { id: "pe_assign",           label: "Potential Envoys"    },
     { id: "pe_mine",             label: "My Potential Envoys" },
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "steward_care",        label: "Stewards Care" },
     { id: "members_care",        label: "Members Care" },
     { id: "care_priority_list", label: "Care Priority List" },
+    { id: "sc_assign_calls",    label: "Assign Calls" },
+    { id: "sc_call_queue",      label: "Call Queue" },
     { id: "completed_pipelines", label: "Completed Pipelines" },
-    { id: "sc_flagged",          label: "Flagged"             },
-    { id: "sc_testimonies",      label: "Care Testimonies"    },
-    { id: "pe_mine",             label: "My Potential Envoys" },
-    { id: "nc_assign",           label: "New Converts"        },
-    { id: "nc_mine",             label: "My New Converts"     },
+    { id: "nc_registry",         label: "Registry"            },
     { id: "nc_qr",               label: "QR Code"      },
+    { id: "nc_assign",           label: "Assign Calls"        },
+    { id: "nc_mine",             label: "Call Queue"          },
     { id: "nc_report",           label: "New Converts Retention" },
-    { id: "soulcare_dashboard",  label: "Soul Care Dashboard" },
+    { id: "soulcare_dashboard",  label: "Retention Dashboard" },
+    { id: "sc_calls_analytics",  label: "Calls Analytics" },
     { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
-  ],
-  megastars: [
-    { id: "megastars_checkinout", label: "Check In / Out" },
-    { id: "megastars_roster",     label: "Roster" },
-  ],
-  megastarsadmin: [
-    { id: "megastars_checkinout", label: "Check In / Out" },
-    { id: "megastars_services",   label: "Services" },
-    { id: "megastars_roster",     label: "Roster" },
   ],
   research: [
     { id: "research_feedback", label: "Service Feedback" },
@@ -805,9 +778,11 @@ const NAV = {
     { id: "general_feedback",  label: "General Feedback" },
   ],
   testimonyteam: [
-    { id: "sc_testimonies", label: "Testimonies"    },
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "testimony_qr",   label: "Testimony QR"   },
+  ],
+  trainingteam: [
+    { id: "training_module", label: "Training Module" },
   ],
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
@@ -837,35 +812,32 @@ const NAV_GROUPS = {
     { title: "First-Timers", ids: ["firsttimers", "vip_contact", "addmember", "qrcode"] },
     { title: "New Converts", ids: ["nc_registry", "nc_qr"] },
     { title: "Night of Mercy", ids: ["nom_registry", "nom_qr"] },
-    { title: "Megastars",    ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
   ],
   admin: [
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
     { title: "First-Timers",     ids: ["firsttimers", "vip_contact", "qrcode"] },
     { title: "Experience Team",  ids: ["assign_calls", "callqueue", "experience_dashboard"] },
-    { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "visitation_tab"] },
-    { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
-    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged", "nc_report"] },
-    { title: "Megastars",        ids: ["megastars_checkinout", "megastars_services", "megastars_roster"] },
+    { title: "VIP Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors", "vip_journey_dashboard"] },
+    { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics"] },
+    { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
-    { title: "Testimonies",      ids: ["sc_testimonies", "testimony_bank", "testimony_qr"] },
+    { title: "Testimonies",      ids: ["testimony_bank", "testimony_qr"] },
     { title: "Connect Centre",   ids: ["connect_centre_prospects"] },
     { title: "Night of Mercy",   ids: ["nom_registry", "nom_qr"] },
-    { title: "Steward Appraisal", ids: ["steward_appraisal_results"] },
+    { title: "Stewards Appraisal", ids: ["appraisal_qr", "steward_appraisal_results"] },
   ],
   soulcareadmin: [
-    { title: "Visits",           ids: ["add_visit", "sc_assign", "sc_queue", "sc_mine", "sc_flagged"] },
-    { title: "Retention Funnel", ids: ["completed_pipelines", "pe_assign", "pe_mine", "envoys_visitors"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
-    { title: "Testimonies",      ids: ["sc_testimonies"] },
-    { title: "Oversight",   ids: ["completed_pipelines", "sc_flagged", "soulcare_dashboard", "vip_journey_dashboard"] },
+    { title: "VIP Retention Funnel", ids: ["completed_pipelines", "pe_assign", "pe_mine", "envoys_visitors", "vip_journey_dashboard"] },
+    { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics"] },
+    { title: "Oversight",   ids: ["completed_pipelines", "soulcare_dashboard"] },
   ],
 
   soulcare: [
-    { title: "Visits",           ids: ["add_visit", "sc_queue", "sc_mine", "sc_flagged"] },
-    { title: "Retention Funnel", ids: ["envoys_visitors", "pe_mine"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "nc_assign", "nc_qr", "nc_report", "soulcare_dashboard"] },
+    { title: "VIP Retention Funnel", ids: ["envoys_visitors", "pe_mine"] },
+    { title: "New Converts",     ids: ["nc_mine", "nc_report"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_my_calls"] },
   ],
 
   experienceadmin: [
@@ -1481,17 +1453,11 @@ function useNotificationData(role, user) {
       } else {
         calls.push(Promise.resolve([]));
       }
-      if (user && (role === "soulcare" || role === "soulcareadmin" || role === "admin")) {
-        calls.push(sb(`soul_care_visits?logged_by=eq.${encodeURIComponent(user)}&follow_up_required=eq.true&next_follow_up_date=lte.${todayStr}&select=id`).catch(() => []));
-      } else {
-        calls.push(Promise.resolve([]));
-      }
-
-      const [flagged, pending, dueCalls, dueVisits] = await Promise.all(calls);
+      const [flagged, pending, dueCalls] = await Promise.all(calls);
       setData({
         flagCount:    (flagged || []).length,
         pendingCount: (pending || []).length,
-        dueCount:     (dueCalls || []).length + (dueVisits || []).length,
+        dueCount:     (dueCalls || []).length,
         loading: false,
       });
     } catch {
@@ -1513,10 +1479,8 @@ function NotificationBell({ role, user, setActive, inline = false }) {
   const [open, setOpen] = useState(false);
   const total = flagCount + pendingCount + dueCount;
 
-  const flagTargetId = (NAV[role] || []).some(n => n.id === "flagged") ? "flagged"
-    : (NAV[role] || []).some(n => n.id === "sc_flagged") ? "sc_flagged" : null;
-  const dueTargetId = role === "soulcare" || role === "soulcareadmin" ? "sc_mine"
-    : role === "expteam" || role === "experienceadmin" ? "mycalls" : null;
+  const flagTargetId = (NAV[role] || []).some(n => n.id === "flagged") ? "flagged" : null;
+  const dueTargetId = role === "expteam" || role === "experienceadmin" ? "mycalls" : null;
 
   const goTo = (id) => { if (id) { setActive(id); setOpen(false); } };
 
@@ -1890,9 +1854,8 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
     let cancelled = false;
     (async () => {
       try {
-        const [ftRows, scRows, cmRows, wished] = await Promise.all([
+        const [ftRows, cmRows, wished] = await Promise.all([
           sb("first_timers?select=id,full_name,phone,dob&dob=not.is.null&limit=2000").catch(() => []),
-          sb("soul_care_contacts?select=id,full_name,phone,dob&dob=not.is.null&limit=2000").catch(() => []),
           sb("church_members?select=id,full_name,phone,dob&dob=not.is.null&limit=3000").catch(() => []),
           fetchBirthdayWishesSet(currentYear),
         ]);
@@ -1904,7 +1867,6 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
           if (!seen.has(k)) { seen.add(k); rows.push({ ...r, id: `${prefix}-${r.id}` }); }
         });
         take(cmRows, "cm");
-        take(scRows, "sc");
         take(ftRows, "ft");
         const upcoming = rows
           .map(r => {
@@ -2429,7 +2391,7 @@ function generateSoulCareSummary(funnelStats, ncStats) {
     );
     if (funnelStats.totalPE > 0) {
       sentences.push(
-        `Of those recommended, ${funnelStats.graduated} of ${funnelStats.totalPE} Potential Envoys have completed the 5-week follow-up and training, a ${funnelStats.graduationRate}% graduation rate — bringing the overall VIP-to-Member conversion to ${funnelStats.overallConversionRate}%.`
+        `Of those recommended, ${funnelStats.graduated} of ${funnelStats.totalPE} Potential Envoys have completed the 3-week follow-up and training, a ${funnelStats.graduationRate}% graduation rate — bringing the overall VIP-to-Member conversion to ${funnelStats.overallConversionRate}%.`
       );
     }
     if (funnelStats.recommendationRate >= 60) {
@@ -2438,7 +2400,7 @@ function generateSoulCareSummary(funnelStats, ncStats) {
       sentences.push(`A ${funnelStats.recommendationRate}% recommendation rate may be worth a closer look at what's happening during the 3-week call window.`);
     }
     if (funnelStats.stillActivePE > 0) {
-      sentences.push(`${funnelStats.stillActivePE} Potential Envoy${funnelStats.stillActivePE !== 1 ? "s are" : " is"} still active in the 5-week pipeline — keep an eye on their follow-up dates so momentum doesn't stall near the finish line.`);
+      sentences.push(`${funnelStats.stillActivePE} Potential Envoy${funnelStats.stillActivePE !== 1 ? "s are" : " is"} still active in the 3-week pipeline — keep an eye on their follow-up dates so momentum doesn't stall near the finish line.`);
     }
   }
 
@@ -2446,12 +2408,12 @@ function generateSoulCareSummary(funnelStats, ncStats) {
     sentences.push("No New Converts were logged in this period.");
   } else {
     sentences.push(
-      `Separately, ${ncStats.total} New Convert${ncStats.total !== 1 ? "s were" : " was"} logged, with ${ncStats.completed} (${ncStats.retentionPct}%) fully discipled through the 3-month process and Envoys Training.`
+      `Separately, ${ncStats.total} New Convert${ncStats.total !== 1 ? "s were" : " was"} logged, with ${ncStats.completed} (${ncStats.retentionPct}%) fully discipled through the 3-week process and Envoys Training.`
     );
     if (ncStats.retentionPct >= 60) {
       sentences.push(`That retention rate reflects healthy discipleship follow-through for new believers.`);
     } else if (ncStats.retentionPct < 40 && ncStats.total >= 3) {
-      sentences.push(`A retention rate under 40% suggests some New Converts may be disengaging before completing training — worth checking whether Month 2 and 3 check-ins are happening consistently.`);
+      sentences.push(`A retention rate under 40% suggests some New Converts may be disengaging before completing training — worth checking whether Week 2 and 3 check-ins are happening consistently.`);
     }
   }
 
@@ -2514,7 +2476,7 @@ function SoulCareReportingDashboard() {
     .filter(d => d.value > 0);
 
   const ncMonthReach = [1, 2, 3].map(m => ({
-    name: `Month ${m}`,
+    name: `Week ${m}`,
     value: ncData.filter(r => ncCheckinsLogged(r.fbRows).has(m)).length,
     color: C.soul,
   }));
@@ -3011,6 +2973,7 @@ function FirstTimersList({ onEdit }) {
   const [err, setErr] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selected, setSelected] = useState(new Set());
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
   const load = useCallback(async () => {
@@ -3032,6 +2995,39 @@ function FirstTimersList({ onEdit }) {
 
   // v7.2 — cap initial render to 10 rows; reveal more as the user scrolls
   const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name","Phone","Email","Gender","Service Date","Membership Decision","How Heard","Address"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name), escape(r.phone), escape(r.email), escape(r.gender),
+        escape(r.service_date), escape(r.membership_decision), escape(r.how_heard), escape(r.house_address),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `first_timers_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const dc = {
     Member:    [C.green,    C.greenLight],
@@ -3081,6 +3077,20 @@ function FirstTimersList({ onEdit }) {
           )}
         </div>
       </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+        <button onClick={toggleAll} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
+        }}>
+          {allSelected ? "Deselect All" : "Select All"}
+        </button>
+        <button style={{ ...btn("gold", { padding: "6px 14px", fontSize: 12 }), opacity: selectedCount === 0 ? .5 : 1 }}
+          onClick={downloadCSV} disabled={selectedCount === 0}>
+          <Download size={13} />Download {selectedCount > 0 ? `(${selectedCount})` : ""}
+        </button>
+      </div>
+
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
         <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
@@ -3093,6 +3103,8 @@ function FirstTimersList({ onEdit }) {
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
+                    style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
                   <Avatar name={r.full_name} size={40} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
@@ -3576,7 +3588,7 @@ function VipContactView({ currentUser }) {
                             value={pending ?? ""}
                             onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
                             style={{ ...inputBase, width: 170, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Select team member</option>
+                            <option value="">Select Caller</option>
                             {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         )}
@@ -4036,7 +4048,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
             ) : (
               <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)}
                 style={{ ...inputBase, cursor: "pointer" }}>
-                <option value="">Select team member</option>
+                <option value="">Select Caller</option>
                 {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             )}
@@ -4140,7 +4152,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
                             value={pending ?? ""}
                             onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
                             style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Select caller</option>
+                            <option value="">Select Caller</option>
                             {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         )}
@@ -5552,7 +5564,7 @@ function EnvoysVisitors() {
   };
 
   const selectedCount = filtered.filter(r => selected.has(r.id)).length;
-  const GRID = "40px minmax(170px,1.2fr) 150px 90px 90px 130px 130px 130px 140px 1.4fr 130px";
+  const GRID = "40px minmax(170px,1.2fr) 150px 90px 90px 130px 130px 130px 140px 110px 1.4fr 130px";
   const headCell = { fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head };
   const stickyLeft = (bg, z = 2) => ({
     position: "sticky", left: 0, zIndex: z, background: bg,
@@ -5611,7 +5623,7 @@ function EnvoysVisitors() {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1310,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1420,
             }}>
               <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all"} style={{
                 width: 18, height: 18, borderRadius: 4, cursor: "pointer",
@@ -5635,7 +5647,7 @@ function EnvoysVisitors() {
               return (
                 <div key={r.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 16px", minWidth: 1310,
+                  padding: "10px 16px", minWidth: 1420,
                   background: isChecked ? `${C.textSecondary}10` : C.surface,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
@@ -5692,8 +5704,8 @@ function EnvoysVisitors() {
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
-// Soul Care Revamp Phase 3 — New Converts: 3 MONTHLY check-ins (not weekly),
-// mirroring the VIP/Potential Envoys pipeline pattern at a slower cadence.
+// Soul Care Revamp Phase 3 — New Converts: 3 WEEKLY check-ins,
+// mirroring the First-Timers / Potential Envoys 3-week pipeline pattern.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ncCheckinsLogged(fbRows) {
@@ -5713,7 +5725,7 @@ function ncComplete(fbRows) {
 function NCPipelineBar({ fbRows, trainingCompleted }) {
   const done = ncCheckinsLogged(fbRows);
   const complete = ncComplete(fbRows);
-  const monthColor = (m) => {
+  const weekColor = (m) => {
     if (!done.has(m)) return { bg: C.border, text: C.textMuted };
     const row = (fbRows || []).find(r => r.checkin_number === m);
     const norm = normaliseStatus(row?.call_status);
@@ -5725,13 +5737,13 @@ function NCPipelineBar({ fbRows, trainingCompleted }) {
   return (
     <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       {[1, 2, 3].map(m => {
-        const c = monthColor(m);
+        const c = weekColor(m);
         return (
           <div key={m} style={{
             padding: "4px 10px", borderRadius: 6, background: c.bg, color: c.text,
             fontSize: 11, fontWeight: 700, fontFamily: F.head,
             border: `1.5px solid ${done.has(m) ? "transparent" : C.border}`,
-          }}>Month {m}</div>
+          }}>Week {m}</div>
         );
       })}
       <span style={{ ...badge(trainingCompleted ? C.green : C.gold, trainingCompleted ? C.greenLight : C.goldLight, { fontSize: 11 }), marginLeft: 4 }}>
@@ -5739,8 +5751,8 @@ function NCPipelineBar({ fbRows, trainingCompleted }) {
         Training {trainingCompleted ? "Complete" : "Pending"}
       </span>
       {complete
-        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />3 months complete</span>
-        : <span style={{ fontSize: 11, color: C.textMuted }}>Next: Month {ncNextCheckin(fbRows)}</span>
+        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />3 weeks complete</span>
+        : <span style={{ fontSize: 11, color: C.textMuted }}>Next: Week {ncNextCheckin(fbRows)}</span>
       }
     </div>
   );
@@ -6080,7 +6092,7 @@ function NewConvertsAssignView({ currentUser, role }) {
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="New Converts" subtitle="3-month discipleship follow-up + Envoys Training"
+      <PageHeader title="New Converts" subtitle="3-week discipleship follow-up + Envoys Training"
         action={<button style={btn("soul")} onClick={() => setShowAdd(true)}><UserPlus size={14} />Add New Convert</button>} />
 
       <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by conversion date:" />
@@ -6089,7 +6101,7 @@ function NewConvertsAssignView({ currentUser, role }) {
         <StatCard label="Total"      value={data.length}      icon={Heart}       accent={C.soul}  />
         <StatCard label="Assigned"   value={assignedCount}    icon={UserCheck}   accent={C.green} />
         <StatCard label="Unassigned" value={unassignedCount}  icon={AlertCircle} accent={C.gold}  />
-        <StatCard label="Completed"  value={completedCount}   icon={Star}        accent={C.goldDark} sub="3 months + training" />
+        <StatCard label="Completed"  value={completedCount}   icon={Star}        accent={C.goldDark} sub="3 weeks + training" />
       </div>
 
       {role !== "dofficer" && (
@@ -6100,7 +6112,7 @@ function NewConvertsAssignView({ currentUser, role }) {
               <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>Assign all <strong>{unassignedCount}</strong> unassigned to:</div>
               {teamLoading ? <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div> : (
                 <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
-                  <option value="">Select team member</option>
+                  <option value="">Select Caller</option>
                   {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               )}
@@ -6166,7 +6178,7 @@ function NewConvertsAssignView({ currentUser, role }) {
                       <>
                         {teamLoading ? <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span> : (
                           <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))} style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Allocatenpm</option>
+                            <option value="">Select Caller</option>
                             {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         )}
@@ -6238,7 +6250,7 @@ function NCTrainingBlock({ nc, onSaved }) {
           Envoys Training: <strong>{nc.envoys_training_completed ? `Completed ${nc.envoys_training_completed_date || ""}` : (nc.training_scheduled_date ? `Scheduled ${nc.training_scheduled_date}` : "Not yet scheduled")}</strong>
         </span>
         <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => setEditing(true)}>
-          <Edit3 size={10} />{nc.envoys_training_completed ? "Edit" : "Update"}
+          <Edit3 size={10} />{nc.envoys_training_completed ? "Edit" : nc.training_scheduled_date ? "Edit" : "Schedule Training"}
         </button>
       </div>
     );
@@ -6263,11 +6275,12 @@ function NCTrainingBlock({ nc, onSaved }) {
   );
 }
 
-function MyNewConverts({ currentUser, onLogCheckin }) {
+function MyNewConverts({ currentUser, role, onLogCheckin }) {
   const { data, loading, err, reload } = useNewConvertData();
   const [filter, setFilter] = useState("active");
+  const isAdmin = role === "soulcareadmin" || role === "admin";
 
-  const mine = data.filter(r => r.assignment?.assigned_to === currentUser);
+  const mine = isAdmin ? data : data.filter(r => r.assignment?.assigned_to === currentUser);
   const active    = mine.filter(r => !(ncComplete(r.fbRows) && r.envoys_training_completed));
   const completed = mine.filter(r => ncComplete(r.fbRows) && r.envoys_training_completed);
   const flagged   = mine.filter(r => r.fbRows.some(f => f.flagged_for_pastoral));
@@ -6294,11 +6307,12 @@ function MyNewConverts({ currentUser, onLogCheckin }) {
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="My New Converts" subtitle={`${mine.length} assigned to you`} />
-      <DueTodayPanel entries={dueEntries} actionLabel="Log Check-In" onAction={r => onLogCheckin(r)} />
+      <PageHeader title={isAdmin ? "Call Queue" : "My New Converts"}
+        subtitle={isAdmin ? `${mine.length} New Convert${mine.length !== 1 ? "s" : ""} total` : `${mine.length} assigned to you`} />
+      {!isAdmin && <DueTodayPanel entries={dueEntries} actionLabel="Log Check-In" onAction={r => onLogCheckin(r)} />}
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Assigned to Me" value={mine.length}      icon={Heart}  accent={C.soul}  />
+        <StatCard label={isAdmin ? "Total" : "Assigned to Me"} value={mine.length}      icon={Heart}  accent={C.soul}  />
         <StatCard label="Completed"      value={completed.length} icon={Star}   accent={C.green} />
         <StatCard label="Flagged"        value={flagged.length}   icon={Flag}   accent={C.flag} sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
       </div>
@@ -6332,24 +6346,29 @@ function MyNewConverts({ currentUser, onLogCheckin }) {
                         {r.full_name}{fullyDone && <span style={{ marginLeft: 6 }}>🎉</span>}
                       </div>
                       <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.conversion_type}</div>
+                      {isAdmin && (
+                        <div style={{ fontSize: 11, color: r.assignment ? C.textMuted : C.gold, marginTop: 2 }}>
+                          {r.assignment ? <>Assigned to <strong>{r.assignment.assigned_to}</strong></> : "Unassigned"}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {!isComplete && (
                     <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogCheckin(r)}>
-                      <Phone size={13} />Log Month {nxt}
+                      <Phone size={13} />Log Week {nxt}
                     </button>
                   )}
                   {fullyDone && <span style={badge(C.green, C.greenLight, { fontSize: 12 })}><Star size={11} />Fully Discipled</span>}
                 </div>
                 <div style={{ marginTop: 10 }}><NCPipelineBar fbRows={r.fbRows} trainingCompleted={r.envoys_training_completed} /></div>
-                <NCTrainingBlock nc={r} onSaved={reload} />
+                {isComplete && <NCTrainingBlock nc={r} onSaved={reload} />}
                 {r.fbRows.length > 0 && (
                   <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
                     {r.fbRows.map(fb => {
                       const fsm = statusMeta(fb.call_status);
                       return (
                         <div key={fb.id} style={{ background: C.bg, borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.border}` }}>
-                          <span style={badge(fsm.color, fsm.bg, { fontSize: 10, fontFamily: F.head })}>Month {fb.checkin_number} · {fsm.label}</span>
+                          <span style={badge(fsm.color, fsm.bg, { fontSize: 10, fontFamily: F.head })}>Week {fb.checkin_number} · {fsm.label}</span>
                           {fb.notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>{fb.notes}</div>}
                         </div>
                       );
@@ -6378,6 +6397,9 @@ function NewConvertsRegistry() {
   const [err, setErr] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [trainingFilter, setTrainingFilter] = useState("all");
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
   const load = useCallback(async () => {
@@ -6393,16 +6415,73 @@ function NewConvertsRegistry() {
   }, [dateFrom, dateTo]);
   useEffect(() => { load(); }, [load]);
 
-  const filtered = data.filter(r =>
-    r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
-  );
+  const filtered = data.filter(r => {
+    const matchSearch = r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search);
+    if (!matchSearch) return false;
+    if (typeFilter !== "all" && r.conversion_type !== typeFilter) return false;
+    if (trainingFilter === "pending"   && r.envoys_training_completed) return false;
+    if (trainingFilter === "completed" && !r.envoys_training_completed) return false;
+    return true;
+  });
 
-  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}|${typeFilter}|${trainingFilter}`, filtered.length, 10);
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name","Phone","Conversion Type","Conversion Date","Gender","Address","Training Status","Training Scheduled Date","Trainer","Training Completed Date"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name), escape(r.phone), escape(r.conversion_type),
+        escape(r.conversion_date), escape(r.gender), escape(r.house_address),
+        escape(r.envoys_training_completed ? "Completed" : "Pending"),
+        escape(r.training_scheduled_date), escape(r.trainer_name), escape(r.envoys_training_completed_date),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `new_converts_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const dc = {
     "New Salvation": [C.green,    C.greenLight],
     "Rededication":  [C.goldDark, C.goldLight],
   };
+
+  const totalCount      = data.length;
+  const convertsCount   = data.filter(r => r.conversion_type === "New Salvation").length;
+  const rededicationCount = data.filter(r => r.conversion_type === "Rededication").length;
+  const pendingCount    = data.filter(r => !r.envoys_training_completed).length;
+  const completedCount  = data.filter(r => r.envoys_training_completed).length;
+
+  const typeTabs = [
+    { k: "all", label: "All", count: totalCount },
+    { k: "New Salvation", label: "Converts", count: convertsCount },
+    { k: "Rededication",  label: "Rededication", count: rededicationCount },
+  ];
+  const trainingTabs = [
+    { k: "all",       label: "All Training",       count: totalCount },
+    { k: "pending",   label: "Pending Training",   count: pendingCount },
+    { k: "completed", label: "Training Completed", count: completedCount },
+  ];
 
   return (
     <div className="page-enter">
@@ -6446,6 +6525,40 @@ function NewConvertsRegistry() {
           )}
         </div>
       </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {typeTabs.map(t => (
+          <button key={t.k} onClick={() => setTypeFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: typeFilter === t.k ? C.soul : C.bg, color: typeFilter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${typeFilter === t.k ? C.soul : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {trainingTabs.map(t => (
+          <button key={t.k} onClick={() => setTrainingFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: trainingFilter === t.k ? C.gold : C.bg, color: trainingFilter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${trainingFilter === t.k ? C.gold : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+        <button onClick={toggleAll} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
+        }}>
+          {allSelected ? "Deselect All" : "Select All"}
+        </button>
+        <button style={{ ...btn("gold", { padding: "6px 14px", fontSize: 12 }), opacity: selectedCount === 0 ? .5 : 1 }}
+          onClick={downloadCSV} disabled={selectedCount === 0}>
+          <Download size={13} />Download {selectedCount > 0 ? `(${selectedCount})` : ""}
+        </button>
+      </div>
+
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
         <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
@@ -6458,13 +6571,21 @@ function NewConvertsRegistry() {
                 alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
+                    style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
                   <Avatar name={r.full_name} size={40} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
                     <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.conversion_date}</div>
                   </div>
                 </div>
-                <span style={badge(col, bg)}><span style={dot(col)} />{r.conversion_type || "–"}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={badge(col, bg)}><span style={dot(col)} />{r.conversion_type || "–"}</span>
+                  <span style={badge(r.envoys_training_completed ? C.green : C.gold, r.envoys_training_completed ? C.greenLight : C.goldLight, { fontSize: 11 })}>
+                    {r.envoys_training_completed ? <CheckCircle size={10} /> : <Clock size={10} />}
+                    {r.envoys_training_completed ? "Training Completed" : "Pending Training"}
+                  </span>
+                </div>
               </div>
             );
           })}
@@ -6483,6 +6604,178 @@ function NewConvertsRegistry() {
           {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PotentialEnvoysTrainingList — read-only, filterable/downloadable view of
+// Potential Envoys for the Training Team's "VIPs" toggle. Mirrors the filter
+// shape of NewConvertsRegistry (search, training status, date-ish status,
+// select + CSV download) but scoped to potential_envoys fields.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function PotentialEnvoysTrainingList() {
+  const { data, loading, err, reload } = usePotentialEnvoyData();
+  const [search, setSearch] = useState("");
+  const [trainingFilter, setTrainingFilter] = useState("all");
+  const [selected, setSelected] = useState(new Set());
+
+  const filtered = data.filter(r => {
+    const matchSearch = !search ||
+      r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search);
+    if (!matchSearch) return false;
+    if (trainingFilter === "pending"   && r.training_completed) return false;
+    if (trainingFilter === "completed" && !r.training_completed) return false;
+    return true;
+  });
+
+  const { visibleCount, onScroll } = usePagedScroll(`pe-training|${search}|${trainingFilter}`, filtered.length, 10);
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Connect Center","Weeks Completed","Training Status","Graduated"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name), escape(r.phone), escape(r.gender), escape(r.dob),
+        escape(r.marital_status), escape(r.life_stage), escape(r.connect_center),
+        escape(peWeeksLogged(r.fbRows).size), escape(r.training_completed ? "Completed" : "Pending"),
+        escape(r.promoted_to_membership ? "Yes" : "No"),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `potential_envoys_training_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const totalCount     = data.length;
+  const pendingCount   = data.filter(r => !r.training_completed).length;
+  const completedCount = data.filter(r => r.training_completed).length;
+  const trainingTabs = [
+    { k: "all",       label: "All",                count: totalCount },
+    { k: "pending",   label: "Pending Training",   count: pendingCount },
+    { k: "completed", label: "Training Completed", count: completedCount },
+  ];
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+        <div style={{ position: "relative" }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
+            style={{ ...inputBase, width: 200, paddingLeft: 32 }} />
+        </div>
+        <button style={btn("ghost")} onClick={reload}><RefreshCw size={14} /></button>
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {trainingTabs.map(t => (
+          <button key={t.k} onClick={() => setTrainingFilter(t.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: trainingFilter === t.k ? C.gold : C.bg, color: trainingFilter === t.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${trainingFilter === t.k ? C.gold : C.border}`,
+          }}>{t.label} ({t.count})</button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+        <button onClick={toggleAll} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
+        }}>
+          {allSelected ? "Deselect All" : "Select All"}
+        </button>
+        <button style={{ ...btn("gold", { padding: "6px 14px", fontSize: 12 }), opacity: selectedCount === 0 ? .5 : 1 }}
+          onClick={downloadCSV} disabled={selectedCount === 0}>
+          <Download size={13} />Download {selectedCount > 0 ? `(${selectedCount})` : ""}
+        </button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => {}} />
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "grid", gap: 8 }}>
+          {filtered.slice(0, visibleCount).map(r => (
+            <div key={r.id} {...lift} style={{
+              ...card, display: "flex", justifyContent: "space-between",
+              alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
+                  style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
+                <Avatar name={r.full_name} size={40} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.connect_center || "—"}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {r.promoted_to_membership && <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><Star size={10} />Graduated</span>}
+                <span style={badge(r.training_completed ? C.green : C.gold, r.training_completed ? C.greenLight : C.goldLight, { fontSize: 11 })}>
+                  {r.training_completed ? <CheckCircle size={10} /> : <Clock size={10} />}
+                  {r.training_completed ? "Training Completed" : "Pending Training"}
+                </span>
+              </div>
+            </div>
+          ))}
+          {!loading && filtered.length === 0 && (
+            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+              <Search size={28} style={{ marginBottom: 8, opacity: .4 }} />
+              <div style={{ fontWeight: 600, fontFamily: F.head }}>No records found</div>
+            </div>
+          )}
+        </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TrainingModule — the Training Team's home page. Toggle between "VIPs"
+// (Potential Envoys) and "Converts" (New Converts registry, reused as-is).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function TrainingModule() {
+  const [tab, setTab] = useState("VIPs");
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Training Module" subtitle="Everyone due for Envoys Training — VIPs (Potential Envoys) and New Converts" />
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "inline-flex", borderRadius: 10, border: `1.5px solid ${C.border}`, overflow: "hidden" }}>
+          {["VIPs", "Converts"].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{
+                padding: "8px 18px", fontSize: 13, fontWeight: 700, fontFamily: F.head, cursor: "pointer",
+                border: "none", background: tab === t ? C.gold : C.surface,
+                color: tab === t ? "#fff" : C.textSecondary,
+              }}>
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      {tab === "VIPs" ? <PotentialEnvoysTrainingList /> : <NewConvertsRegistry />}
     </div>
   );
 }
@@ -6508,7 +6801,7 @@ function LogNewConvertCheckin({ person, callerName, onBack }) {
           flagged_for_pastoral: !!form.flagged_for_pastoral, flag_reason: form.flagged_for_pastoral ? form.flag_reason : null,
         }),
       });
-      toast.success(`Month ${nxt} logged.`);
+      toast.success(`Week ${nxt} logged.`);
       setDone(true);
     } catch (e) { setErr(e.message); }
     setLoading(false);
@@ -6517,7 +6810,7 @@ function LogNewConvertCheckin({ person, callerName, onBack }) {
   if (done) return (
     <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
       <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
-      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>Month {nxt} logged for {person.full_name}</h3>
+      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>Week {nxt} logged for {person.full_name}</h3>
       <button style={{ ...btn("outline"), marginTop: 12 }} onClick={onBack}><ArrowLeft size={14} />Back</button>
     </div>
   );
@@ -6527,7 +6820,7 @@ function LogNewConvertCheckin({ person, callerName, onBack }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>Month {nxt} Check-In — {person.full_name}</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>Week {nxt} Check-In — {person.full_name}</h2>
           <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}><PhoneLink phone={person.phone} withWhatsApp size={13} bold /></p>
         </div>
       </div>
@@ -6544,7 +6837,7 @@ function LogNewConvertCheckin({ person, callerName, onBack }) {
         {form.flagged_for_pastoral && <FieldInput label="Reason" id="ncfr" type="textarea" required value={form.flag_reason} onChange={set("flag_reason")} />}
       </div>
       <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
-        {loading ? "Saving…" : `Save Month ${nxt}`}
+        {loading ? "Saving…" : `Save Week ${nxt}`}
       </button>
     </div>
   );
@@ -6565,7 +6858,7 @@ function NewConvertsRetentionReport() {
   const typeDonut = Object.entries(byType).map(([k, v]) => ({ name: k, value: v, color: k === "New Salvation" ? C.soul : C.gold }));
 
   const monthDropoff = [1, 2, 3].map(m => ({
-    name: `Month ${m}`,
+    name: `Week ${m}`,
     value: data.filter(r => ncCheckinsLogged(r.fbRows).has(m)).length,
     color: C.soul,
   }));
@@ -6573,7 +6866,7 @@ function NewConvertsRetentionReport() {
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="New Converts Retention" subtitle="3-month discipleship + training completion analytics"
+      <PageHeader title="New Converts Retention" subtitle="3-week discipleship + training completion analytics"
         action={
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
@@ -6600,7 +6893,7 @@ function NewConvertsRetentionReport() {
               <SH title="Check-In Reach by Month" icon={Activity} />
               <PasOutcomeBars data={monthDropoff} />
               <div style={{ fontSize: 11, color: C.textMuted, marginTop: 8 }}>
-                A drop from Month 1 to Month 3 shows where people are disengaging from follow-up.
+                A drop from Week 1 to Week 3 shows where people are disengaging from follow-up.
               </div>
             </div>
           </div>
@@ -6841,7 +7134,7 @@ function ConnectCentreProspects({ currentUser }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // VIP Journey Dashboard — aggregates the full pipeline: First-Timer →
 // contacted within 48hrs → VIP Overview decision → Connect Centre
-// confirmation → Potential Envoys 5-week track → graduation. Reuses
+// confirmation → Potential Envoys 3-week track → graduation. Reuses
 // PasDonut / PasOutcomeBars / PasEmpty already built for Pastoral Report.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -6903,7 +7196,7 @@ function useVipJourneyStats(dateFrom, dateTo) {
         const connectTotal = ccpInCohort.length;
         const connectConfirmed = ccpInCohort.filter(c => c.confirmed).length;
 
-        // Stage: Potential Envoys 5-week track + training + graduation
+        // Stage: Potential Envoys 3-week track + training + graduation
         const peInCohort = (peRows || []).filter(p => ftIds.has(p.original_first_timer_id));
         const trainingDone = peInCohort.filter(p => p.training_completed).length;
         const graduated = peInCohort.filter(p => p.promoted_to_membership).length;
@@ -7068,977 +7361,10 @@ function VipJourneyDashboard() {
 // Soul Care Revamp Phase 2 — Potential Envoys: shared helpers, data hook,
 // and pipeline bar. Mirrors useCallData / PipelineBar / weeksLogged /
 // nextWeek / pipelineComplete from the Experience Team module, but for the
-// 5-week potential_envoys_feedback pipeline — kept as separate functions
+// 3-week potential_envoys_feedback pipeline — kept as separate functions
 // rather than generalizing the originals, since those are load-bearing
 // elsewhere and shouldn't be touched.
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// Megastars — shared helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-const MEGASTAR_CLASSES = ["Nursery", "Toddlers", "Pre-K", "Grade 1-2", "Grade 3-5", "Teens"];
-
-function megastarAge(dob) {
-  if (!dob) return null;
-  const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
-  if (!y) return null;
-  const t = new Date();
-  let a = t.getFullYear() - y;
-  if (t.getMonth() + 1 < m || (t.getMonth() + 1 === m && t.getDate() < d)) a--;
-  return a;
-}
-
-async function findGuardianByPhone(phone) {
-  const key = phoneKey(phone);
-  if (!key) return null;
-  const rows = await sb("megastar_guardians?select=*").catch(() => []);
-  return (rows || []).find(g => phoneKey(g.phone) === key) || null;
-}
-
-async function searchMegastarFamilies(query) {
-  const q = query.trim().replace(/[,()]/g, "");
-  if (!q) return [];
-  const [guardianMatches, childMatches] = await Promise.all([
-    sb(`megastar_guardians?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&limit=10`).catch(() => []),
-    sb(`megastars?full_name=ilike.*${q}*&is_active=eq.true&limit=10`).catch(() => []),
-  ]);
-
-  const links = await sb("megastar_guardian_links?select=*").catch(() => []);
-  const allGuardians = await sb("megastar_guardians?select=*").catch(() => []);
-  const allChildren  = (await sb("megastars?select=*").catch(() => [])).filter(c => c.is_active !== false);
-
-  const guardianMap = {}; (allGuardians || []).forEach(g => { guardianMap[g.id] = g; });
-  const childMap     = {}; (allChildren  || []).forEach(c => { childMap[c.id] = c; });
-
-  // Track exactly which children caused a family to surface, so the UI can
-  // badge them — distinct from siblings who are shown along for convenience.
-  const matchedChildIds = new Set((childMatches || []).map(c => c.id));
-
-  const familyIds = new Set();
-  (guardianMatches || []).forEach(g => familyIds.add(g.id));
-  (childMatches || []).forEach(c => {
-    (links || []).filter(l => l.megastar_id === c.id).forEach(l => familyIds.add(l.guardian_id));
-  });
-
-  return [...familyIds].map(gid => {
-    const guardian = guardianMap[gid];
-    if (!guardian) return null;
-    const kids = (links || [])
-      .filter(l => l.guardian_id === gid)
-      .map(l => childMap[l.megastar_id])
-      .filter(Boolean);
-    return { guardian, children: kids, matchedChildIds };
-  }).filter(Boolean);
-}
-
-function AddMegastarPage({ currentUser, onCancel, onDone, prefillGuardian = null }) {
-  const [guardianMode, setGuardianMode] = useState(prefillGuardian ? "existing" : "new");
-  const [existingPhone, setExistingPhone] = useState(prefillGuardian?.phone || "");
-  const [foundGuardian, setFoundGuardian] = useState(prefillGuardian);
-  const [gName, setGName] = useState(prefillGuardian?.full_name || "");
-  const [gPhone, setGPhone] = useState(prefillGuardian?.phone || "");
-  const [childName, setChildName] = useState("");
-  const [gender, setGender] = useState("");
-  const [dob, setDob] = useState("");
-  const [childClass, setChildClass] = useState("");
-  const [relationship, setRelationship] = useState("Parent");
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-
-  const lookupGuardian = async () => {
-    const found = await findGuardianByPhone(existingPhone);
-    setFoundGuardian(found);
-    if (!found) setErr("No guardian found with that phone number — switch to 'New Guardian' to register them.");
-    else setErr("");
-  };
-
-  const submit = async () => {
-    if (!childName.trim()) { setErr("Child's full name is required."); return; }
-    if (guardianMode === "new" && (!gName.trim() || !gPhone.trim())) {
-      setErr("Guardian name and phone are required."); return;
-    }
-    if (guardianMode === "existing" && !foundGuardian) {
-      setErr("Look up a guardian by phone first, or switch to 'New Guardian'."); return;
-    }
-    setLoading(true); setErr("");
-    try {
-      let guardianId = foundGuardian?.id;
-      if (guardianMode === "new") {
-        const [newGuardian] = await sb("megastar_guardians", {
-          method: "POST",
-          body: JSON.stringify({ full_name: gName.trim(), phone: gPhone.trim(), added_by: currentUser || null }),
-        });
-        guardianId = newGuardian.id;
-      }
-      const [newChild] = await sb("megastars", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: childName.trim(), gender: gender || null, dob: dob || null,
-          class: childClass || null, added_by: currentUser || null,
-        }),
-      });
-      await sb("megastar_guardian_links", {
-        method: "POST",
-        body: JSON.stringify({ megastar_id: newChild.id, guardian_id: guardianId, relationship: relationship || null }),
-      });
-      toast.success(`${childName} registered.`);
-      onDone?.({ guardianId, child: newChild });
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={card} className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Add a Megastar" subtitle="Register a child and their guardian"
-        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      <SH title="Guardian" icon={Users} />
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <button style={btn(guardianMode === "existing" ? "primary" : "ghost", { padding: "6px 14px", fontSize: 12 })}
-          onClick={() => setGuardianMode("existing")}>Existing Guardian</button>
-        <button style={btn(guardianMode === "new" ? "primary" : "ghost", { padding: "6px 14px", fontSize: 12 })}
-          onClick={() => setGuardianMode("new")}>New Guardian</button>
-      </div>
-
-      {guardianMode === "existing" ? (
-        <>
-          <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}>
-              <FieldInput label="Guardian Phone Number" id="mgep" value={existingPhone} onChange={e => setExistingPhone(e.target.value)} />
-            </div>
-            <button style={{ ...btn("outline"), alignSelf: "flex-end", marginBottom: 16 }} onClick={lookupGuardian}>
-              <Search size={13} />Look Up
-            </button>
-          </div>
-          {foundGuardian && (
-            <div style={{ background: C.greenLight, borderRadius: 8, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: C.green }}>
-              Found: <strong>{foundGuardian.full_name}</strong> · {foundGuardian.phone}
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Guardian Full Name" id="mgn" required value={gName} onChange={e => setGName(e.target.value)} />
-          <FieldInput label="Guardian Phone Number" id="mgp" required value={gPhone} onChange={e => setGPhone(e.target.value)} />
-        </div>
-      )}
-
-      <div style={{ marginTop: 20 }}>
-        <SH title="Child" icon={Heart} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Child's Full Name" id="mcn" required value={childName} onChange={e => setChildName(e.target.value)} />
-          <FieldInput label="Gender" id="mcg" type="select" value={gender} onChange={e => setGender(e.target.value)}
-            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
-        </div>
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Date of Birth" id="mcd" type="date" value={dob} onChange={e => setDob(e.target.value)} />
-          <FieldInput label="Class" id="mcc" type="select" value={childClass} onChange={e => setChildClass(e.target.value)}
-            options={MEGASTAR_CLASSES.map(c => ({ value: c, label: c }))} />
-        </div>
-        <FieldInput label="Relationship to Child" id="mcr" type="select" value={relationship} onChange={e => setRelationship(e.target.value)}
-          options={[{ value: "Parent", label: "Parent" }, { value: "Grandparent", label: "Grandparent" }, { value: "Guardian", label: "Guardian" }, { value: "Other", label: "Other" }]} />
-      </div>
-
-      <button style={{ ...btn("primary"), width: "100%", padding: 12, fontSize: 15, marginTop: 8 }} onClick={submit} disabled={loading}>
-        {loading ? "Saving…" : "Register Megastar"}
-      </button>
-    </div>
-  );
-}
-
-const MEGASTARS_TEMPLATE_HEADERS = ["child_full_name", "gender", "dob", "class", "guardian_name", "guardian_phone"];
-const MEGASTARS_TEMPLATE_EXAMPLE = ["Tomiwa Johnson", "Male", "2018-04-12", "Pre-K", "Mrs. Johnson", "08031234567"];
-
-function MegastarsCSVImport({ currentUser, onDone }) {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [report, setReport] = useState(null);
-  const fileRef = useRef();
-
-  const parseCSV = (text) => parseCSVText(text);
-
-  const onFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { setRows(parseCSV(ev.target.result)); setErr(""); setReport(null); };
-    reader.readAsText(file);
-  };
-
-  const oneOf = (v, list) => {
-    const c = (v || "").toString().trim().toLowerCase();
-    const hit = list.find(x => x.toLowerCase() === c);
-    return hit || null;
-  };
-  const cleanDate = (raw) => {
-    const s = (raw || "").toString().trim();
-    const parts = s.split(/[/-]/);
-    if (parts.length !== 3) return null;
-    const [a, b, c2] = parts;
-    if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
-    return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-  };
-
-  const importAll = async () => {
-    if (!rows.length) return;
-    setLoading(true); setErr(""); setReport(null);
-    try {
-      const parsed = rows.map(r => ({
-        child_full_name: (r.child_full_name || r.full_name || r.name || "").toString().trim(),
-        gender:          oneOf(r.gender, ["Male", "Female"]),
-        dob:             cleanDate(r.dob || r.date_of_birth),
-        childClass:      MEGASTAR_CLASSES.find(c => c.toLowerCase() === (r.class || "").toString().trim().toLowerCase()) || null,
-        guardian_name:   (r.guardian_name || r.parent_name || "").toString().trim(),
-        guardian_phone:  (r.guardian_phone || r.phone || "").toString().trim(),
-      })).filter(r => r.child_full_name && r.guardian_phone);
-
-      if (!parsed.length) {
-        setErr("No valid rows found. Each row needs at least child_full_name and guardian_phone.");
-        setLoading(false); return;
-      }
-
-      const [existingGuardians, existingChildren, existingLinks] = await Promise.all([
-        sb("megastar_guardians?select=*").catch(() => []),
-        sb("megastars?select=id,full_name,dob").catch(() => []),
-        sb("megastar_guardian_links?select=*").catch(() => []),
-      ]);
-      const guardianByPhone = {};
-      (existingGuardians || []).forEach(g => { const k = phoneKey(g.phone); if (k) guardianByPhone[k] = g; });
-
-      let imported = 0;
-      const skippedDuplicates = [];
-
-      // Processed sequentially (not batched) so guardian/child/link relationships
-      // are always created correctly — a small trade-off in import speed for a
-      // guarantee of correct linking, worth it given how many tables this touches.
-      for (const row of parsed) {
-        const key = phoneKey(row.guardian_phone);
-        const alreadyExists = (existingChildren || []).some(c => {
-          const sameName = c.full_name.toLowerCase() === row.child_full_name.toLowerCase();
-          const sameDob  = row.dob ? c.dob === row.dob : true;
-          const linkedToSameGuardian = key && guardianByPhone[key] &&
-            (existingLinks || []).some(l => l.megastar_id === c.id && l.guardian_id === guardianByPhone[key].id);
-          return sameName && sameDob && linkedToSameGuardian;
-        });
-        if (alreadyExists) { skippedDuplicates.push(row.child_full_name); continue; }
-
-        let guardian = key ? guardianByPhone[key] : null;
-        if (!guardian) {
-          const [newGuardian] = await sb("megastar_guardians", {
-            method: "POST",
-            body: JSON.stringify({ full_name: row.guardian_name || "Guardian", phone: row.guardian_phone, added_by: currentUser || null }),
-          });
-          guardian = newGuardian;
-          if (key) guardianByPhone[key] = guardian;
-        }
-
-        const [newChild] = await sb("megastars", {
-          method: "POST",
-          body: JSON.stringify({
-            full_name: row.child_full_name, gender: row.gender, dob: row.dob,
-            class: row.childClass, added_by: currentUser || null,
-          }),
-        });
-
-        await sb("megastar_guardian_links", {
-          method: "POST",
-          body: JSON.stringify({ megastar_id: newChild.id, guardian_id: guardian.id, relationship: "Parent" }),
-        });
-
-        imported++;
-      }
-
-      setReport({ imported, skippedDuplicates });
-      toast.success(`Import complete — ${imported} added.`);
-      setRows([]);
-      onDone?.();
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
-      <SH title="Bulk CSV Import — Megastars" icon={Upload} />
-      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
-        One row per child. Required: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>child_full_name</code>,{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>guardian_phone</code>. Optional: gender, dob, class,
-        guardian_name. Siblings sharing the same guardian_phone are automatically linked to one guardian, not duplicated.
-      </p>
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {report && (
-        <div style={{
-          ...card, marginBottom: 16, padding: "14px 18px",
-          background: C.greenXLight, border: `1px solid ${C.greenBorder}`,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-            <CheckCircle size={15} color={C.green} />
-            <span style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.green }}>
-              {report.imported} child{report.imported !== 1 ? "ren" : ""} imported
-            </span>
-            <button onClick={() => setReport(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: 16 }}>×</button>
-          </div>
-          {report.skippedDuplicates.length > 0 && (
-            <div style={{ fontSize: 12, color: C.amber }}>
-              {report.skippedDuplicates.length} skipped as likely duplicates: {report.skippedDuplicates.join(", ")}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: rows.length ? 16 : 0 }}>
-        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
-        <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => fileRef.current.click()}>
-          <Upload size={14} />Choose CSV File
-        </button>
-        <button style={btn("ghost", { fontSize: 12 })}
-          onClick={() => downloadCSVTemplate("megastars_import_template.csv", MEGASTARS_TEMPLATE_HEADERS, MEGASTARS_TEMPLATE_EXAMPLE)}>
-          <Download size={12} />Download Template
-        </button>
-        {rows.length > 0 && (
-          <button style={btn("soul")} onClick={importAll} disabled={loading}>
-            {loading ? "Importing…" : `Import ${rows.length} rows`}
-          </button>
-        )}
-      </div>
-
-      {rows.length > 0 && (
-        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
-            <thead>
-              <tr style={{ background: C.bg }}>
-                {Object.keys(rows[0]).slice(0, 6).map(h => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: C.textSecondary, borderBottom: `1px solid ${C.border}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.slice(0, 5).map((r, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {Object.values(r).slice(0, 6).map((v, j) => (
-                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
-                  ))}
-                </tr>
-              ))}
-              {rows.length > 5 && (
-                <tr><td colSpan={6} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
-                  …and {rows.length - 5} more rows
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MegastarsCheckInOut({ currentUser }) {
-  const [mode, setMode] = useState("checkin"); // "checkin" | "checkout"
-  const [service, setService] = useState(null);
-  const [loadingService, setLoadingService] = useState(true);
-  const [search, setSearch] = useState("");
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [selectedKids, setSelectedKids] = useState({}); // { childId: guardianId }
-  const [activeList, setActiveList] = useState([]);
-  const [showAddNew, setShowAddNew] = useState(false);
-  const [msg, setMsg] = useState("");
-  const [msgType, setMsgType] = useState("success");
-  const [processing, setProcessing] = useState(false);
-
-  const loadService = useCallback(async () => {
-    setLoadingService(true);
-    try {
-      const rows = await sb("megastar_services?status=eq.Open&order=created_at.desc&limit=1").catch(() => []);
-      setService(rows && rows[0] ? rows[0] : null);
-    } catch { setService(null); }
-    setLoadingService(false);
-  }, []);
-  useEffect(() => { loadService(); }, [loadService]);
-
-  const loadActiveList = useCallback(async () => {
-    if (!service) { setActiveList([]); return; }
-    try {
-      const rows = await sb(
-        `megastar_checkins?service_id=eq.${service.id}&check_out_time=is.null&select=*,megastars(full_name,class),megastar_guardians!megastar_checkins_guardian_id_fkey(full_name,phone)&order=check_in_time.desc`
-      ).catch(() => []);
-      setActiveList(rows || []);
-    } catch { setActiveList([]); }
-  }, [service]);
-  useEffect(() => { loadActiveList(); }, [loadActiveList]);
-
-  // Live search: fires automatically ~400ms after typing stops, so results
-  // update as-you-type without needing the Search button. The button still
-  // works too, for an immediate search without waiting.
-  useEffect(() => {
-    if (mode !== "checkin") return;
-    if (!search.trim()) { setResults([]); return; }
-    let cancelled = false;
-    setSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        const families = await searchMegastarFamilies(search);
-        if (!cancelled) setResults(families);
-      } catch { if (!cancelled) setResults([]); }
-      if (!cancelled) setSearching(false);
-    }, 400);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [search, mode]);
-
-  const doSearch = async () => {
-    if (!search.trim()) return;
-    setSearching(true); setResults([]);
-    try {
-      const families = await searchMegastarFamilies(search);
-      setResults(families);
-    } catch { setResults([]); }
-    setSearching(false);
-  };
-
-  const toggleKid = (childId, guardianId) => {
-    setSelectedKids(prev => {
-      const n = { ...prev };
-      if (n[childId]) delete n[childId]; else n[childId] = guardianId;
-      return n;
-    });
-  };
-
-  const confirmCheckIn = async () => {
-    if (!service) { setMsg("No open service — ask a Megastars Admin to open one."); setMsgType("warn"); return; }
-    const entries = Object.entries(selectedKids);
-    if (!entries.length) { setMsg("Select at least one child."); setMsgType("warn"); return; }
-    setProcessing(true); setMsg("");
-    try {
-      const allChildren = await sb("megastars?select=id,class").catch(() => []);
-      const classMap = {}; (allChildren || []).forEach(c => { classMap[c.id] = c.class; });
-      const payload = entries.map(([childId, guardianId]) => ({
-        service_id: service.id, megastar_id: childId, guardian_id: guardianId,
-        class_at_checkin: classMap[childId] || null, checked_in_by: currentUser || null,
-      }));
-      await sb("megastar_checkins", { method: "POST", body: JSON.stringify(payload) });
-      toast.success(`${entries.length} child${entries.length !== 1 ? "ren" : ""} checked in.`);
-      setSelectedKids({}); setResults([]); setSearch("");
-      loadActiveList();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setProcessing(false);
-  };
-
-  const checkOutOne = async (checkinRow, guardianOverrideId) => {
-    setProcessing(true); setMsg("");
-    try {
-      await sb(`megastar_checkins?id=eq.${checkinRow.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          check_out_time: new Date().toISOString(),
-          checked_out_by: currentUser || null,
-          checkout_guardian_id: guardianOverrideId || checkinRow.guardian_id,
-        }),
-      });
-      toast.success(`${checkinRow.megastars?.full_name || "Child"} checked out.`);
-      loadActiveList();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setProcessing(false);
-  };
-
-  const checkoutMatches = mode === "checkout" && search.trim()
-    ? activeList.filter(r => {
-        const q = search.trim().toLowerCase();
-        return r.megastars?.full_name?.toLowerCase().includes(q) ||
-          r.megastar_guardians?.full_name?.toLowerCase().includes(q) ||
-          r.megastar_guardians?.phone?.includes(search);
-      })
-    : [];
-
-  if (showAddNew) {
-    return (
-      <AddMegastarPage currentUser={currentUser}
-        onCancel={() => setShowAddNew(false)}
-        onDone={() => { setShowAddNew(false); setSearch(""); setResults([]); }} />
-    );
-  }
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Check In / Check Out" subtitle="Megastars front desk" />
-
-      {loadingService ? (
-        <SkeletonList rows={2} />
-      ) : !service ? (
-        <div style={{ ...card, background: C.amberLight, border: `1px solid ${C.amber}30`, marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <AlertCircle size={16} color={C.amber} />
-            <span style={{ fontSize: 13, color: C.textSecondary }}>No service is currently open. Ask a Megastars Admin to open one from the Services page before checking children in.</span>
-          </div>
-        </div>
-      ) : (
-        <div style={{ ...card, background: C.greenXLight, border: `1px solid ${C.greenBorder}`, marginBottom: 20, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div>
-            <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>{service.label}</span>
-            <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 10 }}>{service.service_date} · {activeList.length} currently checked in</span>
-          </div>
-          <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => downloadMegastarAttendanceCSV(service)}>
-            <Download size={12} />Download Attendance
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button style={btn(mode === "checkin" ? "primary" : "ghost")} onClick={() => { setMode("checkin"); setSearch(""); setResults([]); }}>
-          <UserPlus size={14} />Check In
-        </button>
-        <button style={btn(mode === "checkout" ? "primary" : "ghost")} onClick={() => { setMode("checkout"); setSearch(""); }}>
-          <CheckCircle size={14} />Check Out
-        </button>
-      </div>
-
-      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
-
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
-          <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && mode === "checkin" && doSearch()}
-            placeholder="Search by guardian phone or name, or child's name…"
-            style={{ ...inputBase, paddingLeft: 34 }} />
-        </div>
-        {mode === "checkin" && (
-          <>
-            <button style={btn("primary")} onClick={doSearch} disabled={searching}>
-              {searching ? "Searching…" : "Search"}
-            </button>
-            <button style={btn("soul")} onClick={() => setShowAddNew(true)}>
-              <UserPlus size={14} />New Family
-            </button>
-          </>
-        )}
-      </div>
-
-      {mode === "checkin" && results.length > 0 && (
-        <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
-          {results.map(fam => (
-            <div key={fam.guardian.id} style={card}>
-              <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 8 }}>
-                {fam.guardian.full_name} <span style={{ fontWeight: 400, color: C.textMuted, fontSize: 12 }}>· {fam.guardian.phone}</span>
-              </div>
-              {fam.children.length === 0 ? (
-                <div style={{ fontSize: 12, color: C.textMuted }}>No children linked yet.</div>
-              ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {fam.children.map(child => {
-                    const checked = !!selectedKids[child.id];
-                    const alreadyIn = activeList.some(a => a.megastar_id === child.id);
-                    const wasMatched = fam.matchedChildIds?.has(child.id);
-                    return (
-                      <label key={child.id} style={{
-                        display: "flex", alignItems: "center", gap: 10, padding: "8px 12px",
-                        background: alreadyIn ? C.bg : (checked ? C.greenXLight : C.surface),
-                        border: `1px solid ${checked ? C.green : C.border}`, borderRadius: 8,
-                        cursor: alreadyIn ? "not-allowed" : "pointer", opacity: alreadyIn ? .6 : 1,
-                      }}>
-                        <input type="checkbox" checked={checked} disabled={alreadyIn}
-                          onChange={() => toggleKid(child.id, fam.guardian.id)} />
-                        <Avatar name={child.full_name} size={28} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                            {child.full_name}
-                            {wasMatched && <span style={badge(C.gold, C.goldLight, { fontSize: 9 })}>Matched</span>}
-                          </div>
-                          <div style={{ fontSize: 11, color: C.textMuted }}>
-                            {child.class || "No class set"}{megastarAge(child.dob) !== null ? ` · Age ${megastarAge(child.dob)}` : ""}
-                            {alreadyIn ? " · Already checked in" : ""}
-                          </div>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
-          <button style={{ ...btn("primary"), padding: 13, fontSize: 15 }}
-            onClick={confirmCheckIn} disabled={processing || Object.keys(selectedKids).length === 0}>
-            {processing ? "Checking in…" : `Check In ${Object.keys(selectedKids).length || ""} Selected`}
-          </button>
-        </div>
-      )}
-
-      {mode === "checkout" && (
-        <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
-          {(search.trim() ? checkoutMatches : activeList).map(row => (
-            <div key={row.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <Avatar name={row.megastars?.full_name} />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{row.megastars?.full_name}</div>
-                  <div style={{ fontSize: 12, color: C.textMuted }}>
-                    {row.class_at_checkin || row.megastars?.class || "—"} · Checked in {new Date(row.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </div>
-                  <div style={{ fontSize: 12, color: C.soul, marginTop: 2 }}>
-                    Releasing to on file: <strong>{row.megastar_guardians?.full_name}</strong> · {row.megastar_guardians?.phone}
-                  </div>
-                </div>
-              </div>
-              <button style={btn("primary")} onClick={() => checkOutOne(row)} disabled={processing}>
-                <CheckCircle size={14} />Confirm Checkout
-              </button>
-            </div>
-          ))}
-          {(search.trim() ? checkoutMatches : activeList).length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "2rem", color: C.textMuted }}>
-              {search.trim() ? "No matching checked-in child found." : "No one is currently checked in."}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div style={{ marginTop: 8, marginBottom: 8, fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
-        Currently Checked In ({activeList.length})
-      </div>
-      {activeList.length === 0 ? (
-        <div style={{ fontSize: 13, color: C.textMuted }}>No one checked in yet for this service.</div>
-      ) : (
-        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflow: "auto" }}>
-            <div style={{
-              display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
-              gap: 10, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              minWidth: 680,
-            }}>
-              {["Child", "Class", "Guardian", "Checked In", ""].map(h => (
-                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>{h}</div>
-              ))}
-            </div>
-            {activeList.map((row, i) => (
-              <div key={row.id} style={{
-                display: "grid", gridTemplateColumns: "minmax(160px,1.5fr) 130px 1fr 120px 110px",
-                gap: 10, alignItems: "center", padding: "10px 16px", minWidth: 680,
-                borderBottom: i < activeList.length - 1 ? `1px solid ${C.border}` : "none",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Avatar name={row.megastars?.full_name} size={26} />
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{row.megastars?.full_name}</span>
-                </div>
-                <div style={{ fontSize: 12, color: C.textSecondary }}>{row.class_at_checkin || "—"}</div>
-                <div style={{ fontSize: 12, color: C.textSecondary }}>{row.megastar_guardians?.full_name || "—"}</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>
-                  {new Date(row.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </div>
-                <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => checkOutOne(row)} disabled={processing}>
-                  <CheckCircle size={11} />Check Out
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-async function downloadMegastarAttendanceCSV(service) {
-  const escape = (v) => {
-    if (v === null || v === undefined) return "";
-    const str = String(v).replace(/"/g, '""');
-    return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
-  };
-  try {
-    const rows = await sb(
-      `megastar_checkins?service_id=eq.${service.id}&select=*,megastars(full_name,class),dropoff:megastar_guardians!megastar_checkins_guardian_id_fkey(full_name,phone),pickup:megastar_guardians!megastar_checkins_checkout_guardian_id_fkey(full_name,phone)&order=check_in_time.asc`
-    );
-    if (!rows || rows.length === 0) {
-      toast.error("No attendance records for this service yet.");
-      return;
-    }
-    const header = ["Child Name", "Class", "Dropped Off By", "Guardian Phone", "Check-In Time", "Checked In By", "Picked Up By", "Check-Out Time", "Checked Out By"];
-    const csvRows = [
-      header.join(","),
-      ...rows.map(r => [
-        escape(r.megastars?.full_name),
-        escape(r.class_at_checkin || r.megastars?.class),
-        escape(r.dropoff?.full_name),
-        escape(r.dropoff?.phone),
-        escape(r.check_in_time ? new Date(r.check_in_time).toLocaleString() : ""),
-        escape(r.checked_in_by),
-        escape(r.pickup?.full_name || r.dropoff?.full_name),
-        escape(r.check_out_time ? new Date(r.check_out_time).toLocaleString() : "Still checked in"),
-        escape(r.checked_out_by),
-      ].join(",")),
-    ];
-    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `megastars_attendance_${service.label.replace(/[^a-z0-9]/gi, "_")}_${service.service_date}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    toast.error(`Could not export: ${e.message}`);
-  }
-}
-
-function MegastarsServices({ currentUser }) {
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [label, setLabel] = useState("Sunday Service");
-  const [serviceDate, setServiceDate] = useState(new Date().toISOString().slice(0, 10));
-  const [err, setErr] = useState("");
-  const [msg, setMsg] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try { setServices((await sb("megastar_services?order=created_at.desc&limit=100")) || []); }
-    catch (e) { setErr(e.message); }
-    setLoading(false);
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const openService = async () => {
-    if (!label.trim()) { setErr("Service label is required."); return; }
-    setErr("");
-    try {
-      await sb("megastar_services", {
-        method: "POST",
-        body: JSON.stringify({ label: label.trim(), service_date: serviceDate, status: "Open", created_by: currentUser || null }),
-      });
-      toast.success("Service opened.");
-      load();
-    } catch (e) { setErr(e.message); }
-  };
-
-  const closeService = async (svc) => {
-    if (!window.confirm(`Close "${svc.label}"? Anyone still checked in will need to be checked out manually before or after closing.`)) return;
-    try {
-      await sb(`megastar_services?id=eq.${svc.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: "Closed", closed_at: new Date().toISOString() }),
-      });
-      toast.success("Service closed.");
-      load();
-    } catch (e) { setErr(e.message); }
-  };
-
-  const openOnes = services.filter(s => s.status === "Open");
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Megastars Services" subtitle="Open a service before check-in can begin" />
-
-      {openOnes.length > 0 && (
-        <Alert type="warn" msg={`${openOnes.length} service${openOnes.length !== 1 ? "s are" : " is"} currently open.`} onClose={() => {}} />
-      )}
-
-      <div style={{ ...card, marginBottom: 20, background: C.soulLight, border: `1px solid ${C.soul}22` }}>
-        <SH title="Open a New Service" icon={UserPlus} />
-        <Alert type="error" msg={err} onClose={() => setErr("")} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Label" id="msl" value={label} onChange={e => setLabel(e.target.value)} />
-          <FieldInput label="Date" id="msd" type="date" value={serviceDate} onChange={e => setServiceDate(e.target.value)} />
-        </div>
-        <button style={btn("soul")} onClick={openService}><UserPlus size={14} />Open Service</button>
-      </div>
-
-      {loading ? <SkeletonList rows={4} /> : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {services.map(svc => (
-            <div key={svc.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-              <div>
-                <div style={{ fontWeight: 700, fontFamily: F.head }}>{svc.label}</div>
-                <div style={{ fontSize: 12, color: C.textMuted }}>{svc.service_date}</div>
-              </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={badge(svc.status === "Open" ? C.green : C.textMuted, svc.status === "Open" ? C.greenLight : C.bg, { fontSize: 11 })}>
-                  {svc.status}
-                </span>
-                <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => downloadMegastarAttendanceCSV(svc)}>
-                  <Download size={12} />CSV
-                </button>
-                {svc.status === "Open" && (
-                  <button style={btn("danger", { padding: "6px 12px", fontSize: 12 })} onClick={() => closeService(svc)}>Close</button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MegastarsRoster({ currentUser, role }) {
-  const isAdmin = role === "megastarsadmin" || role === "admin" || role === "dofficer";
-  const [children, setChildren] = useState([]);
-  const [linksMap, setLinksMap] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [fClass, setFClass] = useState("");
-  const [showRemoved, setShowRemoved] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [tick, setTick] = useState(0);
-  const reload = () => setTick(t => t + 1);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const [kids, links, guardians] = await Promise.all([
-          sb("megastars?order=full_name.asc&limit=3000"),
-          sb("megastar_guardian_links?select=*").catch(() => []),
-          sb("megastar_guardians?select=*").catch(() => []),
-        ]);
-        if (cancelled) return;
-        const gMap = {}; (guardians || []).forEach(g => { gMap[g.id] = g; });
-        const lMap = {};
-        (links || []).forEach(l => {
-          if (!lMap[l.megastar_id]) lMap[l.megastar_id] = [];
-          lMap[l.megastar_id].push(gMap[l.guardian_id]);
-        });
-        setChildren(kids || []);
-        setLinksMap(lMap);
-      } catch {}
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [tick]);
-
-  const removeFromRoster = async (child) => {
-    const reason = window.prompt(`Remove ${child.full_name} from the roster — why? (e.g. "Moved away", "Family left church")`, "");
-    if (reason === null) return; // cancelled
-    try {
-      await sb(`megastars?id=eq.${child.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ is_active: false, removed_reason: reason || null, removed_at: new Date().toISOString() }),
-      });
-      toast.success(`${child.full_name} removed from the active roster.`);
-      reload();
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const restoreToRoster = async (child) => {
-    try {
-      await sb(`megastars?id=eq.${child.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ is_active: true, removed_reason: null, removed_at: null }),
-      });
-      toast.success(`${child.full_name} restored to the active roster.`);
-      reload();
-    } catch (e) { toast.error(e.message); }
-  };
-
-  const filtered = children.filter(c => {
-    if (showRemoved ? c.is_active !== false : c.is_active === false) return false;
-    if (fClass && c.class !== fClass) return false;
-    if (search && !c.full_name?.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const activeChildren = children.filter(c => c.is_active !== false);
-
-  if (showAdd) {
-    return <AddMegastarPage currentUser={currentUser} onCancel={() => setShowAdd(false)} onDone={() => { setShowAdd(false); reload(); }} />;
-  }
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Megastars Roster" subtitle={`${activeChildren.length} children currently active`}
-        action={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {isAdmin && (
-              <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => setShowImport(s => !s)}>
-                <Upload size={14} />{showImport ? "Hide Import" : "Bulk Import"}
-              </button>
-            )}
-            <button style={btn("soul")} onClick={() => setShowAdd(true)}><UserPlus size={14} />Add a Megastar</button>
-          </div>
-        } />
-
-      {isAdmin && showImport && <MegastarsCSVImport currentUser={currentUser} onDone={reload} />}
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 20 }}>
-        <StatCard label="Active Megastars" value={activeChildren.length} icon={Heart} accent={C.soul} />
-        {MEGASTAR_CLASSES.slice(0, 2).map(cl => (
-          <StatCard key={cl} label={cl} value={activeChildren.filter(c => c.class === cl).length} icon={Users} accent={C.green} />
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16, padding: "12px 16px", background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}22` }}>
-        <select value={fClass} onChange={e => setFClass(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">All classes</option>
-          {MEGASTAR_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        {isAdmin && (
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textSecondary, cursor: "pointer" }}>
-            <input type="checkbox" checked={showRemoved} onChange={e => setShowRemoved(e.target.checked)} />
-            Show removed children
-          </label>
-        )}
-        <div style={{ marginLeft: "auto", position: "relative" }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search child name…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
-        </div>
-      </div>
-
-      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-          {showRemoved ? "No removed children." : "No children match your filters."}
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.map(c => {
-            const age = megastarAge(c.dob);
-            const suggestMove = age !== null && MEGASTAR_CLASSES.indexOf(c.class) < MEGASTAR_CLASSES.length - 1 &&
-              ((c.class === "Nursery" && age >= 3) || (c.class === "Toddlers" && age >= 5) ||
-               (c.class === "Pre-K" && age >= 7) || (c.class === "Grade 1-2" && age >= 10) ||
-               (c.class === "Grade 3-5" && age >= 13));
-            const guardians = linksMap[c.id] || [];
-            const isRemoved = c.is_active === false;
-            return (
-              <div key={c.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, opacity: isRemoved ? .65 : 1 }}>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <Avatar name={c.full_name} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{c.full_name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>
-                      {c.gender || "—"} · {age !== null ? `Age ${age}` : "DOB not set"} · {c.class || "No class"}
-                    </div>
-                    <div style={{ fontSize: 12, color: C.soul, marginTop: 3 }}>
-                      {guardians.length ? guardians.map(g => g?.full_name).join(", ") : "No guardian linked"}
-                    </div>
-                    {isRemoved && (
-                      <div style={{ fontSize: 11, color: C.danger, marginTop: 3 }}>
-                        Removed {c.removed_at ? c.removed_at.slice(0, 10) : ""}{c.removed_reason ? ` — ${c.removed_reason}` : ""}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  {suggestMove && !isRemoved && <span style={badge(C.amber, C.amberLight, { fontSize: 11 })}>Consider promoting class</span>}
-                  {isAdmin && (
-                    isRemoved ? (
-                      <button style={btn("ghost", { padding: "6px 12px", fontSize: 11 })} onClick={() => restoreToRoster(c)}>
-                        <RefreshCw size={11} />Restore
-                      </button>
-                    ) : (
-                      <button style={btn("danger", { padding: "6px 12px", fontSize: 11 })} onClick={() => removeFromRoster(c)}>
-                        <X size={11} />Remove
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function peWeeksLogged(fbRows) {
   const weeks = new Set();
@@ -8047,7 +7373,7 @@ function peWeeksLogged(fbRows) {
 }
 function peNextWeek(fbRows) {
   const done = peWeeksLogged(fbRows);
-  for (let w = 1; w <= 5; w++) { if (!done.has(w)) return w; }
+  for (let w = 1; w <= 3; w++) { if (!done.has(w)) return w; }
   return null;
 }
 function pePipelineComplete(fbRows) {
@@ -8068,7 +7394,7 @@ function PEPipelineBar({ fbRows, trainingCompleted }) {
   };
   return (
     <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      {[1, 2, 3, 4, 5].map(w => {
+      {[1, 2, 3].map(w => {
         const c = weekColor(w);
         return (
           <div key={w} style={{
@@ -8086,7 +7412,7 @@ function PEPipelineBar({ fbRows, trainingCompleted }) {
         Training {trainingCompleted ? "Complete" : "Pending"}
       </span>
       {complete
-        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />5 weeks complete</span>
+        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />3 weeks complete</span>
         : <span style={{ fontSize: 11, color: C.textMuted }}>Next: Week {peNextWeek(fbRows)}</span>
       }
     </div>
@@ -8145,6 +7471,7 @@ function PotentialEnvoysAssignView({ currentUser }) {
   const [msg, setMsg]                       = useState("");
   const [msgType, setMsgType]               = useState("success");
   const [pendingAssign, setPendingAssign]   = useState({});
+  const [selected, setSelected]             = useState(new Set());
 
   const filtered = data.filter(r => {
     const matchSearch = !search ||
@@ -8157,6 +7484,41 @@ function PotentialEnvoysAssignView({ currentUser }) {
     return matchSearch;
   });
   const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}`, filtered.length, 10);
+
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
+
+  const downloadCSV = () => {
+    const toExport = filtered.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Connect Center","Assigned To","Weeks Completed","Training Completed","Graduated"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.full_name), escape(r.phone), escape(r.gender), escape(r.dob),
+        escape(r.marital_status), escape(r.life_stage), escape(r.connect_center),
+        escape(r.assignment?.assigned_to), escape(peWeeksLogged(r.fbRows).size),
+        escape(r.training_completed ? "Yes" : "No"), escape(r.promoted_to_membership ? "Yes" : "No"),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `potential_envoys_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const assignedCount   = data.filter(r => !!r.assignment).length;
   const unassignedCount = data.filter(r => !r.assignment).length;
@@ -8225,7 +7587,7 @@ function PotentialEnvoysAssignView({ currentUser }) {
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title="Potential Envoys"
-        subtitle="VIPs recommended for membership — 5-week Soul Care follow-up + training before graduation" />
+        subtitle="VIPs recommended for membership — 3-week Soul Care follow-up + training before graduation" />
 
       <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
         <StatCard label="Total"      value={data.length}      icon={Users}       accent={C.soul}  />
@@ -8233,7 +7595,7 @@ function PotentialEnvoysAssignView({ currentUser }) {
         <StatCard label="Unassigned" value={unassignedCount}  icon={AlertCircle} accent={C.gold}
           sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
         <StatCard label="Graduated"  value={graduatedCount}   icon={Star}        accent={C.goldDark}
-          sub="Completed 5 weeks + training" />
+          sub="Completed 3 weeks + training" />
       </div>
 
       <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
@@ -8249,7 +7611,7 @@ function PotentialEnvoysAssignView({ currentUser }) {
               <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div>
             ) : (
               <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
-                <option value="">Select team member</option>
+                <option value="">Select Caller</option>
                 {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             )}
@@ -8273,6 +7635,16 @@ function PotentialEnvoysAssignView({ currentUser }) {
             border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
           }}>{t.label} ({t.count})</button>
         ))}
+        <button onClick={toggleAll} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
+        }}>
+          {allSelected ? "Deselect All" : "Select All"}
+        </button>
+        <button style={{ ...btn("gold", { padding: "6px 14px", fontSize: 12 }), opacity: selectedCount === 0 ? .5 : 1 }}
+          onClick={downloadCSV} disabled={selectedCount === 0}>
+          <Download size={13} />Download {selectedCount > 0 ? `(${selectedCount})` : ""}
+        </button>
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
@@ -8289,6 +7661,8 @@ function PotentialEnvoysAssignView({ currentUser }) {
             return (
               <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${complete ? C.green : r.assignment ? C.soul : C.gold}` }}>
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
+                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
+                    style={{ width: 16, height: 16, marginTop: 4, cursor: "pointer", flexShrink: 0 }} />
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
                     <Avatar name={r.full_name} />
                     <div>
@@ -8322,7 +7696,7 @@ function PotentialEnvoysAssignView({ currentUser }) {
                         ) : (
                           <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
                             style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Select follower-upper</option>
+                            <option value="">Select Caller</option>
                             {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                           </select>
                         )}
@@ -9530,8 +8904,25 @@ function FlaggedRecords() {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const data = await sb("call_feedback?flagged_for_pastoral=eq.true&select=*,first_timers(full_name,phone,gender,membership_decision,service_date)&order=created_at.desc");
-        setRows(data || []);
+        const [cf, scl] = await Promise.all([
+          sb("call_feedback?flagged_for_pastoral=eq.true&select=*,first_timers(full_name,phone,gender,membership_decision,service_date)&order=created_at.desc"),
+          sb("soul_call_logs?flagged_for_pastoral=eq.true&select=*&order=created_at.desc").catch(() => []),
+        ]);
+
+        const stewardIds = [...new Set((scl || []).filter(r => r.person_table === "stewards").map(r => r.person_id))];
+        const memberIds  = [...new Set((scl || []).filter(r => r.person_table === "church_members").map(r => r.person_id))];
+        const [swPeople, cmPeople] = await Promise.all([
+          stewardIds.length ? sb(`stewards?id=in.(${stewardIds.join(",")})&select=id,full_name,phone`).catch(() => []) : [],
+          memberIds.length  ? sb(`church_members?id=in.(${memberIds.join(",")})&select=id,full_name,phone`).catch(() => []) : [],
+        ]);
+        const peopleMap = {};
+        [...(swPeople || []), ...(cmPeople || [])].forEach(p => { peopleMap[String(p.id)] = p; });
+
+        const cfRows  = (cf  || []).map(r => ({ ...r, _source: "call" }));
+        const sclRows = (scl || []).map(r => ({ ...r, _source: "soulcare", person: peopleMap[String(r.person_id)] || {} }));
+
+        const merged = [...cfRows, ...sclRows].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setRows(merged);
       } catch (e) { setErr(e.message); }
       setLoading(false);
     })();
@@ -9561,19 +8952,29 @@ function FlaggedRecords() {
         <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 10 }}>
           {rows.slice(0, visibleCount).map(r => {
-            const ft = r.first_timers || {};
-            const sm = statusMeta(r.call_status);
+            const isSoulCare = r._source === "soulcare";
+            const person = isSoulCare ? (r.person || {}) : (r.first_timers || {});
+            const sm = isSoulCare
+              ? (SC_CALL_STATUS_META[r.call_status] || { color: C.textMuted, bg: C.bg })
+              : statusMeta(r.call_status);
             const age = daysOpen(r.created_at);
             const aging = age >= 3;
             return (
-              <div key={r.id} style={{ ...card, borderLeft: `3px solid ${aging ? C.danger : C.flag}`, padding: "14px 16px" }}>
+              <div key={`${r._source}-${r.id}`} style={{ ...card, borderLeft: `3px solid ${aging ? C.danger : C.flag}`, padding: "14px 16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.head }}>{ft.full_name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{ft.phone} · {ft.service_date}</div>
-                    {r.caller_name && (
+                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.head }}>
+                      {person.full_name || "Unknown"}
+                      {isSoulCare && (
+                        <span style={badge(r.person_table === "stewards" ? C.goldDark : C.soul, r.person_table === "stewards" ? C.goldLight : C.soulLight, { fontSize: 10, marginLeft: 8 })}>
+                          {r.person_table === "stewards" ? "Steward" : "Member"}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}>{person.phone}{!isSoulCare ? ` · ${person.service_date || ""}` : ""}</div>
+                    {(r.caller_name || r.called_by) && (
                       <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>
-                        Reported by <strong>{r.caller_name}</strong>
+                        Reported by <strong>{r.caller_name || r.called_by}</strong>
                       </div>
                     )}
                   </div>
@@ -9583,16 +8984,16 @@ function FlaggedRecords() {
                     ) : (
                       <span style={badge(C.flag, C.flagLight)}><Flag size={11} />Flagged · {age}d open</span>
                     )}
-                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{sm.label}</span>
+                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{isSoulCare ? r.call_status : sm.label}</span>
                   </div>
                 </div>
                 <div style={{
                   background: C.flagLight, borderRadius: 8, padding: "10px 14px",
                   fontSize: 13, color: C.flag, lineHeight: 1.6,
                 }}>
-                  <strong>Reason flagged:</strong> {r.flag_reason || "No reason provided"}
+                  <strong>Reason flagged:</strong> {isSoulCare ? (r.notes || "No reason provided") : (r.flag_reason || "No reason provided")}
                 </div>
-                {r.notes && (
+                {!isSoulCare && r.notes && (
                   <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>
                     <strong>Call notes:</strong> {r.notes}
                   </p>
@@ -10009,98 +9410,6 @@ function ExperienceAnalyticsDashboard() {
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  MODULE: SOUL CARE — VISITATION MANAGEMENT  (v7.0)                        ║
-// ║                                                                             ║
-// ║  Rebuilt to mirror the Experience Team module's architecture:              ║
-// ║   • soul_care_contacts    — the pool of people awaiting a visit            ║
-// ║     (the Soul Care equivalent of first_timers for the calling pipeline)    ║
-// ║   • soul_care_assignments — assigns ONE contact to ONE Soul Care team      ║
-// ║     member (equivalent of call_assignments)                                ║
-// ║   • soul_care_visits      — one row per visit EVENT logged against a       ║
-// ║     contact (equivalent of call_feedback — but there is no fixed 3-week    ║
-// ║     pipeline here; visits are open-ended and can repeat)                   ║
-// ║                                                                             ║
-// ║  New "soulcareadmin" role owns: bulk CSV import of contacts, assignment    ║
-// ║  of contacts to Soul Care team members, the global Visit Queue, Flagged    ║
-// ║  cases, and Testimonies. Regular "soulcare" members only ever see          ║
-// ║  contacts assigned to them — never the full pool.                         ║
-// ║                                                                             ║
-// ║  REQUIRES: soul_care_contacts / soul_care_assignments / soul_care_visits   ║
-// ║  tables per INTEGRATION_GUIDE.md. All shared helpers (C, F, SHADOW, card,  ║
-// ║  btn, badge, dot, inputBase, Alert, PageHeader, StatCard, SH, FieldInput,  ║
-// ║  PhotoUpload, CredsBanner, sb, useRoleUsers) are assumed already in scope  ║
-// ║  from earlier modules in the same file.                                   ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS & STATUS META
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SC_VISIT_TYPES = [
-  { value: "Home (Periodic)", label: "Home (Periodic)" },
-  { value: "Celebration",     label: "Celebration (New Born, Wedding, House Warming…)" },
-  { value: "Pastoral Care",   label: "Pastoral Care" },
-  { value: "Welfare Check",   label: "Welfare Check" },
-  { value: "Phone Call",      label: "Phone Call" },
-];
-
-const VISIT_STATUS_META = {
-  Scheduled:             { color: C.blue,   bg: C.blueLight   },
-  Completed:             { color: C.green,  bg: C.greenLight  },
-  Rescheduled:           { color: C.amber,  bg: C.amberLight  },
-  "Member Unavailable":  { color: C.danger, bg: C.dangerLight },
-};
-const URGENCY_META = {
-  High:   { color: C.danger, bg: C.dangerLight },
-  Medium: { color: C.amber,  bg: C.amberLight  },
-  Low:    { color: C.green,  bg: C.greenLight  },
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-function scGenderTag(row) {
-  if (!row) return "";
-  const g = (row.gender || "").trim().toLowerCase();
-  if (g === "male")   return " (M)";
-  if (g === "female") return " (F)";
-  return "";
-}
-
-function scProfileTag(row) {
-  if (!row) return "";
-  const g = (row.gender || "").trim().toLowerCase();
-  const gender = g === "male" ? "Male" : g === "female" ? "Female" : "";
-  const marital = ({ married: "M", single: "S", divorced: "D", widowed: "W" })[
-    (row.marital_status || "").trim().toLowerCase()
-  ] || "";
-  const l = (row.life_stage || "").trim().toLowerCase();
-  const life =
-    (l === "employee" || l === "employed") ? "E" :
-    (l === "business owner" || l === "businessowner") ? "B" :
-    (l === "student") ? "S" : "";
-  let tag = gender ? ` (${gender})` : "";
-  const extras = [marital, life].filter(Boolean);
-  if (extras.length) tag += ` - ${extras.join(" - ")}`;
-  return tag;
-}
-
-function scLatestVisit(visits) {
-  return (visits && visits.length) ? visits[visits.length - 1] : null;
-}
-
-function scCategorise(contact) {
-  const latest = scLatestVisit(contact.visits);
-  if (!latest) return "pending";
-  if (latest.visit_status === "Completed")            return "completed";
-  if (latest.visit_status === "Scheduled")             return "scheduled";
-  if (latest.visit_status === "Rescheduled")            return "rescheduled";
-  if (latest.visit_status === "Member Unavailable")     return "unavailable";
-  return "pending";
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SCDateFilterBar — reusable date-range filter bar (used across every page)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10134,58 +9443,6 @@ function SCDateFilterBar({ dateFrom, setDateFrom, dateTo, setDateTo, label = "Fi
       </div>
     </div>
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// useVisitData — shared data loader, mirrors useCallData()
-// Returns soul_care_contacts enriched with .visits[] and .assignment
-// dateFrom/dateTo filter on soul_care_contacts.created_at (date added to pool)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function useVisitData(dateFrom, dateTo) {
-  const [data, setData]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr]         = useState("");
-  const [tick, setTick]       = useState(0);
-  const reload = useCallback(() => setTick(t => t + 1), []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true); setErr("");
-      try {
-        let cq = "soul_care_contacts?is_active=eq.true&order=created_at.desc&limit=500";
-        if (dateFrom) cq += `&created_at=gte.${dateFrom}`;
-        if (dateTo)   cq += `&created_at=lte.${dateTo}T23:59:59`;
-
-        const [contacts, visits, asgRows] = await Promise.all([
-          sb(cq),
-          sb("soul_care_visits?select=*&order=created_at.asc"),
-          sb("soul_care_assignments?select=*").catch(() => []),
-        ]);
-
-        const vMap = {};
-        (visits || []).forEach(v => {
-          if (!vMap[v.contact_id]) vMap[v.contact_id] = [];
-          vMap[v.contact_id].push(v);
-        });
-        const aMap = {};
-        (asgRows || []).forEach(a => { aMap[a.contact_id] = a; });
-
-        if (!cancelled) {
-          setData((contacts || []).map(c => ({
-            ...c,
-            visits:     vMap[c.id] || [],
-            assignment: aMap[c.id] || null,
-          })));
-        }
-      } catch (e) { if (!cancelled) setErr(e.message); }
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [tick, dateFrom, dateTo]);
-
-  return { data, loading, err, reload };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10246,15 +9503,6 @@ function downloadCSVTemplate(filename, headers, example) {
   URL.revokeObjectURL(url);
 }
 
-const VISITATION_TEMPLATE_HEADERS = [
-  "full_name", "phone", "email", "gender", "dob",
-  "marital_status", "life_stage", "house_address", "nearest_landmark",
-];
-const VISITATION_TEMPLATE_EXAMPLE = [
-  "Adaeze Okafor", "08031234567", "adaeze@example.com", "Female", "1994-03-12",
-  "Married", "Employee", "12 Palm Street Ikeja", "Near Chevron Roundabout",
-];
-
 const MEMBERS_TEMPLATE_HEADERS = [
   "full_name", "phone", "email", "gender", "dob", "marital_status", "life_stage",
   "category", "membership_status", "date_joined", "house_address", "nearest_landmark",
@@ -10265,681 +9513,12 @@ const MEMBERS_TEMPLATE_EXAMPLE = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SoulCareCSVImport — bulk import of contacts to visit (soulcareadmin only)
-// Columns: full_name, phone, email, gender, house_address, nearest_landmark,
-//          marital_status, life_stage
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SoulCareCSVImport({ currentUser, onDone }) {
-  const [rows, setRows]       = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr]         = useState("");
-  const [success, setSuccess] = useState("");
-  const fileRef = useRef();
-
-  const parseCSV = (text) => parseCSVText(text);
-
-  const onFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setRows(parseCSV(ev.target.result)); setErr(""); setSuccess("");
-    };
-    reader.readAsText(file);
-  };
-
-  const sanitizeGender = (g) => {
-    const c = (g || "").toString().trim().toLowerCase();
-    if (c === "male")   return "Male";
-    if (c === "female") return "Female";
-    return null;
-  };
-  const sanitizeMaritalStatus = (s) => {
-    const c = (s || "").toString().trim().toLowerCase();
-    if (c === "single")   return "Single";
-    if (c === "married")  return "Married";
-    if (c === "divorced") return "Divorced";
-    if (c === "widowed")  return "Widowed";
-    return null;
-  };
-  const sanitizeLifeStage = (ls) => {
-    const c = (ls || "").toString().trim().toLowerCase();
-    if (c === "student")  return "Student";
-    if (c === "employee") return "Employee";
-    if (c === "business owner" || c === "businessowner") return "Business Owner";
-    return null;
-  };
-
-  const importAll = async () => {
-    if (!rows.length) return;
-    setLoading(true); setErr("");
-    try {
-      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
-      const payload = rows
-        .map(r => ({
-          full_name:        (r.full_name || r.name || "").toString().trim(),
-          phone:             (r.phone || r.phone_number || "").toString().trim(),
-          email:             n(r.email?.toString().trim()),
-          gender:            sanitizeGender(r.gender),
-          house_address:     n((r.house_address || r.address || "").toString().trim()),
-          nearest_landmark:  n((r.nearest_landmark || r.landmark || "").toString().trim()),
-          marital_status:    sanitizeMaritalStatus(r.marital_status),
-          life_stage:        sanitizeLifeStage(r.life_stage),
-          dob:               (() => {
-            const s = (r.dob || r.date_of_birth || "").toString().trim();
-            const parts = s.split(/[/-]/);
-            if (parts.length !== 3) return null;
-            const [a, b, c2] = parts;
-            if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c2.padStart(2, "0")}`;
-            return `${c2}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
-          })(),
-          added_by:          currentUser || null,
-        }))
-        .filter(r => r.full_name && r.phone);
-
-      if (!payload.length) {
-        setErr("No valid rows found. Each row needs at least full_name and phone.");
-        setLoading(false); return;
-      }
-
-      await sb("soul_care_contacts", { method: "POST", body: JSON.stringify(payload) });
-      setSuccess(`${payload.length} contact${payload.length !== 1 ? "s" : ""} imported successfully.`);
-      toast.success("Import complete.");
-      setRows([]);
-      onDone?.();
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  return (
-    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
-      <SH title="Bulk CSV Import — Contacts to Visit" icon={Upload} />
-      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
-        Upload a CSV to add multiple people to the Soul Care visitation pool. Required columns:{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>,{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>phone</code>. Optional: email,
-        gender, house_address, nearest_landmark, marital_status, life_stage.
-      </p>
-      <Alert type="error"   msg={err}     onClose={() => setErr("")} />
-      <Alert type="success" msg={success} onClose={() => setSuccess("")} />
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: rows.length ? 16 : 0 }}>
-        <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
-        <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => fileRef.current.click()}>
-          <Upload size={14} />Choose CSV File
-        </button>
-        <button style={btn("ghost", { fontSize: 12 })}
-          onClick={() => downloadCSVTemplate("envoys_visitation_import_template.csv", VISITATION_TEMPLATE_HEADERS, VISITATION_TEMPLATE_EXAMPLE)}>
-          <Download size={12} />Download Template
-        </button>
-        {rows.length > 0 && (
-          <button style={btn("soul")} onClick={importAll} disabled={loading}>
-            {loading ? "Importing…" : `Import ${rows.length} rows`}
-          </button>
-        )}
-      </div>
-
-      {rows.length > 0 && (
-        <div style={{ overflowX: "auto", borderRadius: 8, border: `1px solid ${C.border}` }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontFamily: F.body }}>
-            <thead>
-              <tr style={{ background: C.bg }}>
-                {Object.keys(rows[0]).slice(0, 6).map(h => (
-                  <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontWeight: 600, color: C.textSecondary, borderBottom: `1px solid ${C.border}` }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.slice(0, 5).map((r, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {Object.values(r).slice(0, 6).map((v, j) => (
-                    <td key={j} style={{ padding: "7px 12px", color: C.textPrimary }}>{v || "—"}</td>
-                  ))}
-                </tr>
-              ))}
-              {rows.length > 5 && (
-                <tr><td colSpan={6} style={{ padding: "7px 12px", color: C.textMuted, fontStyle: "italic" }}>
-                  …and {rows.length - 5} more rows
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AssignVisitsView — soulcareadmin only. Bulk import + assign contacts.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AddVisitPage — single-entry flow: search existing people (soul_care_contacts
-// + first_timers) or add someone brand new, then go straight into logging a
-// visit for them. Available to soulcare / soulcareadmin / admin. This sits
-// ALONGSIDE the bulk CSV import in AssignVisitsView, not instead of it.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AddVisitPage({ currentUser, onCancel, onLoggingDone }) {
-  const [step, setStep]           = useState("search"); // "search" | "new"
-  const [query, setQuery]         = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searched, setSearched]   = useState(false);
-  const [results, setResults]     = useState([]);
-  const [creating, setCreating]   = useState(false);
-  const [err, setErr]             = useState("");
-  const [contactForLogging, setContactForLogging] = useState(null);
-
-  const [newForm, setNewForm] = useState({
-    full_name: "", phone: "", email: "", gender: "",
-    house_address: "", nearest_landmark: "", marital_status: "", life_stage: "", dob: ""
-  });
-
-  const setRef = useRef({});
-  const setField = useCallback((key) => {
-    if (!setRef.current[key]) {
-      setRef.current[key] = (valOrEvt) => {
-        const val = valOrEvt && valOrEvt.target !== undefined ? valOrEvt.target.value : valOrEvt;
-        setNewForm(f => ({ ...f, [key]: val }));
-      };
-    }
-    return setRef.current[key];
-  }, []);
-
-  const doSearch = async () => {
-    if (!query.trim()) return;
-    setSearching(true); setErr(""); setSearched(true);
-    try {
-      const q = query.trim().replace(/[,()]/g, "");
-      const [scRows, ftRows] = await Promise.all([
-        sb(`soul_care_contacts?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&order=full_name.asc&limit=10`).catch(() => []),
-        sb(`first_timers?or=(full_name.ilike.*${q}*,phone.ilike.*${q}*)&order=full_name.asc&limit=10`).catch(() => []),
-      ]);
-      const seen = new Set();
-      const merged = [];
-      (scRows || []).forEach(r => {
-        if (!seen.has(r.phone)) { seen.add(r.phone); merged.push({ ...r, _source: "soul_care" }); }
-      });
-      (ftRows || []).forEach(r => {
-        if (!seen.has(r.phone)) {
-          seen.add(r.phone);
-          merged.push({
-            full_name: r.full_name, phone: r.phone, email: r.email, gender: r.gender,
-            house_address: r.house_address, nearest_landmark: r.nearest_landmark,
-            marital_status: r.marital_status, life_stage: r.life_stage,
-            _source: "first_timer",
-          });
-        }
-      });
-      setResults(merged);
-    } catch (e) { setErr(e.message); }
-    setSearching(false);
-  };
-
-  // Only creates an assignment if none exists yet — never steals a contact
-  // that's already assigned to someone else.
-  const ensureSelfAssigned = async (contactId) => {
-    try {
-      const existing = await sb(
-        `soul_care_assignments?contact_id=eq.${contactId}&select=id,assigned_to&limit=1`
-      ).catch(() => []);
-      if (!existing || existing.length === 0) {
-        await sb("soul_care_assignments", {
-          method: "POST",
-          body: JSON.stringify({ contact_id: contactId, assigned_to: currentUser, assigned_by: currentUser }),
-        });
-      }
-    } catch { /* non-fatal — visit can still be logged */ }
-  };
-
-  const selectExisting = async (person) => {
-    setCreating(true); setErr("");
-    try {
-      let contactRow = person;
-      if (person._source === "first_timer") {
-        const [created] = await sb("soul_care_contacts", {
-          method: "POST",
-          body: JSON.stringify({
-            full_name: person.full_name, phone: person.phone, email: person.email || null,
-            gender: person.gender || null, house_address: person.house_address || null,
-            nearest_landmark: person.nearest_landmark || null,
-            marital_status: person.marital_status || null, life_stage: person.life_stage || null,
-            added_by: currentUser || null,
-          }),
-        });
-        contactRow = created;
-      }
-      await ensureSelfAssigned(contactRow.id);
-      setContactForLogging({ ...contactRow, visits: [] });
-    } catch (e) { setErr(e.message); }
-    setCreating(false);
-  };
-
-  const createNewAndProceed = async () => {
-    if (!newForm.full_name.trim() || !newForm.phone.trim()) {
-      setErr("Full name and phone are required."); return;
-    }
-    setCreating(true); setErr("");
-    try {
-      const dupe = await sb(
-        `soul_care_contacts?phone=eq.${encodeURIComponent(newForm.phone.trim())}&select=id&limit=1`
-      ).catch(() => []);
-      if (dupe && dupe.length > 0) {
-        setErr('A contact with this phone number already exists — use "Find Existing Member" to search for them instead.');
-        setCreating(false); return;
-      }
-      const n = (v) => (v === "" || v === undefined) ? null : v;
-      const [created] = await sb("soul_care_contacts", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: newForm.full_name.trim(), phone: newForm.phone.trim(),
-          email: n(newForm.email), gender: n(newForm.gender),
-          house_address: n(newForm.house_address), nearest_landmark: n(newForm.nearest_landmark),
-          marital_status: n(newForm.marital_status), life_stage: n(newForm.life_stage), dob: n(newForm.dob),
-          added_by: currentUser || null,
-        }),
-      });
-      await ensureSelfAssigned(created.id);
-      setContactForLogging({ ...created, visits: [] });
-    } catch (e) { setErr(e.message); }
-    setCreating(false);
-  };
-
-  if (contactForLogging) {
-    return (
-      <LogVisitForm
-        contact={contactForLogging}
-        loggedBy={currentUser}
-        onBack={() => setContactForLogging(null)}
-        onDone={onLoggingDone}
-      />
-    );
-  }
-
-  return (
-    <div style={card} className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="New Visitation Record" subtitle="Start by finding the member in the system, or add them as new"
-        action={onCancel && <button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
-
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {step === "search" ? (
-        <>
-          <SH title="Find Existing Member" icon={Search} />
-          <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 14, lineHeight: 1.6 }}>
-            Search by name or phone to auto-populate member details. If the person isn't in the system yet, add them as new.
-          </p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <input value={query} onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && doSearch()}
-                placeholder="Name or phone number…" style={inputBase} />
-            </div>
-            <button style={btn("primary")} onClick={doSearch} disabled={searching}>
-              <Search size={14} />{searching ? "Searching…" : "Search"}
-            </button>
-            <button style={btn("soul")} onClick={() => setStep("new")}>
-              <UserPlus size={14} />Add New
-            </button>
-          </div>
-
-          {searched && !searching && (
-            <div style={{ display: "grid", gap: 8 }}>
-              {results.length === 0 ? (
-                <div style={{ ...card, textAlign: "center", padding: "2rem", color: C.textMuted }}>
-                  <Search size={24} style={{ marginBottom: 8, opacity: .4 }} />
-                  <div>No matches found. Try "Add New" to create a fresh record.</div>
-                </div>
-              ) : results.map(p => (
-                <div key={`${p._source}-${p.phone}`} style={{
-                  ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
-                  alignItems: "center", flexWrap: "wrap", gap: 10,
-                }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                    <Avatar name={p.full_name} size={36} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{p.full_name}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>{p.phone}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={badge(
-                      p._source === "soul_care" ? C.soul : C.green,
-                      p._source === "soul_care" ? C.soulLight : C.greenLight,
-                      { fontSize: 11 }
-                    )}>{p._source === "soul_care" ? "In Soul Care pool" : "First-Timer record"}</span>
-                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })}
-                      onClick={() => selectExisting(p)} disabled={creating}>
-                      {creating ? "…" : "Use this Person"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <SH title="Add New Contact" icon={UserPlus} />
-          <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-            <FieldInput label="Full Name" id="nvn" required value={newForm.full_name} onChange={setField("full_name")} placeholder="e.g. Adaeze Okafor" />
-            <FieldInput label="Phone Number" id="nvp" required value={newForm.phone} onChange={setField("phone")} placeholder="+234 xxx xxx xxxx" />
-          </div>
-          <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-            <FieldInput label="Gender" id="nvg" type="select" value={newForm.gender} onChange={setField("gender")}
-              options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
-            <FieldInput label="Email Address" id="nve" type="email" value={newForm.email} onChange={setField("email")} placeholder="you@example.com" />
-          </div>
-          <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-            <FieldInput label="Marital Status" id="nvm" type="select" value={newForm.marital_status} onChange={setField("marital_status")}
-              options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
-            <FieldInput label="Life Stage" id="nvl" type="select" value={newForm.life_stage} onChange={setField("life_stage")}
-              options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
-          </div>
-          <FieldInput label="Date of Birth" id="nvd" type="date" value={newForm.dob} onChange={setField("dob")}
-            hint="Optional — powers the Birthdays This Week widget" />
-          <FieldInput label="House Address" id="nvh" value={newForm.house_address} onChange={setField("house_address")} placeholder="Street, City" />
-          <FieldInput label="Nearest Landmark" id="nvk" value={newForm.nearest_landmark} onChange={setField("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
-
-          <div style={{ display: "flex", gap: 10, marginTop: 8, flexWrap: "wrap" }}>
-            <button style={btn("ghost")} onClick={() => setStep("search")}><ArrowLeft size={14} />Back to Search</button>
-            <button style={{ ...btn("soul"), flex: 1 }} onClick={createNewAndProceed} disabled={creating}>
-              {creating ? "Saving…" : "Save & Log Visit"}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AssignVisitsView — soulcareadmin only. Bulk import + assign contacts.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function AssignVisitsView({ currentUser }) {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]     = useState("");
-  const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
-  const { options: teamOptions, loading: teamLoading } = useRoleUsers(["soulcare", "soulcareadmin"]);
-
-  const [selectedMember, setSelectedMember] = useState("");
-  const [search, setSearch]                 = useState("");
-  const [filter, setFilter]                 = useState("unassigned");
-  const [saving, setSaving]                 = useState(false);
-  const [msg, setMsg]                       = useState("");
-  const [msgType, setMsgType]               = useState("success");
-  const [pendingAssign, setPendingAssign]   = useState({});
-  const [showImport, setShowImport]         = useState(false);
-
-  const filtered = data.filter(c => {
-    const matchSearch = !search ||
-      c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.phone?.includes(search);
-    if (filter === "unassigned") return matchSearch && !c.assignment;
-    if (filter === "assigned")   return matchSearch && !!c.assignment;
-    if (filter === "visited")    return matchSearch && c.visits.length > 0;
-    return matchSearch;
-  });
-  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
-
-  const assignedCount   = data.filter(c => !!c.assignment).length;
-  const unassignedCount = data.filter(c => !c.assignment).length;
-  const visitedCount    = data.filter(c => c.visits.length > 0).length;
-
-  const bulkAssign = async () => {
-    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
-    const targets = data.filter(c => !c.assignment);
-    if (!targets.length) { setMsg("No unassigned contacts to assign."); setMsgType("warn"); return; }
-    setSaving(true); setMsg("");
-    try {
-      const payload = targets.map(c => ({
-        contact_id:  c.id,
-        assigned_to: selectedMember,
-        assigned_by: currentUser,
-      }));
-      for (let i = 0; i < payload.length; i += 50) {
-        await sb("soul_care_assignments", {
-          method: "POST",
-          prefer: "resolution=merge-duplicates,return=representation",
-          body: JSON.stringify(payload.slice(i, i + 50)),
-        });
-      }
-      setMsg(`${targets.length} contact${targets.length !== 1 ? "s" : ""} assigned to ${selectedMember}.`);
-      setMsgType("success");
-      reload();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setSaving(false);
-  };
-
-  const saveAssignment = async (contactId) => {
-    const member = pendingAssign[contactId];
-    if (!member) return;
-    setSaving(true);
-    try {
-      const existing = data.find(c => c.id === contactId)?.assignment;
-      if (existing) {
-        await sb(`soul_care_assignments?id=eq.${existing.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
-        });
-      } else {
-        await sb("soul_care_assignments", {
-          method: "POST",
-          body: JSON.stringify({ contact_id: contactId, assigned_to: member, assigned_by: currentUser }),
-        });
-      }
-      setPendingAssign(p => { const n = { ...p }; delete n[contactId]; return n; });
-      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setSaving(false);
-  };
-
-  const removeAssignment = async (asgId) => {
-    setSaving(true);
-    try {
-      await sb(`soul_care_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
-      setMsg("Assignment removed."); setMsgType("success"); reload();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setSaving(false);
-  };
-
-  const tabs = [
-    { k: "unassigned", label: "Unassigned", count: unassignedCount, col: C.gold      },
-    { k: "assigned",   label: "Assigned",   count: assignedCount,   col: C.soul      },
-    { k: "visited",    label: "Visited",    count: visitedCount,    col: C.green     },
-    { k: "all",        label: "All",        count: data.length,     col: C.textMuted },
-  ];
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader
-        title="Assign Visits"
-        subtitle="Import contacts and allocate them to Soul Care team members for follow-up"
-        action={
-          <button style={btn("outline", { color: C.soul, border: `1.5px solid ${C.soul}` })} onClick={() => setShowImport(s => !s)}>
-            <Upload size={14} />{showImport ? "Hide Import" : "Bulk Import"}
-          </button>
-        }
-      />
-
-      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
-        label="Filter by date added to pool:" />
-
-      {showImport && <SoulCareCSVImport currentUser={currentUser} onDone={reload} />}
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Contacts" value={data.length}     icon={Users}       accent={C.soul}  />
-        <StatCard label="Assigned"       value={assignedCount}   icon={UserCheck}   accent={C.green} />
-        <StatCard label="Unassigned"     value={unassignedCount} icon={AlertCircle} accent={C.gold}
-          sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
-      </div>
-
-      {/* Bulk assign panel */}
-      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
-        <div style={{
-          fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10,
-          fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
-          display: "flex", alignItems: "center", gap: 5,
-        }}>
-          <Zap size={11} />Bulk Assignment
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
-              Assign all <strong>{unassignedCount}</strong> unassigned contacts to:
-            </div>
-            {teamLoading ? (
-              <div style={{ ...inputBase, color: C.textMuted, display: "flex", alignItems: "center", gap: 8 }}>
-                <RefreshCw size={13} style={{ animation: "spin 1s linear infinite" }} />Loading…
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-              </div>
-            ) : (
-              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
-                <option value="">Select team member</option>
-                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            )}
-          </div>
-          <button
-            style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
-            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
-            <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount} contacts`}
-          </button>
-        </div>
-      </div>
-
-      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
-      <Alert type="error" msg={err} onClose={() => {}} />
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)}
-            style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-              fontFamily: F.body, transition: "all .15s",
-              background: filter === t.k ? (t.col || C.soul) : C.bg,
-              color: filter === t.k ? "#fff" : C.textSecondary,
-              border: `1.5px solid ${filter === t.k ? (t.col || C.soul) : C.border}`,
-            }}>
-            {t.label} ({t.count})
-          </button>
-        ))}
-        <div style={{ marginLeft: "auto", position: "relative" }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
-        </div>
-        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
-      </div>
-
-      <Alert type="error" msg={err} onClose={() => {}} />
-
-      {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.slice(0, visibleCount).map(c => {
-            const pending     = pendingAssign[c.id];
-            const displayName = `${c.full_name}${scProfileTag(c)}`;
-            const hasVisits   = c.visits.length > 0;
-            return (
-              <div key={c.id} style={{
-                ...card, padding: "12px 16px",
-                borderLeft: `3px solid ${hasVisits ? C.green : c.assignment ? C.soul : C.gold}`,
-              }}>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                      background: C.soulLight, display: "flex", alignItems: "center", justifyContent: "center",
-                      fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head,
-                    }}>{c.full_name?.charAt(0)}</div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} /> · added {c.created_at?.slice(0, 10)}</div>
-                      {hasVisits && (
-                        <div style={{ fontSize: 11, color: C.green, marginTop: 3 }}>
-                          {c.visits.length} visit{c.visits.length !== 1 ? "s" : ""} logged · latest: {scLatestVisit(c.visits)?.visit_status || "—"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-                    {c.assignment && !pending ? (
-                      <>
-                        <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>
-                          <UserCheck size={10} />{c.assignment.assigned_to}
-                        </span>
-                        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
-                          onClick={() => setPendingAssign(p => ({ ...p, [c.id]: c.assignment.assigned_to }))}>
-                          <Edit3 size={10} />Reassign
-                        </button>
-                        <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
-                          onClick={() => removeAssignment(c.assignment.id)} disabled={saving}>
-                          <X size={10} />Unassign
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {teamLoading ? (
-                          <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span>
-                        ) : (
-                          <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [c.id]: e.target.value }))}
-                            style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Assign Visitor</option>
-                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
-                        )}
-                        {pending && (
-                          <>
-                            <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })}
-                              onClick={() => saveAssignment(c.id)} disabled={saving}>
-                              {saving ? "…" : "Save"}
-                            </button>
-                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })}
-                              onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[c.id]; return n; })}>
-                              <X size={12} />
-                            </button>
-                          </>
-                        )}
-                        {!pending && !c.assignment && <span style={badge(C.gold, C.goldLight, { fontSize: 11 })}>Unassigned</span>}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <UserCheck size={28} style={{ marginBottom: 8, opacity: .4 }} />
-              <div style={{ fontWeight: 600, fontFamily: F.head }}>No contacts in this category</div>
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-      {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // v6.4 — MembersCareCSVImport: bulk import into church_members, with an
 // optional "also add to visit pool" pass (skips phones already in the pool).
 // ─────────────────────────────────────────────────────────────────────────────
 
 function MembersCareCSVImport({ currentUser, onDone }) {
   const [rows, setRows]       = useState([]);
-  const [alsoPool, setAlsoPool] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr]         = useState("");
   const [success, setSuccess] = useState("");
@@ -10999,25 +9578,7 @@ function MembersCareCSVImport({ currentUser, onDone }) {
 
       await sb("church_members", { method: "POST", body: JSON.stringify(payload) });
 
-      let pooled = 0;
-      if (alsoPool) {
-        const pool = await sb("soul_care_contacts?select=phone").catch(() => []);
-        const existing = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
-        const poolPayload = payload
-          .filter(m => !existing.has(phoneKey(m.phone)))
-          .map(m => ({
-            full_name: m.full_name, phone: m.phone, email: m.email, gender: m.gender,
-            house_address: m.house_address, nearest_landmark: m.nearest_landmark,
-            marital_status: m.marital_status, life_stage: m.life_stage, dob: m.dob,
-            added_by: currentUser || null,
-          }));
-        for (let i = 0; i < poolPayload.length; i += 50) {
-          await sb("soul_care_contacts", { method: "POST", body: JSON.stringify(poolPayload.slice(i, i + 50)) });
-        }
-        pooled = poolPayload.length;
-      }
-
-      setSuccess(`${payload.length} member${payload.length !== 1 ? "s" : ""} imported${alsoPool ? ` · ${pooled} added to the visit pool (duplicates skipped)` : ""}.`);
+      setSuccess(`${payload.length} member${payload.length !== 1 ? "s" : ""} imported.`);
       toast.success("Import complete.");
       setRows([]);
       onDone?.();
@@ -11037,9 +9598,6 @@ function MembersCareCSVImport({ currentUser, onDone }) {
       </p>
       <Alert type="error"   msg={err}     onClose={() => setErr("")} />
       <Alert type="success" msg={success} onClose={() => setSuccess("")} />
-
-      <FieldInput label="Also add imported members to the Visit Pool (they'll appear as Unassigned in Assign Visits)"
-        id="mc-pool" type="bool-toggle" value={alsoPool} onChange={v => setAlsoPool(!!v)} />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: rows.length ? 16 : 0 }}>
         <input ref={fileRef} type="file" accept=".csv" onChange={onFile} style={{ display: "none" }} />
@@ -11089,20 +9647,13 @@ function MembersCareCSVImport({ currentUser, onDone }) {
 }
 
 function MemberProfile({ member, currentUser, role, onBack }) {
-  const [contacts, setContacts] = useState([]);
-  const [visits, setVisits] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [addingToPool, setAddingToPool] = useState(false);
-  const [showLogVisit, setShowLogVisit] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(member.membership_status || "Active");
   const [savingStatus, setSavingStatus] = useState(false);
   const [department, setDepartment] = useState(member.department || "");
   const [savingDept, setSavingDept] = useState(false);
   const [position, setPosition] = useState(member.position || "");
   const [savingPosition, setSavingPosition] = useState(false);
-  const [tick, setTick] = useState(0);
-  const reload = () => setTick(t => t + 1);
   const table = member._table || "church_members";
 
   const changeStatus = async (newStatus) => {
@@ -11143,64 +9694,6 @@ function MemberProfile({ member, currentUser, role, onBack }) {
     setSavingPosition(false);
   };
 
-  const isAdmin = role === "soulcareadmin" || role === "admin" || role === "soulcare";
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true); setErr("");
-      try {
-        const key = phoneKey(member.phone);
-        const allContacts = await sb("soul_care_contacts?select=*").catch(() => []);
-        const matchedContacts = (allContacts || []).filter(c => phoneKey(c.phone) === key);
-        const contactIds = matchedContacts.map(c => c.id);
-
-        let allVisits = [];
-        if (contactIds.length > 0) {
-          const orClause = contactIds.map(id => `contact_id.eq.${id}`).join(",");
-          allVisits = await sb(`soul_care_visits?or=(${orClause})&order=created_at.desc&limit=500`).catch(() => []);
-        }
-        if (!cancelled) {
-          setContacts(matchedContacts);
-          setVisits(allVisits || []);
-        }
-      } catch (e) { if (!cancelled) setErr(e.message); }
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [member.phone, tick]);
-
-  const addToPool = async () => {
-    setAddingToPool(true); setErr("");
-    try {
-      await sb("soul_care_contacts", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: member.full_name, phone: member.phone, email: member.email || null,
-          gender: member.gender || null, house_address: member.house_address || null,
-          nearest_landmark: member.nearest_landmark || null, marital_status: member.marital_status || null,
-          life_stage: member.life_stage || null, dob: member.dob || null, added_by: currentUser || null,
-        }),
-      });
-      toast.success(`${member.full_name} added to the visit pool.`);
-      reload();
-    } catch (e) { setErr(e.message); }
-    setAddingToPool(false);
-  };
-
-  const activeContact = contacts.find(c => c.is_active !== false) || contacts[0];
-
-  if (showLogVisit && activeContact) {
-    return (
-      <LogVisitForm
-        contact={activeContact}
-        loggedBy={currentUser}
-        onBack={() => setShowLogVisit(false)}
-        onDone={() => { setShowLogVisit(false); reload(); }}
-      />
-    );
-  }
-
   const ageOf = (dob) => {
     if (!dob) return null;
     const [y, m, d] = String(dob).slice(0, 10).split("-").map(Number);
@@ -11218,7 +9711,7 @@ function MemberProfile({ member, currentUser, role, onBack }) {
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title={member.full_name}
-        subtitle={`${member.category || "Member"}${member.position && member.position !== "Steward" ? ` · ${member.position}` : ""} · Full care history`}
+        subtitle={`${member.category || "Member"}${member.position && member.position !== "Steward" ? ` · ${member.position}` : ""} · Member details`}
         action={<button style={btn("ghost")} onClick={onBack}><ArrowLeft size={14} />Back</button>}
       />
 
@@ -11292,82 +9785,11 @@ function MemberProfile({ member, currentUser, role, onBack }) {
           </div>
         </div>
       </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: C.textMuted, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>
-          Care History ({visits.length})
-        </div>
-        {isAdmin && (
-          activeContact ? (
-            <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => setShowLogVisit(true)}>
-              <MapPin size={13} />Log New Visit
-            </button>
-          ) : (
-            <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={addToPool} disabled={addingToPool}>
-              <UserPlus size={13} />{addingToPool ? "Adding…" : "Add to Visit Pool to Enable Logging"}
-            </button>
-          )
-        )}
-      </div>
-
-      {loading ? <SkeletonList rows={3} /> : visits.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-          <Heart size={28} color={C.soul} style={{ marginBottom: 8, opacity: .5 }} />
-          <div style={{ fontWeight: 600, fontFamily: F.head }}>No visits logged yet</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Once a visit is logged, the full history will appear here.</div>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {visits.map(v => {
-            const vsm = VISIT_STATUS_META[v.visit_status] || { color: C.textMuted, bg: C.bg };
-            const um = URGENCY_META[v.urgency] || {};
-            return (
-              <div key={v.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${v.escalate_to_pastorate ? C.flag : vsm.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={badge(vsm.color, vsm.bg, { fontSize: 11, fontFamily: F.head })}>{v.visit_type || "Visit"} · {v.visit_status}</span>
-                    {v.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{v.urgency}</span>}
-                    {v.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Escalated</span>}
-                    {v.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
-                  </div>
-                  <div style={{ fontSize: 12, color: C.textMuted }}>
-                    {v.visit_date || (v.created_at ? v.created_at.slice(0, 10) : "—")}
-                  </div>
-                </div>
-                <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 6 }}>
-                  Logged by <strong>{v.logged_by || "—"}</strong>
-                </div>
-                {v.reason_for_care && <div style={{ fontSize: 13, color: C.textSecondary, marginBottom: 4 }}><strong>Reason:</strong> {v.reason_for_care}</div>}
-                {v.meeting_notes && <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, marginBottom: 4 }}>{v.meeting_notes}</div>}
-                {v.prayer_requests && <div style={{ fontSize: 12, color: C.soul, marginBottom: 4 }}><strong>Prayer:</strong> {v.prayer_requests}</div>}
-                {v.testimony && <div style={{ fontSize: 12, color: C.goldDark, marginBottom: 4 }}><strong>Testimony:</strong> {v.testimony}</div>}
-                {v.material_support && v.material_support_notes && (
-                  <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}><strong>Support given:</strong> {v.material_support_notes}</div>
-                )}
-                {v.follow_up_required && v.next_follow_up_date && (
-                  <div style={{ fontSize: 12, color: C.amber, marginBottom: 4 }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> Follow-up: {v.next_follow_up_date}</div>
-                )}
-                {v.escalate_to_pastorate && v.escalation_reason && (
-                  <div style={{ fontSize: 12, color: C.flag, marginTop: 6, background: C.flagLight, padding: "6px 10px", borderRadius: 5 }}>
-                    🚩 {v.escalation_reason}
-                  </div>
-                )}
-                {v.visit_photo_url && (
-                  <img src={v.visit_photo_url} alt="Visit" style={{ width: 120, height: 90, objectFit: "cover", borderRadius: 8, marginTop: 8, cursor: "pointer", border: `1px solid ${C.border}` }}
-                    onClick={() => window.open(v.visit_photo_url, "_blank")} />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // v6.4 — MembersCare: the full-congregation care registry.
-// Last Visitation is DERIVED: members are matched to the visit pool by
-// normalized phone and the latest logged visit_date is shown.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MC_STATUS_META = {
@@ -11375,39 +9797,6 @@ const MC_STATUS_META = {
   Inactive:  { color: C.danger, bg: C.dangerLight },
   Travelled: { color: C.amber,  bg: C.amberLight  },
 };
-
-function EditableCell({ member, table, field, placeholder, onSaved }) {
-  const [value, setValue] = useState(member[field] || "");
-  const [saving, setSaving] = useState(false);
-  useEffect(() => { setValue(member[field] || ""); }, [member[field]]);
-
-  const save = async () => {
-    const next = value.trim();
-    if (next === (member[field] || "")) return;
-    setSaving(true);
-    try {
-      await sb(`${table}?id=eq.${member.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ [field]: next || null }),
-      });
-      toast.success(`${field === "position" ? "Position" : "Department"} set to "${next || "\u2014"}" for ${member.full_name}.`);
-      onSaved?.();
-    } catch (e) { toast.error(e.message); }
-    setSaving(false);
-  };
-
-  return (
-    <input
-      value={value}
-      onChange={e => setValue(e.target.value)}
-      onBlur={save}
-      onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-      placeholder={placeholder}
-      disabled={saving}
-      style={{ ...inputBase, padding: "5px 9px", fontSize: 12, width: "100%", opacity: saving ? .6 : 1 }}
-    />
-  );
-}
 
 const STEWARDS_TEMPLATE_HEADERS = [
   "full_name", "phone", "email", "gender", "dob", "marital_status", "life_stage",
@@ -11571,11 +9960,8 @@ function StewardsCSVImport({ currentUser, onDone }) {
 }
 
 function StewardsCare({ currentUser, role, onViewProfile }) {
-  const isAdmin = role === "soulcareadmin" || role === "admin";
   const [stewards, setStewards]         = useState([]);
-  const [poolKeys, setPoolKeys]         = useState(new Set());
-  const [lastVisitByKey, setLastVisit]  = useState({});
-  const [lastCallByKey, setLastCall]    = useState({});
+  const [lastCalledByKey, setLastCalled] = useState({});
   const [loading, setLoading]           = useState(true);
   const [err, setErr]                   = useState("");
   const [msg, setMsg]                   = useState("");
@@ -11584,7 +9970,6 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
   const [fMarital, setFMarital]         = useState("");
   const [fLife, setFLife]               = useState("");
   const [fPosition, setFPosition]       = useState("");
-  const [addingId, setAddingId]         = useState(null);
   const [showImport, setShowImport]     = useState(false);
   const [quickName, setQuickName]       = useState("");
   const [quickPhone, setQuickPhone]     = useState("");
@@ -11599,30 +9984,17 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const [sw, pool, visits] = await Promise.all([
+        const [sw, logs] = await Promise.all([
           sb("stewards?select=*&order=created_at.desc&limit=3000"),
-          sb("soul_care_contacts?select=id,phone&is_active=eq.true").catch(() => []),
-          sb("soul_care_visits?select=contact_id,visit_date,visit_type").catch(() => []),
+          sb("soul_call_logs?person_table=eq.stewards&select=person_id,call_date&order=call_date.asc").catch(() => []),
         ]);
         if (cancelled) return;
-        const keys = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
-        const contactKey = {};
-        (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
-        const lv = {};
         const lc = {};
-        (visits || []).forEach(v => {
-          const k = contactKey[v.contact_id];
-          if (!k || !v.visit_date) return;
-          if (v.visit_type === "Phone Call") {
-            if (!lc[k] || v.visit_date > lc[k]) lc[k] = v.visit_date;
-          } else {
-            if (!lv[k] || v.visit_date > lv[k]) lv[k] = v.visit_date;
-          }
+        (logs || []).forEach(l => {
+          if (!lc[l.person_id] || l.call_date > lc[l.person_id]) lc[l.person_id] = l.call_date;
         });
         setStewards((sw || []).map(m => ({ ...m, _table: "stewards", category: "Steward" })));
-        setPoolKeys(keys);
-        setLastVisit(lv);
-        setLastCall(lc);
+        setLastCalled(lc);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
     })();
@@ -11676,25 +10048,6 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
     } catch (e) { toast.error(e.message); }
   };
 
-  const addToPool = async (m) => {
-    setAddingId(m.id); setErr("");
-    try {
-      await sb("soul_care_contacts", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: m.full_name, phone: m.phone, email: m.email || null, gender: m.gender || null,
-          house_address: m.house_address || null, nearest_landmark: m.nearest_landmark || null,
-          marital_status: m.marital_status || null, life_stage: m.life_stage || null, dob: m.dob || null,
-          added_by: currentUser || null,
-        }),
-      });
-      setPoolKeys(prev => { const n = new Set(prev); n.add(phoneKey(m.phone)); return n; });
-      setMsg(`${m.full_name} added to the visit pool \u2014 find them under Unassigned in Assign Visits.`);
-      toast.success(`${m.full_name} added to the visit pool.`);
-    } catch (e) { setErr(e.message); }
-    setAddingId(null);
-  };
-
   const addQuickSteward = async () => {
     if (!quickName.trim()) { toast.error("Full name is required."); return; }
     setSavingQuick(true);
@@ -11715,7 +10068,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
     setSavingQuick(false);
   };
 
-  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 140px 130px 100px 100px 175px";
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 96px 140px 130px 110px";
   const headCell = {
     fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
     letterSpacing: ".07em", fontFamily: F.head,
@@ -11828,25 +10181,20 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1250,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1010,
             }}>
               <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
-              {["Phone", "Email", "Gender", "DOB", "Status", "Department", "Position", "Last Visit", "Last Called"].map(h => (
+              {["Phone", "Email", "Gender", "DOB", "Status", "Department", "Position", "Last Called"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
-              <div style={headCell}>Visit Pool</div>
             </div>
 
             {filtered.map((m, i) => {
-              const k        = phoneKey(m.phone);
-              const inPool   = k && poolKeys.has(k);
-              const lastVis  = k ? lastVisitByKey[k] : null;
-              const lastCall = k ? lastCallByKey[k] : null;
               const stm      = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
               return (
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 0", background: C.surface, minWidth: 1250,
+                  padding: "10px 0", background: C.surface, minWidth: 1010,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div style={stickyLeft(C.surface)}>
@@ -11872,25 +10220,10 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                       <span style={dot(stm.color)} />{m.membership_status || "Active"}
                     </button>
                   </div>
-                  <div><EditableCell member={m} table="stewards" field="department" placeholder="Set department\u2026" onSaved={reload} /></div>
-                  <div><EditableCell member={m} table="stewards" field="position" placeholder="Steward" onSaved={reload} /></div>
-                  <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
-                    {lastVis || "Never"}
-                  </div>
-                  <div style={{ fontSize: 12, color: lastCall ? C.textSecondary : C.textMuted }}>
-                    {lastCall || "Never"}
-                  </div>
-                  <div style={{ paddingLeft: 6, minWidth: 0, overflow: "hidden" }}>
-                    {inPool ? (
-                      <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
-                        <CheckCircle size={10} />In Pool
-                      </span>
-                    ) : (
-                      <button style={btn("soul", { padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" })}
-                        onClick={() => addToPool(m)} disabled={addingId === m.id}>
-                        {addingId === m.id ? "Adding\u2026" : "+ Add"}
-                      </button>
-                    )}
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{m.department || <span style={{ color: C.textMuted }}>—</span>}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>{m.position || "Steward"}</div>
+                  <div style={{ fontSize: 12, color: lastCalledByKey[m.id] ? C.textSecondary : C.textMuted }}>
+                    {lastCalledByKey[m.id] || "Never"}
                   </div>
                 </div>
               );
@@ -11898,6 +10231,10 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
           </div>
         </div>
       )}
+
+      <div style={{ marginTop: 10, fontSize: 12, color: C.textMuted }}>
+        Department and Position can be edited from a steward's profile page (click their name).
+      </div>
 
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
@@ -11911,9 +10248,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
 function MembersCare({ currentUser, role, onViewProfile }) {
   const isAdmin = role === "soulcareadmin" || role === "admin";
   const [members, setMembers]           = useState([]);
-  const [poolKeys, setPoolKeys]         = useState(new Set());
-  const [lastVisitByKey, setLastVisit]  = useState({});
-  const [lastCallByKey, setLastCall]    = useState({});
+  const [lastCalledByKey, setLastCalled] = useState({});
   const [loading, setLoading]           = useState(true);
   const [err, setErr]                   = useState("");
   const [msg, setMsg]                   = useState("");
@@ -11922,7 +10257,6 @@ function MembersCare({ currentUser, role, onViewProfile }) {
   const [fMarital, setFMarital]         = useState("");
   const [fLife, setFLife]               = useState("");
   const [showImport, setShowImport]     = useState(false);
-  const [addingId, setAddingId]         = useState(null);
   const [tick, setTick]                 = useState(0);
   const reload = () => setTick(t => t + 1);
 
@@ -11931,30 +10265,17 @@ function MembersCare({ currentUser, role, onViewProfile }) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const [cm, pool, visits] = await Promise.all([
+        const [cm, logs] = await Promise.all([
           sb("church_members?select=*&order=created_at.desc&limit=3000"),
-          sb("soul_care_contacts?select=id,phone").catch(() => []),
-          sb("soul_care_visits?select=contact_id,visit_date,visit_type").catch(() => []),
+          sb("soul_call_logs?person_table=eq.church_members&select=person_id,call_date&order=call_date.asc").catch(() => []),
         ]);
         if (cancelled) return;
-        const keys = new Set((pool || []).map(c => phoneKey(c.phone)).filter(Boolean));
-        const contactKey = {};
-        (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
-        const lv = {};
         const lc = {};
-        (visits || []).forEach(v => {
-          const k = contactKey[v.contact_id];
-          if (!k || !v.visit_date) return;
-          if (v.visit_type === "Phone Call") {
-            if (!lc[k] || v.visit_date > lc[k]) lc[k] = v.visit_date;
-          } else {
-            if (!lv[k] || v.visit_date > lv[k]) lv[k] = v.visit_date;
-          }
+        (logs || []).forEach(l => {
+          if (!lc[l.person_id] || l.call_date > lc[l.person_id]) lc[l.person_id] = l.call_date;
         });
         setMembers((cm || []).map(m => ({ ...m, _table: "church_members" })));
-        setPoolKeys(keys);
-        setLastVisit(lv);
-        setLastCall(lc);
+        setLastCalled(lc);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
     })();
@@ -12009,26 +10330,7 @@ function MembersCare({ currentUser, role, onViewProfile }) {
     } catch (e) { toast.error(e.message); }
   };
 
-  const addToPool = async (m) => {
-    setAddingId(m.id); setErr("");
-    try {
-      await sb("soul_care_contacts", {
-        method: "POST",
-        body: JSON.stringify({
-          full_name: m.full_name, phone: m.phone, email: m.email || null, gender: m.gender || null,
-          house_address: m.house_address || null, nearest_landmark: m.nearest_landmark || null,
-          marital_status: m.marital_status || null, life_stage: m.life_stage || null, dob: m.dob || null,
-          added_by: currentUser || null,
-        }),
-      });
-      setPoolKeys(prev => { const n = new Set(prev); n.add(phoneKey(m.phone)); return n; });
-      setMsg(`${m.full_name} added to the visit pool — find them under Unassigned in Assign Visits.`);
-      toast.success(`${m.full_name} added to the visit pool.`);
-    } catch (e) { setErr(e.message); }
-    setAddingId(null);
-  };
-
-  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 100px 100px 200px";
+  const GRID = "minmax(186px,1.3fr) 175px minmax(150px,1fr) 62px 74px 92px 96px 110px";
   const headCell = {
     fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase",
     letterSpacing: ".07em", fontFamily: F.head,
@@ -12130,26 +10432,21 @@ function MembersCare({ currentUser, role, onViewProfile }) {
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
-              position: "sticky", top: 0, zIndex: 3, minWidth: 1150,
+              position: "sticky", top: 0, zIndex: 3, minWidth: 1010,
             }}>
               <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Name</div>
-              {["Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Visit", "Last Called"].map(h => (
+              {["Phone", "Email", "Gender", "DOB", "Category", "Status", "Last Called"].map(h => (
                 <div key={h} style={headCell}>{h}</div>
               ))}
-              <div style={headCell}>Visit Pool</div>
             </div>
 
             {/* Rows */}
             {pageRows.map((m, i) => {
-              const k        = phoneKey(m.phone);
-              const inPool   = k && poolKeys.has(k);
-              const lastVis  = k ? lastVisitByKey[k] : null;
-              const lastCall = k ? lastCallByKey[k] : null;
               const stm      = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
               return (
                 <div key={m.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
-                  padding: "10px 0", background: C.surface, minWidth: 1050,
+                  padding: "10px 0", background: C.surface, minWidth: 1010,
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div style={stickyLeft(C.surface)}>
@@ -12182,23 +10479,8 @@ function MembersCare({ currentUser, role, onViewProfile }) {
                       <span style={dot(stm.color)} />{m.membership_status || "Active"}
                     </button>
                   </div>
-                  <div style={{ fontSize: 12, color: lastVis ? C.textSecondary : C.textMuted }}>
-                    {lastVis || "Never"}
-                  </div>
-                  <div style={{ fontSize: 12, color: lastCall ? C.textSecondary : C.textMuted }}>
-                    {lastCall || "Never"}
-                  </div>
-                  <div style={{ paddingLeft: 6, minWidth: 0, overflow: "hidden" }}>
-                    {inPool ? (
-                      <span style={badge(C.green, C.greenLight, { fontSize: 10 })}>
-                        <CheckCircle size={10} />In Pool
-                      </span>
-                    ) : (
-                      <button style={btn("soul", { padding: "4px 10px", fontSize: 11, whiteSpace: "nowrap" })}
-                        onClick={() => addToPool(m)} disabled={addingId === m.id}>
-                        {addingId === m.id ? "Adding…" : "+ Add"}
-                      </button>
-                    )}
+                  <div style={{ fontSize: 12, color: lastCalledByKey[m.id] ? C.textSecondary : C.textMuted }}>
+                    {lastCalledByKey[m.id] || "Never"}
                   </div>
                 </div>
               );
@@ -12214,7 +10496,7 @@ function MembersCare({ currentUser, role, onViewProfile }) {
             {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
           {filtered.length > 10 && (
-            <span>Name and Visit Pool columns stay pinned while scrolling</span>
+            <span>Name column stays pinned while scrolling</span>
           )}
         </div>
       )}
@@ -12224,7 +10506,6 @@ function MembersCare({ currentUser, role, onViewProfile }) {
 
 function CarePriorityList({ onViewProfile }) {
   const [members, setMembers] = useState([]);
-  const [lastContactByKey, setLastContactByKey] = useState({});
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [search, setSearch] = useState("");
@@ -12234,60 +10515,34 @@ function CarePriorityList({ onViewProfile }) {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const [inactiveMembers, inactiveStewards, pool, visits] = await Promise.all([
+        const [inactiveMembers, inactiveStewards] = await Promise.all([
           sb("church_members?membership_status=eq.Inactive&order=full_name.asc&limit=1000"),
           sb("stewards?membership_status=eq.Inactive&order=full_name.asc&limit=1000"),
-          sb("soul_care_contacts?select=id,phone").catch(() => []),
-          sb("soul_care_visits?select=contact_id,visit_date").catch(() => []),
         ]);
         if (cancelled) return;
-        const contactKey = {};
-        (pool || []).forEach(c => { contactKey[c.id] = phoneKey(c.phone); });
-        const lc = {};
-        // Any interaction counts here — visit or call — since this list is
-        // about "how long since ANY contact," not visits specifically.
-        (visits || []).forEach(v => {
-          const k = contactKey[v.contact_id];
-          if (k && v.visit_date && (!lc[k] || v.visit_date > lc[k])) lc[k] = v.visit_date;
-        });
         const merged = [
           ...(inactiveMembers || []).map(m => ({ ...m, _table: "church_members" })),
           ...(inactiveStewards || []).map(m => ({ ...m, _table: "stewards", category: "Steward" })),
         ];
         setMembers(merged);
-        setLastContactByKey(lc);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  const withUrgency = members
+  const filtered = members
     .filter(m => !search || m.full_name?.toLowerCase().includes(search.toLowerCase()) || m.phone?.includes(search))
-    .map(m => {
-      const key = phoneKey(m.phone);
-      const lastContact = key ? lastContactByKey[key] : null;
-      const daysSince = lastContact
-        ? Math.floor((Date.now() - new Date(lastContact).getTime()) / 86400000)
-        : null; // null = never contacted at all — highest priority
-      return { ...m, lastContact, daysSince };
-    })
-    .sort((a, b) => {
-      if (a.daysSince === null && b.daysSince === null) return 0;
-      if (a.daysSince === null) return -1;
-      if (b.daysSince === null) return 1;
-      return b.daysSince - a.daysSince;
-    });
+    .sort((a, b) => (a.full_name || "").localeCompare(b.full_name || ""));
 
   const totalInactive   = members.length;
   const stewardCount    = members.filter(m => m.category === "Steward").length;
   const memberCount     = totalInactive - stewardCount;
-  const neverContacted  = withUrgency.filter(m => m.daysSince === null).length;
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Care Priority List" subtitle="Inactive Members and Stewards — sorted by how long it's been since contact"
+      <PageHeader title="Care Priority List" subtitle="Inactive Members and Stewards"
         action={
           <div style={{ position: "relative" }}>
             <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
@@ -12295,28 +10550,26 @@ function CarePriorityList({ onViewProfile }) {
           </div>
         } />
 
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
         <StatCard label="Total Inactive"    value={totalInactive}   icon={AlertCircle} accent={C.danger} />
         <StatCard label="Inactive Members"  value={memberCount}     icon={Users}       accent={C.soul} />
         <StatCard label="Inactive Stewards" value={stewardCount}    icon={Shield}      accent={C.goldDark} />
-        <StatCard label="Never Contacted"   value={neverContacted}  icon={Heart}       accent={C.flag}
-          sub={neverContacted > 0 ? "No visit or call on record" : ""} />
       </div>
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      {loading ? <SkeletonList rows={6} /> : withUrgency.length === 0 ? (
+      {loading ? <SkeletonList rows={6} /> : filtered.length === 0 ? (
         <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
           <CheckCircle size={32} color={C.green} style={{ marginBottom: 10, opacity: .6 }} />
           <div style={{ fontWeight: 700, fontFamily: F.head }}>No one is currently marked Inactive.</div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
-          {withUrgency.map(m => (
+          {filtered.map(m => (
             <div key={m.id} {...lift} style={{
               ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
               alignItems: "center", flexWrap: "wrap", gap: 12,
-              borderLeft: `3px solid ${m.daysSince === null ? C.flag : m.daysSince > 60 ? C.danger : C.amber}`,
+              borderLeft: `3px solid ${C.amber}`,
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Avatar name={m.full_name} size={40} />
@@ -12331,13 +10584,6 @@ function CarePriorityList({ onViewProfile }) {
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {m.daysSince === null ? (
-                  <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><AlertCircle size={10} />Never contacted</span>
-                ) : (
-                  <span style={badge(m.daysSince > 60 ? C.danger : C.amber, m.daysSince > 60 ? C.dangerLight : C.amberLight, { fontSize: 11 })}>
-                    <Clock size={10} />{m.daysSince}d since last contact
-                  </span>
-                )}
                 <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => onViewProfile(m)}>
                   View Profile
                 </button>
@@ -12351,65 +10597,436 @@ function CarePriorityList({ onViewProfile }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SoulCareQueue — role-aware. soulcareadmin/admin see everyone + can expand
-// ─────────────────────────────────────────────────────────────────────────────
-// SoulCareQueue — role-aware. soulcareadmin/admin see everyone + can expand
-// visit history; soulcare members only see contacts assigned to them.
+// SOUL CARE CALLING SYSTEM — Assign Calls / Call Queue / My Assigned Calls
+// Covers Stewards Care + Members Care only (never first-timers/VIPs, which
+// stay on the Experience Team's separate 3-week pipeline).
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser = "" }) {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]     = useState("");
-  const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
-  const [filter, setFilter]     = useState("pending");
-  const [search, setSearch]     = useState("");
-  const [expanded, setExpanded] = useState(null);
-  const isAdmin = currentUserRole === "soulcareadmin" || currentUserRole === "admin";
+const SC_CALL_STATUS_META = {
+  "Reached":             { color: C.green,  bg: C.greenLight  },
+  "No Answer":           { color: C.amber,  bg: C.amberLight  },
+  "Call Back Requested": { color: C.blue,   bg: C.blueLight   },
+  "Wrong Number":        { color: C.danger, bg: C.dangerLight },
+};
 
-  const searched = data.filter(c =>
-    !search ||
-    c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone?.includes(search)
+// useSoulCallData — merges Stewards + Members into one list, each row
+// carrying its current assignment (if any) and its last-called date, derived
+// from the most recent soul_call_logs row for that person.
+function useSoulCallData() {
+  const [data, setData]       = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr]         = useState("");
+  const [tick, setTick]       = useState(0);
+  const reload = useCallback(() => setTick(t => t + 1), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [stewards, members, assignments, logs] = await Promise.all([
+          sb("stewards?select=id,full_name,phone,gender,marital_status,life_stage,position,membership_status&order=full_name.asc&limit=3000"),
+          sb("church_members?select=id,full_name,phone,gender,marital_status,life_stage,membership_status&order=full_name.asc&limit=3000"),
+          sb("soul_call_assignments?select=*").catch(() => []),
+          sb("soul_call_logs?select=person_table,person_id,call_date&order=call_date.asc").catch(() => []),
+        ]);
+
+        const asgMap = {};
+        (assignments || []).forEach(a => { asgMap[`${a.person_table}:${a.person_id}`] = a; });
+
+        const lastCalledMap = {};
+        const callCountMap  = {};
+        (logs || []).forEach(l => {
+          const k = `${l.person_table}:${l.person_id}`;
+          if (!lastCalledMap[k] || l.call_date > lastCalledMap[k]) lastCalledMap[k] = l.call_date;
+          callCountMap[k] = (callCountMap[k] || 0) + 1;
+        });
+
+        const merged = [
+          ...(stewards || []).map(m => ({ ...m, _table: "stewards", category: "Steward" })),
+          ...(members  || []).map(m => ({ ...m, _table: "church_members", category: "Member" })),
+        ].map(m => {
+          const k = `${m._table}:${m.id}`;
+          return {
+            ...m,
+            assignment: asgMap[k] || null,
+            lastCalled: lastCalledMap[k] || null,
+            callCount:  callCountMap[k] || 0,
+          };
+        });
+
+        if (!cancelled) setData(merged);
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tick]);
+
+  return { data, loading, err, reload };
+}
+
+// Ascending by last-called date, "never called" (null) ranked first — the
+// same fairness ordering used by Care Priority List, so the longest-
+// neglected contacts always surface to the top regardless of who's assigned.
+function sortByCallPriority(rows) {
+  return [...rows].sort((a, b) => {
+    if (!a.lastCalled && !b.lastCalled) return (a.full_name || "").localeCompare(b.full_name || "");
+    if (!a.lastCalled) return -1;
+    if (!b.lastCalled) return 1;
+    return a.lastCalled < b.lastCalled ? -1 : a.lastCalled > b.lastCalled ? 1 : 0;
+  });
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
+// scPersonDetailLine — "Male · Married · Employee · Team Lead" style summary
+// used on every Soul Care calling row so callers know who they're speaking to
+// before dialing. Position only shown for stewards who hold a role other
+// than plain "Steward".
+function scPersonDetailLine(r) {
+  const parts = [r.gender, r.marital_status, r.life_stage].filter(Boolean);
+  if (r._table === "stewards" && r.position && r.position !== "Steward") {
+    parts.push(r.position);
+  }
+  return parts.join(" · ");
+}
+
+// CategoryToggle — Stewards / Members segmented switch, shared by all three
+// Soul Care calling pages.
+function CategoryToggle({ value, onChange, counts }) {
+  return (
+    <div style={{ display: "inline-flex", borderRadius: 10, border: `1.5px solid ${C.border}`, overflow: "hidden" }}>
+      {["Steward", "Member"].map(cat => (
+        <button key={cat} onClick={() => onChange(cat)}
+          style={{
+            padding: "8px 18px", fontSize: 13, fontWeight: 700, fontFamily: F.head, cursor: "pointer",
+            border: "none", background: value === cat ? C.soul : C.surface,
+            color: value === cat ? "#fff" : C.textSecondary,
+          }}>
+          {cat === "Steward" ? "Stewards" : "Members"}{counts ? ` (${counts[cat] || 0})` : ""}
+        </button>
+      ))}
+    </div>
   );
+}
 
-  const visible = isAdmin
-    ? searched
-    : searched.filter(c => c.assignment?.assigned_to === currentUser);
+// LogSoulCallForm — records a call outcome for one person, updates their
+// Last Called date, and optionally flags the case for pastoral attention.
+function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
+  const [status, setStatus] = useState("Reached");
+  const [notes, setNotes]   = useState("");
+  const [flag, setFlag]     = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState("");
 
-  const pending     = visible.filter(c => scCategorise(c) === "pending");
-  const scheduled   = visible.filter(c => scCategorise(c) === "scheduled");
-  const completed   = visible.filter(c => scCategorise(c) === "completed");
-  const rescheduled = visible.filter(c => scCategorise(c) === "rescheduled");
-  const unavailable = visible.filter(c => scCategorise(c) === "unavailable");
-  const views  = { pending, scheduled, completed, rescheduled, unavailable, all: visible };
-  const filtered = views[filter] || visible;
-  const { visibleCount, onScroll } = usePagedScroll(`${filter}|${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
-
-  const tabs = [
-    { k: "pending",     label: "Pending",       count: pending.length,     col: C.gold      },
-    { k: "scheduled",   label: "Scheduled",     count: scheduled.length,   col: C.blue      },
-    { k: "completed",   label: "Completed",     count: completed.length,   col: C.green     },
-    { k: "rescheduled", label: "Rescheduled",   count: rescheduled.length, col: C.amber     },
-    { k: "unavailable", label: "Unavailable",   count: unavailable.length, col: C.danger    },
-    { k: "all",         label: "All",           count: visible.length,     col: C.textMuted },
-  ];
-
-  const removeFromPool = async (contact) => {
-    if (!window.confirm(`Remove ${contact.full_name} from the Visit Pool? They will no longer appear in Visit Queue or Assign Visits.`)) return;
+  const submit = async () => {
+    setSaving(true); setErr("");
     try {
-      await sb(`soul_care_contacts?id=eq.${contact.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ is_active: false }),
+      await sb("soul_call_logs", {
+        method: "POST",
+        body: JSON.stringify({
+          person_table: person._table,
+          person_id: String(person.id),
+          called_by: loggedBy || null,
+          call_status: status,
+          notes: notes.trim() || null,
+          flagged_for_pastoral: flag,
+        }),
       });
-      toast.success(`${contact.full_name} removed from the visit pool.`);
-      reload();
-    } catch (e) { toast.error(e.message); }
+      toast.success(`Call logged for ${person.full_name}.`);
+      onDone?.();
+    } catch (e) { setErr(e.message); }
+    setSaving(false);
   };
 
   return (
     <div className="page-enter">
+      <PageHeader title={`Log Call — ${person.full_name}`}
+        subtitle={`${person.category} · ${person.phone || "No phone on file"}`}
+        action={<button style={btn("ghost")} onClick={onCancel}><ArrowLeft size={14} />Back</button>} />
+      <div style={{ ...card, maxWidth: 560 }}>
+        <Alert type="error" msg={err} onClose={() => setErr("")} />
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 6 }}>Call Status</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {Object.keys(SC_CALL_STATUS_META).map(s => {
+              const sm = SC_CALL_STATUS_META[s];
+              return (
+                <button key={s} onClick={() => setStatus(s)}
+                  style={{
+                    padding: "8px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    border: `1.5px solid ${status === s ? sm.color : C.border}`,
+                    background: status === s ? sm.color : C.surface,
+                    color: status === s ? "#fff" : C.textSecondary,
+                  }}>
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <FieldInput label="Notes (optional)" id="sc-call-notes" type="textarea"
+          value={notes} onChange={e => setNotes(e.target.value)} placeholder="Prayer requests, welfare notes, anything worth remembering…" />
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSecondary, margin: "6px 0 18px", cursor: "pointer" }}>
+          <input type="checkbox" checked={flag} onChange={e => setFlag(e.target.checked)} style={{ width: 16, height: 16 }} />
+          Flag for Pastoral attention
+        </label>
+        <button style={{ ...btn("soul"), width: "100%" }} onClick={submit} disabled={saving}>
+          {saving ? "Saving…" : "Save Call Log"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AssignSoulCalls — soulcareadmin only. Bulk/individual assignment of
+// Stewards + Members to Soul Care team members for calling.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AssignSoulCalls({ currentUser }) {
+  const { data, loading, err, reload } = useSoulCallData();
+  const { options: teamOptions, loading: teamLoading } = useRoleUsers("soulcare");
+
+  const [category, setCategory]           = useState("Steward");
+  const [selectedMember, setSelectedMember] = useState("");
+  const [search, setSearch]               = useState("");
+  const [filter, setFilter]               = useState("unassigned");
+  const [saving, setSaving]               = useState(false);
+  const [msg, setMsg]                     = useState("");
+  const [msgType, setMsgType]             = useState("success");
+  const [pendingAssign, setPendingAssign] = useState({});
+
+  const byCategory = data.filter(r => r.category === category);
+  const filtered = sortByCallPriority(byCategory.filter(r => {
+    const matchSearch = !search ||
+      r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      r.phone?.includes(search);
+    if (filter === "unassigned") return matchSearch && !r.assignment;
+    if (filter === "assigned")   return matchSearch && !!r.assignment;
+    return matchSearch;
+  }));
+  const { visibleCount, onScroll } = usePagedScroll(`${category}|${search}|${filter}`, filtered.length, 10);
+
+  const assignedCount   = byCategory.filter(r => !!r.assignment).length;
+  const unassignedCount = byCategory.filter(r => !r.assignment).length;
+
+  const bulkAssign = async () => {
+    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
+    const targets = byCategory.filter(r => !r.assignment);
+    if (!targets.length) { setMsg("No unassigned contacts to assign."); setMsgType("warn"); return; }
+    setSaving(true); setMsg("");
+    try {
+      const payload = targets.map(r => ({
+        person_table: r._table, person_id: String(r.id),
+        assigned_to: selectedMember, assigned_by: currentUser,
+      }));
+      for (let i = 0; i < payload.length; i += 50) {
+        await sb("soul_call_assignments", {
+          method: "POST",
+          prefer: "resolution=merge-duplicates,return=representation",
+          body: JSON.stringify(payload.slice(i, i + 50)),
+        });
+      }
+      setMsg(`${targets.length} ${category.toLowerCase()}${targets.length !== 1 ? "s" : ""} assigned to ${selectedMember}.`);
+      setMsgType("success");
+      reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const saveAssignment = async (person) => {
+    const member = pendingAssign[person.id];
+    if (!member) return;
+    setSaving(true);
+    try {
+      if (person.assignment) {
+        await sb(`soul_call_assignments?id=eq.${person.assignment.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
+        });
+      } else {
+        await sb("soul_call_assignments", {
+          method: "POST",
+          body: JSON.stringify({ person_table: person._table, person_id: String(person.id), assigned_to: member, assigned_by: currentUser }),
+        });
+      }
+      setPendingAssign(p => { const n = { ...p }; delete n[person.id]; return n; });
+      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const removeAssignment = async (asgId) => {
+    setSaving(true);
+    try {
+      await sb(`soul_call_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
+      setMsg("Assignment removed."); setMsgType("success"); reload();
+    } catch (e) { setMsg(e.message); setMsgType("error"); }
+    setSaving(false);
+  };
+
+  const tabs = [
+    { k: "unassigned", label: "Unassigned", count: unassignedCount, col: C.gold  },
+    { k: "assigned",   label: "Assigned",   count: assignedCount,   col: C.green },
+    { k: "all",        label: "All",        count: byCategory.length, col: C.textMuted },
+  ];
+
+  return (
+    <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Visit Queue" subtitle="People awaiting or receiving a Soul Care visit"
+      <PageHeader title="Assign Calls" subtitle="Allocate Stewards and Members to Soul Care team members for calling" />
+
+      <div style={{ marginBottom: 20 }}>
+        <CategoryToggle value={category} onChange={setCategory} counts={{
+          Steward: data.filter(r => r.category === "Steward").length,
+          Member:  data.filter(r => r.category === "Member").length,
+        }} />
+      </div>
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label={`Total ${category === "Steward" ? "Stewards" : "Members"}`} value={byCategory.length} icon={Users}     accent={C.green}    />
+        <StatCard label="Assigned"    value={assignedCount}   icon={UserCheck}   accent={C.greenMid} />
+        <StatCard label="Unassigned"  value={unassignedCount} icon={AlertCircle} accent={C.gold}
+          sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
+      </div>
+
+      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.blueLight, border: `1px solid ${C.blue}22` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em", display: "flex", alignItems: "center", gap: 5 }}>
+          <Zap size={11} />Bulk Assignment
+        </div>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
+              Assign all <strong>{unassignedCount}</strong> unassigned {category === "Steward" ? "stewards" : "members"} to:
+            </div>
+            {teamLoading ? (
+              <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div>
+            ) : (
+              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
+                <option value="">Select Caller</option>
+                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            )}
+          </div>
+          <button style={{ ...btn("primary", { background: C.blue }), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
+            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
+            <Zap size={14} />Assign All
+          </button>
+        </div>
+      </div>
+
+      <Alert type={msgType === "error" ? "error" : msgType === "warn" ? "warn" : "success"} msg={msg} onClose={() => setMsg("")} />
+      <Alert type="error" msg={err} onClose={() => {}} />
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        {tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)}
+            style={{
+              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
+              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+            }}>
+            {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
+          </button>
+        ))}
+        <div style={{ position: "relative", marginLeft: "auto" }}>
+          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+        </div>
+      </div>
+
+      {loading ? <SkeletonList rows={6} /> : (
+        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+          <div style={{ display: "grid", gap: 8 }}>
+            {filtered.slice(0, visibleCount).map(r => {
+              const ds = daysSince(r.lastCalled);
+              return (
+                <div key={r.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                    <Avatar name={r.full_name} size={36} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /></div>
+                      {scPersonDetailLine(r) && (
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{scPersonDetailLine(r)}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={badge(ds === null ? C.flag : ds > 30 ? C.danger : C.textMuted, ds === null ? C.flagLight : ds > 30 ? C.dangerLight : C.bg, { fontSize: 11 })}>
+                      {ds === null ? "Never called" : `${ds}d since last call`}
+                    </span>
+                    {r.assignment ? (
+                      <>
+                        <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><UserCheck size={10} />{r.assignment.assigned_to}</span>
+                        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => removeAssignment(r.assignment.id)}>Remove</button>
+                      </>
+                    ) : (
+                      <>
+                        <select value={pendingAssign[r.id] || ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
+                          style={{ ...inputBase, padding: "5px 9px", fontSize: 12, width: 160 }}>
+                          <option value="">Select Caller</option>
+                          {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        <button style={btn("soul", { padding: "5px 12px", fontSize: 11 })}
+                          onClick={() => saveAssignment(r)} disabled={!pendingAssign[r.id] || saving}>
+                          Save
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div style={{ ...card, textAlign: "center", padding: "2.5rem", color: C.textMuted }}>
+                Nothing here.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SoulCallQueue — shared by "Call Queue" (soulcareadmin, sees everyone) and
+// "My Assigned Calls" (soulcare, sees only their own assignments). Ranked by
+// call priority (longest-since-called first) within whichever category the
+// toggle is set to.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall }) {
+  const { data, loading, err, reload } = useSoulCallData();
+  const [category, setCategory] = useState("Steward");
+  const [search, setSearch]     = useState("");
+  const isAdmin = currentUserRole === "soulcareadmin" || currentUserRole === "admin";
+
+  const byCategory = data.filter(r => r.category === category);
+  const visible = isAdmin ? byCategory : byCategory.filter(r => r.assignment?.assigned_to === currentUser);
+  const searched = visible.filter(r =>
+    !search || r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search)
+  );
+  const ranked = sortByCallPriority(searched);
+  const { visibleCount, onScroll } = usePagedScroll(`${category}|${search}|${isAdmin}`, ranked.length, 10);
+
+  const neverCalled = ranked.filter(r => !r.lastCalled).length;
+  const overdue30   = ranked.filter(r => { const d = daysSince(r.lastCalled); return d !== null && d > 30; }).length;
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader
+        title={isAdmin ? "Call Queue" : "My Assigned Calls"}
+        subtitle={isAdmin
+          ? "Every Steward and Member, ranked by how long it's been since their last call"
+          : "Your assigned Stewards and Members, longest-neglected first"}
         action={
           <div style={{ position: "relative" }}>
             <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
@@ -12417,848 +11034,365 @@ function SoulCareQueue({ onLogVisit, currentUserRole = "soulcare", currentUser =
           </div>
         } />
 
-      <div style={{ marginBottom: 16 }}><BirthdaysWidget /></div>
+      <div style={{ marginBottom: 20 }}>
+        <CategoryToggle value={category} onChange={setCategory} counts={{
+          Steward: (isAdmin ? data : data.filter(r => r.assignment?.assigned_to === currentUser)).filter(r => r.category === "Steward").length,
+          Member:  (isAdmin ? data : data.filter(r => r.assignment?.assigned_to === currentUser)).filter(r => r.category === "Member").length,
+        }} />
+      </div>
 
-      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
-        label="Filter by date added to pool:" />
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)}
-            style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-              fontFamily: F.body, transition: "all .15s",
-              background: filter === t.k ? t.col : C.bg,
-              color: filter === t.k ? "#fff" : C.textSecondary,
-              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
-            }}>
-            {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
-          </button>
-        ))}
-        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label={`Total ${category === "Steward" ? "Stewards" : "Members"}`} value={ranked.length} icon={Users}  accent={C.green} />
+        <StatCard label="Never Called"  value={neverCalled} icon={AlertCircle} accent={C.flag}   sub={neverCalled > 0 ? "Highest priority" : ""} />
+        <StatCard label="30+ Days Since Call" value={overdue30} icon={Clock} accent={C.danger} />
       </div>
 
       <Alert type="error" msg={err} onClose={() => {}} />
 
-      {loading ? <SkeletonList rows={6} /> : (
+      {loading ? <SkeletonList rows={6} /> : ranked.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <CheckCircle size={28} color={C.green} style={{ marginBottom: 8, opacity: .5 }} />
+          <div style={{ fontWeight: 600, fontFamily: F.head }}>Nothing in this queue.</div>
+        </div>
+      ) : (
         <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.slice(0, visibleCount).map(c => {
-            const latest = scLatestVisit(c.visits);
-            const sm     = latest ? (VISIT_STATUS_META[latest.visit_status] || { color: C.gold, bg: C.goldLight }) : { color: C.gold, bg: C.goldLight };
-            const isOpen = expanded === c.id;
-            const isMine = c.assignment?.assigned_to === currentUser;
-            const displayName = `${c.full_name}${scProfileTag(c)}`;
-
-            return (
-              <div key={c.id} style={{ ...card, padding: 0, overflow: "hidden", borderLeft: `3px solid ${sm.color}` }}>
-                <div className="et-head" style={{
-                  display: "flex", justifyContent: "space-between", flexWrap: "wrap",
-                  gap: 10, padding: "12px 16px", cursor: isAdmin ? "pointer" : "default",
-                }}
-                  onClick={() => isAdmin && setExpanded(isOpen ? null : c.id)}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                      background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
-                      fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
-                    }}>{c.full_name?.charAt(0)}</div>
+          <div style={{ display: "grid", gap: 8 }}>
+            {ranked.slice(0, visibleCount).map(r => {
+              const ds = daysSince(r.lastCalled);
+              const urgent = ds === null || ds > 30;
+              return (
+                <div key={r.id} style={{
+                  ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
+                  alignItems: "center", flexWrap: "wrap", gap: 10,
+                  borderLeft: `3px solid ${urgent ? C.danger : ds > 14 ? C.amber : C.green}`,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                    <Avatar name={r.full_name} size={38} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} withWhatsApp /></div>
-                      {c.assignment && (
-                        <div style={{ fontSize: 11, color: C.soul, marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
-                          <UserCheck size={10} />Assigned to <strong>{c.assignment.assigned_to}</strong>
-                        </div>
-                      )}
-                      {latest && (
-                        <div style={{ marginTop: 5 }}>
-                          <span style={badge(sm.color, sm.bg, { fontSize: 11 })}>
-                            <span style={dot(sm.color)} />{latest.visit_status}
-                          </span>
-                          {c.visits.length > 1 && (
-                            <span style={{ fontSize: 11, color: C.textMuted, marginLeft: 6 }}>
-                              ({c.visits.length} visits logged)
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="et-actions" style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap", flexShrink: 0 }}>
-                    {!isAdmin && isMine && (
-                      <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })}
-                        onClick={e => { e.stopPropagation(); onLogVisit(c); }}>
-                        <MapPin size={13} />Log Visit
-                      </button>
-                    )}
-                    {!isAdmin && !isMine && (
-                      <span style={badge(C.textMuted, C.bg, { fontSize: 11 })}>Not assigned to you</span>
-                    )}
-                    {isAdmin && (
-                      <button style={btn("danger", { padding: "6px 12px", fontSize: 11 })}
-                        onClick={e => { e.stopPropagation(); removeFromPool(c); }}>
-                        <X size={11} />Remove from Pool
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <ChevronDown size={14} color={C.textMuted}
-                        style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s", alignSelf: "center" }} />
-                    )}
-                  </div>
-                </div>
-
-                {isAdmin && isOpen && (
-                  <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}` }}>
-                    {c.visits.length === 0 ? (
-                      <p style={{ fontSize: 12, color: C.textMuted, marginTop: 12 }}>No visits logged yet.</p>
-                    ) : (
-                      <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-                        {c.visits.map(v => {
-                          const vsm = VISIT_STATUS_META[v.visit_status] || { color: C.textMuted, bg: C.bg };
-                          const um  = URGENCY_META[v.urgency] || {};
-                          return (
-                            <div key={v.id} style={{ background: C.bg, borderRadius: 8, padding: "10px 14px", border: `1px solid ${C.border}` }}>
-                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
-                                <span style={badge(vsm.color, vsm.bg, { fontSize: 11, fontFamily: F.head })}>{v.visit_type || "Visit"} · {v.visit_status}</span>
-                                {v.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{v.urgency}</span>}
-                                {v.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Escalated</span>}
-                              </div>
-                              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>
-                                Logged by <strong>{v.logged_by || "—"}</strong>
-                                {v.visit_date && <span style={{ marginLeft: 8 }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> {v.visit_date}</span>}
-                              </div>
-                              {v.meeting_notes && <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.5 }}>{v.meeting_notes}</div>}
-                              {v.escalate_to_pastorate && v.escalation_reason && (
-                                <div style={{ fontSize: 12, color: C.flag, marginTop: 6, background: C.flagLight, padding: "5px 8px", borderRadius: 5 }}>
-                                  🚩 {v.escalation_reason}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</span>
+                        {r.membership_status && r.membership_status !== "Active" && (
+                          <span style={badge(C.amber, C.amberLight, { fontSize: 10 })}>{r.membership_status}</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <CheckCircle size={28} color={C.green} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, fontFamily: F.head }}>No records in this category</div>
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-      {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MySoulCareVisits — visits assigned to the logged-in Soul Care member
-// ─────────────────────────────────────────────────────────────────────────────
-
-function MySoulCareVisits({ currentUser, onLogVisit, onEditVisit }) {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]     = useState("");
-  const { data, loading, err, reload } = useVisitData(dateFrom, dateTo);
-  const [filter, setFilter] = useState("all");
-
-  const mine = data.filter(c => c.assignment?.assigned_to === currentUser);
-
-  const pending   = mine.filter(c => c.visits.length === 0);
-  const scheduled = mine.filter(c => scLatestVisit(c.visits)?.visit_status === "Scheduled");
-  const completed = mine.filter(c => scLatestVisit(c.visits)?.visit_status === "Completed");
-  const flagged   = mine.filter(c => c.visits.some(v => v.escalate_to_pastorate));
-
-  const views    = { all: mine, pending, scheduled, completed, flagged };
-  const filtered = views[filter] || mine;
-  const { visibleCount, onScroll } = usePagedScroll(`${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
-
-  // v5.9 — visits whose latest log requested a follow-up that has arrived.
-  const dueTodayStr = new Date().toISOString().slice(0, 10);
-  const dueVisitEntries = mine
-    .map(c => {
-      const last = scLatestVisit(c.visits);
-      if (!last || !last.follow_up_required || !last.next_follow_up_date || last.next_follow_up_date > dueTodayStr) return null;
-      return {
-        id: c.id, row: c, name: c.full_name, phone: c.phone,
-        dueDate: last.next_follow_up_date,
-        note: last.reason_for_care || last.meeting_notes,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-
-  const tabs = [
-    { k: "all",       label: "All",       count: mine.length,      col: C.textMuted },
-    { k: "pending",   label: "Pending",   count: pending.length,   col: C.gold      },
-    { k: "scheduled", label: "Scheduled", count: scheduled.length, col: C.blue      },
-    { k: "completed", label: "Completed", count: completed.length, col: C.green     },
-    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
-  ];
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="My Visits" subtitle={`${mine.length} contact${mine.length !== 1 ? "s" : ""} assigned to you`} />
-
-      <DueTodayPanel
-        entries={dueVisitEntries}
-        actionLabel="Log Visit"
-        actionIcon={MapPin}
-        onAction={c => onLogVisit(c)}
-      />
-
-      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
-        label="Filter by date added to pool:" />
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Assigned to Me" value={mine.length}      icon={MapPin}      accent={C.soul}  />
-        <StatCard label="Completed"      value={completed.length} icon={CheckCircle} accent={C.green} />
-        <StatCard label="Scheduled"      value={scheduled.length} icon={Calendar}    accent={C.blue}  />
-        <StatCard label="Flagged"        value={flagged.length}   icon={Flag}        accent={C.flag}
-          sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
-      </div>
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)}
-            style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-              fontFamily: F.body, transition: "all .15s",
-              background: filter === t.k ? t.col : C.bg,
-              color: filter === t.k ? "#fff" : C.textSecondary,
-              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
-            }}>
-            {t.label} ({t.count})
-          </button>
-        ))}
-        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
-      </div>
-
-      <Alert type="error" msg={err} onClose={() => {}} />
-
-      {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          {filtered.slice(0, visibleCount).map(c => {
-            const latest      = scLatestVisit(c.visits);
-            const sm          = latest ? (VISIT_STATUS_META[latest.visit_status] || { color: C.gold, bg: C.goldLight }) : { color: C.gold, bg: C.goldLight };
-            const anyFlagged  = c.visits.some(v => v.escalate_to_pastorate);
-            const displayName = `${c.full_name}${scGenderTag(c)}`;
-
-            return (
-              <div key={c.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${anyFlagged ? C.flag : sm.color}` }}>
-                <div className="et-head" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                      background: sm.bg, display: "flex", alignItems: "center", justifyContent: "center",
-                      fontWeight: 800, color: sm.color, fontSize: 14, fontFamily: F.head,
-                    }}>{c.full_name?.charAt(0) || "?"}</div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{displayName}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={c.phone} withWhatsApp /></div>
+                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /></div>
+                      {scPersonDetailLine(r) && (
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{scPersonDetailLine(r)}</div>
+                      )}
+                      {isAdmin && r.assignment && (
+                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Assigned to <strong>{r.assignment.assigned_to}</strong></div>
+                      )}
+                      {isAdmin && !r.assignment && (
+                        <div style={{ fontSize: 11, color: C.gold, marginTop: 2 }}>Unassigned</div>
+                      )}
                     </div>
                   </div>
-                  <div className="et-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-                    {anyFlagged && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>}
-                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogVisit(c)}>
-                      <MapPin size={13} />Log New Visit
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={badge(ds === null ? C.flag : ds > 30 ? C.danger : C.textMuted, ds === null ? C.flagLight : ds > 30 ? C.dangerLight : C.bg, { fontSize: 11 })}>
+                      <Clock size={10} />{ds === null ? "Never called" : `${ds}d ago`}
+                    </span>
+                    <span style={{ fontSize: 11, color: C.textMuted }}>{r.callCount} call{r.callCount !== 1 ? "s" : ""} logged</span>
+                    <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => onLogCall(r)}>
+                      <Phone size={13} />Log Call
                     </button>
                   </div>
                 </div>
-
-                {c.visits.length > 0 ? (
-                  <div style={{ display: "grid", gap: 6 }}>
-                    {c.visits.map(v => {
-                      const vsm = VISIT_STATUS_META[v.visit_status] || { color: C.textMuted, bg: C.bg };
-                      return (
-                        <div key={v.id} style={{ background: C.bg, borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.border}` }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4, alignItems: "center" }}>
-                                <span style={badge(vsm.color, vsm.bg, { fontSize: 10, padding: "2px 8px", fontFamily: F.head })}>
-                                  {v.visit_type || "Visit"} · {v.visit_status}
-                                </span>
-                                {v.visit_date && <span style={{ fontSize: 11, color: C.textMuted }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> {v.visit_date}</span>}
-                              </div>
-                              {v.meeting_notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 3, lineHeight: 1.5 }}>{v.meeting_notes}</div>}
-                              {v.escalate_to_pastorate && v.escalation_reason && (
-                                <div style={{ fontSize: 12, color: C.flag, marginTop: 4, background: C.flagLight, padding: "5px 8px", borderRadius: 5 }}>
-                                  🚩 {v.escalation_reason}
-                                </div>
-                              )}
-                            </div>
-                            {v.logged_by === currentUser && (
-                              <button style={btn("ghost", { padding: "5px 10px", fontSize: 11, flexShrink: 0 })} onClick={() => onEditVisit(c, v)}>
-                                <Edit3 size={11} />Edit
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>No visits logged yet.</div>
-                )}
-              </div>
-            );
-          })}
-
-          {!loading && filtered.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, fontFamily: F.head }}>
-                {mine.length === 0 ? "No contacts assigned to you yet." : "No contacts in this category."}
-              </div>
-              {mine.length === 0 && <p style={{ fontSize: 13, marginTop: 6 }}>Ask your Soul Care Admin to assign contacts to you.</p>}
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-      {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// LogVisitForm — log a new visit, or edit an existing one, for a contact
-// ─────────────────────────────────────────────────────────────────────────────
-
-function LogVisitForm({ contact, editVisit = null, loggedBy = "", onBack, onDone }) {
-  const displayName = `${contact.full_name}${scGenderTag(contact)}`;
-
-  const [form, setForm] = useState({
-    visit_type: editVisit?.visit_type || "",
-    urgency: editVisit?.urgency || "",
-    reason_for_care: editVisit?.reason_for_care || "",
-    visit_status: editVisit?.visit_status || "",
-    visit_date: editVisit?.visit_date || new Date().toISOString().slice(0, 10),
-    visit_time: editVisit?.visit_time || "",
-    meeting_notes: editVisit?.meeting_notes || "",
-    visit_photo_url: editVisit?.visit_photo_url || "",
-    material_support: editVisit?.material_support || false,
-    material_support_notes: editVisit?.material_support_notes || "",
-    prayer_requests: editVisit?.prayer_requests || "",
-    testimony: editVisit?.testimony || "",
-    follow_up_required: editVisit?.follow_up_required || false,
-    next_follow_up_date: editVisit?.next_follow_up_date || "",
-    escalate_to_pastorate: editVisit?.escalate_to_pastorate || false,
-    escalation_reason: editVisit?.escalation_reason || "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [done, setDone]       = useState(false);
-  const [err, setErr]         = useState("");
-
-  const setRef = useRef({});
-  const set = useCallback((key) => {
-    if (!setRef.current[key]) {
-      setRef.current[key] = (valOrEvt) => {
-        const val = valOrEvt && valOrEvt.target !== undefined ? valOrEvt.target.value : valOrEvt;
-        setForm(f => ({ ...f, [key]: val }));
-      };
-    }
-    return setRef.current[key];
-  }, []);
-
-  const submit = async () => {
-    if (!form.visit_type)   { setErr("Type of visit is required."); return; }
-    if (!form.visit_status) { setErr("Visit status is required."); return; }
-    if (form.escalate_to_pastorate && !form.escalation_reason.trim()) {
-      setErr("Please describe the reason for escalation."); return;
-    }
-    setLoading(true); setErr("");
-    try {
-      const n = (v) => (v === "" || v === undefined || v === null) ? null : v;
-      const payload = {
-        contact_id:             contact.id,
-        logged_by:              loggedBy || editVisit?.logged_by || null,
-        visit_type:             form.visit_type,
-        reason_for_care:        n(form.reason_for_care),
-        urgency:                n(form.urgency),
-        visit_status:           form.visit_status,
-        visit_date:             n(form.visit_date),
-        visit_time:             n(form.visit_time),
-        meeting_notes:          n(form.meeting_notes),
-        visit_photo_url:        n(form.visit_photo_url),
-        material_support:       !!form.material_support,
-        material_support_notes: form.material_support ? n(form.material_support_notes) : null,
-        prayer_requests:        n(form.prayer_requests),
-        testimony:              n(form.testimony),
-        follow_up_required:     !!form.follow_up_required,
-        next_follow_up_date:    form.follow_up_required ? n(form.next_follow_up_date) : null,
-        escalate_to_pastorate:  !!form.escalate_to_pastorate,
-        escalation_reason:      form.escalate_to_pastorate ? n(form.escalation_reason) : null,
-      };
-      if (editVisit?.id) {
-        await sb(`soul_care_visits?id=eq.${editVisit.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } else {
-        await sb("soul_care_visits", { method: "POST", body: JSON.stringify(payload) });
-      }
-      setDone(true);
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  if (done) return (
-    <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
-      <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
-      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>
-        Visit {editVisit ? "updated" : "logged"} for {displayName}
-      </h3>
-      {form.escalate_to_pastorate && (
-        <div style={{ ...badge(C.flag, C.flagLight), marginTop: 8, fontSize: 13, display: "inline-flex" }}>
-          <Flag size={12} />Flagged for Pastoral Team
-        </div>
-      )}
-      <button style={{ ...btn("outline"), marginTop: 20 }} onClick={onDone}>
-        <ArrowLeft size={14} />Back
-      </button>
-    </div>
-  );
-
-  const uc = URGENCY_META[form.urgency]?.color || C.textMuted;
-
-  return (
-    <div style={card} className="page-enter">
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>
-            {editVisit ? "Edit Visit" : "Log New Visit"} — {displayName}
-          </h2>
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}>
-            <PhoneLink phone={contact.phone} withWhatsApp size={13} bold />
-          </p>
-        </div>
-      </div>
-
-      {CREDS_MISSING && <CredsBanner />}
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {loggedBy && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>Logged By</div>
-          <div style={{
-            ...inputBase, background: C.soulLight, border: `1.5px solid ${C.soul}40`, color: C.soul, fontWeight: 700,
-            display: "flex", alignItems: "center", gap: 8, cursor: "default", userSelect: "none",
-          }}>
-            <UserCheck size={14} color={C.soul} />{loggedBy}
-            <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 400, color: C.textMuted, fontStyle: "italic" }}>Logged as you</span>
-          </div>
-        </div>
-      )}
-
-      <div style={{ marginBottom: 20 }}>
-        <SH title="Visitation Details" icon={MapPin} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Type of Visit" id="vt" type="select" required value={form.visit_type} onChange={set("visit_type")} options={SC_VISIT_TYPES} />
-          <FieldInput label="Urgency Level" id="ul" type="select" value={form.urgency} onChange={set("urgency")}
-            options={[{ value: "High", label: "High" }, { value: "Medium", label: "Medium" }, { value: "Low", label: "Low" }]} />
-        </div>
-        {form.urgency && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6, marginTop: -8, marginBottom: 16,
-            padding: "7px 12px", borderRadius: 8, background: `${uc}12`, fontSize: 12, color: uc, fontWeight: 600,
-          }}>
-            <Zap size={12} />Urgency: <strong>{form.urgency}</strong>
-          </div>
-        )}
-        <FieldInput label="Reason for Care" id="rfc" type="textarea" value={form.reason_for_care} onChange={set("reason_for_care")}
-          placeholder="Describe the purpose or context of this visit…" />
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <SH title="Feedback & Outcome" icon={MessageSquare} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Visit Status" id="vs" type="select" required value={form.visit_status} onChange={set("visit_status")}
-            options={[
-              { value: "Scheduled", label: "Scheduled" }, { value: "Completed", label: "Completed" },
-              { value: "Rescheduled", label: "Rescheduled" }, { value: "Member Unavailable", label: "Member Unavailable" },
-            ]} />
-          <FieldInput label="Date Conducted" id="vd" type="date" value={form.visit_date} onChange={set("visit_date")} />
-        </div>
-        <FieldInput label="Time Conducted" id="vtime" type="time" value={form.visit_time} onChange={set("visit_time")} />
-        <FieldInput label="Meeting Notes" id="mn" type="textarea" value={form.meeting_notes} onChange={set("meeting_notes")}
-          placeholder="Detailed spiritual and physical observations from the visit…" />
-
-        <div style={{ background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 12, color: C.soul, marginBottom: 12, display: "flex", alignItems: "center", gap: 5, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            <Camera size={12} />Visit Photo
-          </div>
-          <PhotoUpload value={form.visit_photo_url} onChange={set("visit_photo_url")} existingUrl={editVisit?.visit_photo_url || ""} />
-        </div>
-
-        <div style={{ background: C.soulLight, border: `1px solid ${C.soul}22`, borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <FieldInput label="Material Support Provided" id="msp" type="bool-toggle" value={form.material_support} onChange={set("material_support")}
-            hint="Toggle if the church provided physical aid (groceries, financial welfare, medical package, etc.)" />
-          {form.material_support && (
-            <FieldInput label="Support Details" id="msn" type="textarea" value={form.material_support_notes} onChange={set("material_support_notes")}
-              placeholder="Describe what was provided…" />
-          )}
-        </div>
-
-        <FieldInput label="Prayer Requests" id="pr" type="textarea" value={form.prayer_requests} onChange={set("prayer_requests")}
-          placeholder="Specific items the member asked the church to stand in agreement with them for…" />
-        <FieldInput label="Testimony" id="test" type="textarea" value={form.testimony} onChange={set("testimony")}
-          placeholder="A brief summary of their testimonies since joining The Envoys…" />
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <SH title="Next Steps & Post-Visit Action" icon={Calendar} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <div>
-            <FieldInput label="Follow-Up Required" id="fur" type="bool-toggle" value={form.follow_up_required} onChange={set("follow_up_required")} />
-            {form.follow_up_required && (
-              <FieldInput label="Next Follow-Up Date" id="nfud" type="date" value={form.next_follow_up_date} onChange={set("next_follow_up_date")} />
-            )}
-          </div>
-          <div>
-            <div style={{ background: C.flagLight, border: `1px solid #FECACA`, borderRadius: 10, padding: 14 }}>
-              <div style={{ fontWeight: 700, fontSize: 12, color: C.flag, marginBottom: 10, display: "flex", alignItems: "center", gap: 5, fontFamily: F.head }}>
-                <Flag size={12} />Escalation
-              </div>
-              <FieldInput label="Escalate to Pastorate" id="etp" type="toggle" value={form.escalate_to_pastorate} onChange={set("escalate_to_pastorate")}
-                hint="Notify the Pastoral Team about this case" />
-              {form.escalate_to_pastorate && (
-                <FieldInput label="Reason for Escalation" id="er" type="textarea" required value={form.escalation_reason} onChange={set("escalation_reason")}
-                  placeholder="Describe the concern requiring pastoral escalation…" />
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
-        {loading ? "Saving…" : editVisit ? "Update Visit Record" : "Save Visitation Record"}
-      </button>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SoulCareFlagged — global flagged/escalated visits, for soulcare + soulcareadmin
+// SoulCallsAnalyticsDashboard — assignment overview, call-outcome breakdown,
+// caller leaderboard, and narrative insights for the Soul Care calling
+// system. Toggle between Stewards and Members; downloadable as CSV.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function SoulCareFlagged() {
-  const [rows, setRows]         = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [err, setErr]           = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]     = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr("");
-    try {
-      let q = "soul_care_visits?escalate_to_pastorate=eq.true&select=*,soul_care_contacts(full_name,phone,gender)&order=created_at.desc";
-      if (dateFrom) q += `&created_at=gte.${dateFrom}`;
-      if (dateTo)   q += `&created_at=lte.${dateTo}T23:59:59`;
-      setRows((await sb(q)) || []);
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  }, [dateFrom, dateTo]);
-  useEffect(() => { load(); }, [load]);
-
-  const daysOpen = (createdAt) => {
-    if (!createdAt) return 0;
-    return Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
-  };
-  const agingCount = rows.filter(r => daysOpen(r.created_at) >= 3).length;
-  const { visibleCount, onScroll } = usePagedScroll(`${dateFrom}|${dateTo}`, rows.length, 10);
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Flagged for Pastoral" subtitle={`${rows.length} visit${rows.length !== 1 ? "s" : ""} escalated by the Soul Care team`}
-        action={agingCount > 0 && (
-          <span style={badge(C.danger, C.dangerLight, { fontSize: 12, padding: "6px 12px" })}>
-            <AlertCircle size={12} />{agingCount} aging 3+ days
-          </span>
-        )} />
-
-      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by date flagged:" />
-
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-      {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          {rows.slice(0, visibleCount).map(r => {
-            const contact = r.soul_care_contacts || {};
-            const age = daysOpen(r.created_at);
-            const aging = age >= 3;
-            const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
-            return (
-              <div key={r.id} style={{ ...card, borderLeft: `3px solid ${aging ? C.danger : C.flag}`, padding: "14px 16px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15, fontFamily: F.head }}>{contact.full_name}{scGenderTag(contact)}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{contact.phone} · {r.visit_type}</div>
-                    {r.logged_by && <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Reported by <strong>{r.logged_by}</strong></div>}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
-                    {aging
-                      ? <span style={badge(C.danger, C.dangerLight)}><AlertCircle size={11} />Aging · {age}d open</span>
-                      : <span style={badge(C.flag, C.flagLight)}><Flag size={11} />Flagged · {age}d open</span>}
-                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
-                  </div>
-                </div>
-                <div style={{ background: C.flagLight, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.flag, lineHeight: 1.6 }}>
-                  <strong>Reason flagged:</strong> {r.escalation_reason || "No reason provided"}
-                </div>
-                {r.meeting_notes && (
-                  <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>
-                    <strong>Visit notes:</strong> {r.meeting_notes}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-          {rows.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <Shield size={36} color={C.green} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontFamily: F.head }}>No flagged records</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>Nothing requires pastoral attention right now.</div>
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-      {!loading && rows.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-          Showing <strong>{Math.min(visibleCount, rows.length)}</strong> of <strong>{rows.length}</strong> record{rows.length !== 1 ? "s" : ""}
-          {visibleCount < rows.length ? " · scroll for more" : ""}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Testimonies — mirrors ResearchFeedback exactly, sourced from soul_care_visits
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Testimonies() {
-  const [rows, setRows]           = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [err, setErr]             = useState("");
-  const [search, setSearch]       = useState("");
-  const [dateFrom, setDateFrom]   = useState("");
-  const [dateTo, setDateTo]       = useState("");
-  const [selected, setSelected]   = useState(new Set());
+function useSoulCallAnalytics() {
+  const [stewards, setStewards]     = useState([]);
+  const [members, setMembers]       = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [logs, setLogs]             = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [err, setErr]               = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       setLoading(true); setErr("");
       try {
-        const data = await sb(
-          "soul_care_visits?select=id,testimony,visit_date,soul_care_contacts(full_name)&order=visit_date.desc&limit=1000"
-        );
-        setRows((data || []).filter(r => r.testimony && r.testimony.trim() !== ""));
-      } catch (e) { setErr(e.message); }
-      setLoading(false);
+        const [sw, cm, asg, lg] = await Promise.all([
+          sb("stewards?select=id&limit=3000"),
+          sb("church_members?select=id&limit=3000"),
+          sb("soul_call_assignments?select=*").catch(() => []),
+          sb("soul_call_logs?select=*&order=call_date.asc").catch(() => []),
+        ]);
+        if (cancelled) return;
+        setStewards(sw || []);
+        setMembers(cm || []);
+        setAssignments(asg || []);
+        setLogs(lg || []);
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
     })();
+    return () => { cancelled = true; };
   }, []);
 
-  const filtered = rows.filter(r => {
-    const name = r.soul_care_contacts?.full_name || "";
-    if (search) {
-      const q = search.toLowerCase();
-      if (!name.toLowerCase().includes(q) && !r.testimony?.toLowerCase().includes(q)) return false;
+  return { stewards, members, assignments, logs, loading, err };
+}
+
+function generateSoulCallInsights(s) {
+  if (!s || s.total === 0) return "No Stewards or Members in this category yet.";
+  const sentences = [];
+
+  if (s.neverCalled === s.total) {
+    sentences.push(`None of the ${s.total} ${s.categoryLabel} have been called yet — this is a clean slate for the calling rotation.`);
+  } else {
+    sentences.push(
+      `${s.coveragePct}% of ${s.categoryLabel} (${s.total - s.neverCalled} of ${s.total}) have been called at least once, leaving ${s.neverCalled} who have never received a call.`
+    );
+  }
+
+  if (s.unassigned > 0) {
+    sentences.push(`${s.unassigned} ${s.categoryLabel} are still unassigned and won't show up in anyone's "My Assigned Calls" list until assigned.`);
+  } else if (s.total > 0) {
+    sentences.push(`Every ${s.categorySingular} currently has a caller assigned.`);
+  }
+
+  if (s.totalCalls > 0) {
+    sentences.push(`${s.totalCalls} call${s.totalCalls !== 1 ? "s have" : " has"} been logged in total, with a ${s.reachedPct}% reached rate.`);
+    if (s.reachedPct < 40 && s.totalCalls >= 5) {
+      sentences.push(`A reached rate under 40% may be worth a closer look — try varying call times, or confirming phone numbers are current.`);
+    } else if (s.reachedPct >= 70) {
+      sentences.push(`A ${s.reachedPct}% reached rate is a strong sign the calling rotation is working well.`);
     }
-    if (dateFrom && r.visit_date < dateFrom) return false;
-    if (dateTo   && r.visit_date > dateTo)   return false;
+  }
+
+  if (s.topCaller) {
+    sentences.push(`${s.topCaller.name} leads the caller leaderboard with ${s.topCaller.total} call${s.topCaller.total !== 1 ? "s" : ""} logged.`);
+  }
+
+  if (s.flaggedCount > 0) {
+    sentences.push(`${s.flaggedCount} call${s.flaggedCount !== 1 ? "s have" : " has"} been flagged for pastoral attention and ${s.flaggedCount !== 1 ? "are" : "is"} waiting in Flagged Records.`);
+  }
+
+  if (s.overdue30 > 0) {
+    sentences.push(`${s.overdue30} ${s.categoryLabel} ${s.overdue30 !== 1 ? "haven't" : "hasn't"} been called in 30+ days — they're at the top of the Call Queue.`);
+  }
+
+  return sentences.join(" ");
+}
+
+function SoulCallsAnalyticsDashboard() {
+  const { stewards, members, assignments, logs, loading, err } = useSoulCallAnalytics();
+  const [category, setCategory] = useState("Steward");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const table = category === "Steward" ? "stewards" : "church_members";
+  const roster = category === "Steward" ? stewards : members;
+  const categoryAssignments = assignments.filter(a => a.person_table === table);
+  const categoryLogs = logs.filter(l => l.person_table === table);
+  // periodLogs — respects the date filter, used for every call-activity metric
+  // (outcomes, leaderboard, trend, flagged, CSV export). Roster-state metrics
+  // below (coverage, never-called, overdue) intentionally use the full,
+  // unfiltered categoryLogs so they always reflect real-world current status
+  // regardless of which reporting period is selected.
+  const periodLogs = categoryLogs.filter(l => {
+    if (dateFrom && l.call_date < dateFrom) return false;
+    if (dateTo && l.call_date > dateTo) return false;
     return true;
   });
 
-  const { visibleCount, onScroll } = usePagedScroll(`${search}|${dateFrom}|${dateTo}`, filtered.length, 10);
-  const pageRows = filtered.slice(0, visibleCount);
+  const lastCalledMap = {};
+  categoryLogs.forEach(l => {
+    if (!lastCalledMap[l.person_id] || l.call_date > lastCalledMap[l.person_id]) lastCalledMap[l.person_id] = l.call_date;
+  });
 
-  const allFilteredIds = filtered.map(r => r.id);
-  const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
-  const someSelected = allFilteredIds.some(id => selected.has(id));
+  const total       = roster.length;
+  const assignedIds = new Set(categoryAssignments.map(a => a.person_id));
+  const assigned     = roster.filter(r => assignedIds.has(String(r.id))).length;
+  const unassigned    = total - assigned;
+  const neverCalled  = roster.filter(r => !lastCalledMap[String(r.id)]).length;
+  const overdue30    = roster.filter(r => {
+    const d = daysSince(lastCalledMap[String(r.id)]);
+    return d !== null && d > 30;
+  }).length;
+  const coveragePct  = total > 0 ? Math.round(((total - neverCalled) / total) * 100) : 0;
 
-  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleAll = () => {
-    setSelected(prev => {
-      const n = new Set(prev);
-      allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
-      return n;
-    });
+  const now = new Date();
+  const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0);
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const callsThisWeek  = categoryLogs.filter(l => new Date(l.call_date) >= startOfWeek).length;
+  const callsThisMonth = categoryLogs.filter(l => new Date(l.call_date) >= startOfMonth).length;
+
+  const statusTally = {};
+  Object.keys(SC_CALL_STATUS_META).forEach(k => { statusTally[k] = 0; });
+  periodLogs.forEach(l => { statusTally[l.call_status] = (statusTally[l.call_status] || 0) + 1; });
+  const outcomeBars = Object.entries(statusTally).map(([k, v]) => ({ name: k, value: v, color: SC_CALL_STATUS_META[k]?.color || C.textMuted }));
+
+  const reachedCount = statusTally["Reached"] || 0;
+  const totalCalls   = periodLogs.length;
+  const reachedPct   = totalCalls > 0 ? Math.round((reachedCount / totalCalls) * 100) : 0;
+  const flaggedCount = periodLogs.filter(l => l.flagged_for_pastoral).length;
+
+  const callerTally = {};
+  periodLogs.forEach(l => {
+    const name = l.called_by || "Unknown";
+    if (!callerTally[name]) callerTally[name] = { total: 0, reached: 0 };
+    callerTally[name].total += 1;
+    if (l.call_status === "Reached") callerTally[name].reached += 1;
+  });
+  const leaderboard = Object.entries(callerTally).sort((a, b) => b[1].total - a[1].total);
+  const maxCallerTotal = Math.max(...leaderboard.map(([, s]) => s.total), 1);
+  const topCaller = leaderboard.length > 0 ? { name: leaderboard[0][0], total: leaderboard[0][1].total } : null;
+
+  // Weekly trend — last 8 weeks within the filtered period
+  const weekBuckets = {};
+  periodLogs.forEach(l => {
+    const d = new Date(l.call_date);
+    const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7)); monday.setHours(0,0,0,0);
+    const key = monday.toISOString().slice(0, 10);
+    weekBuckets[key] = (weekBuckets[key] || 0) + 1;
+  });
+  const trendRows = Object.entries(weekBuckets)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-8)
+    .map(([week, count]) => ({ week: week.slice(5), Calls: count }));
+
+  const insightStats = {
+    total, unassigned, neverCalled, coveragePct, totalCalls, reachedPct, flaggedCount, overdue30,
+    topCaller, categoryLabel: category === "Steward" ? "Stewards" : "Members",
+    categorySingular: category === "Steward" ? "steward" : "member",
   };
-  const clearDates = () => { setDateFrom(""); setDateTo(""); };
+  const insightText = loading ? "" : generateSoulCallInsights(insightStats);
 
   const downloadCSV = () => {
-    const toExport = filtered.filter(r => selected.has(r.id));
-    if (toExport.length === 0) return;
+    if (!periodLogs.length) return;
     const escape = (v) => {
       if (v === null || v === undefined) return "";
       const str = String(v).replace(/"/g, '""');
       return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
     };
-    const header = ["Name", "Visit Date", "Testimony"];
+    const header = ["Call Date", "Called By", "Call Status", "Flagged for Pastoral", "Notes"];
     const csvRows = [
       header.join(","),
-      ...toExport.map(r => [escape(r.soul_care_contacts?.full_name), escape(r.visit_date), escape(r.testimony)].join(",")),
+      ...periodLogs.map(l => [
+        escape(l.call_date), escape(l.called_by), escape(l.call_status),
+        escape(l.flagged_for_pastoral ? "Yes" : "No"), escape(l.notes),
+      ].join(",")),
     ];
     const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    const dateLabel = dateFrom || dateTo ? `_${dateFrom || "start"}_to_${dateTo || "end"}` : `_${new Date().toISOString().slice(0, 10)}`;
-    a.href = url; a.download = `envoys_testimonies${dateLabel}.csv`; a.click();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `soul_care_calls_${category.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
     URL.revokeObjectURL(url);
   };
-
-  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
 
   return (
     <div className="page-enter">
       {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Testimonies" subtitle="Testimonies shared during Soul Care visitations"
+      <PageHeader title="Calls Analytics" subtitle="Soul Care calling activity, outcomes, and caller performance"
         action={
-          <button
-            style={{ ...btn("soul"), background: selectedCount > 0 ? C.soul : C.border, color: selectedCount > 0 ? "#fff" : C.textMuted, cursor: selectedCount > 0 ? "pointer" : "not-allowed" }}
-            onClick={downloadCSV} disabled={selectedCount === 0}>
-            <Download size={14} />Download{selectedCount > 0 ? ` (${selectedCount})` : ""}
+          <button style={{ ...btn("gold"), opacity: periodLogs.length === 0 ? .5 : 1 }} onClick={downloadCSV} disabled={periodLogs.length === 0}>
+            <Download size={14} />Download CSV
           </button>
         } />
 
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Testimonies" value={rows.length}     icon={FileText} accent={C.soul}  />
-        <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}   accent={C.green} />
-        <StatCard label="Selected"          value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.soul : C.textMuted}
-          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
+        label="Filter call activity by date:" />
+
+      <div style={{ marginBottom: 20 }}>
+        <CategoryToggle value={category} onChange={setCategory} counts={{ Steward: stewards.length, Member: members.length }} />
       </div>
 
-      <div style={{
-        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16, padding: "12px 16px",
-        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
-      }}>
-        <Calendar size={14} color={C.soul} style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>Filter by visit date:</span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
-          </div>
-          {(dateFrom || dateTo) && (
-            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}><X size={12} />Clear</button>
-          )}
-        </div>
-        <div style={{ position: "relative" }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or testimony…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
-        </div>
-      </div>
+      <Alert type="error" msg={err} onClose={() => {}} />
 
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      {selectedCount > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
-          background: `${C.soul}12`, borderRadius: 8, border: `1px solid ${C.soul}30`, fontSize: 13, color: C.soul, fontWeight: 600, flexWrap: "wrap", gap: 10,
-        }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><CheckCircle size={14} />{selectedCount} testimon{selectedCount !== 1 ? "ies" : "y"} selected</span>
-          <button style={{ ...btn("soul", { padding: "6px 14px", fontSize: 12 }) }} onClick={downloadCSV}><Download size={13} />Download CSV</button>
-        </div>
-      )}
-
-      {loading ? (
-        <SkeletonList rows={6} />
-      ) : filtered.length === 0 ? (
-        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-          <FileText size={32} style={{ marginBottom: 10, opacity: .4 }} />
-          <div style={{ fontWeight: 700, fontFamily: F.head }}>
-            {rows.length === 0 ? "No testimonies recorded yet." : "No testimonies match your filters."}
+      {loading ? <SkeletonReport /> : (
+        <>
+          <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
+            <StatCard label={`Total ${insightStats.categoryLabel}`} value={total} icon={Users} accent={C.soul} />
+            <StatCard label="Unassigned" value={unassigned} icon={AlertCircle} accent={C.gold}
+              sub={unassigned > 0 ? "Need assignment" : "All assigned"} />
+            <StatCard label="Calls This Week" value={callsThisWeek} icon={Phone} accent={C.greenMid}
+              sub={`${callsThisMonth} this month`} />
+            <StatCard label="Flagged for Pastoral" value={flaggedCount} icon={Flag} accent={C.flag}
+              sub={flaggedCount > 0 ? "Needs attention" : ""} />
           </div>
-        </div>
-      ) : (
-        <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 12, alignItems: "center", position: "sticky", top: 0, zIndex: 2 }}>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <div onClick={toggleAll} title={allSelected ? "Deselect all" : "Select all visible"}
-                style={{
-                  width: 18, height: 18, borderRadius: 4, cursor: "pointer", flexShrink: 0,
-                  border: `2px solid ${someSelected ? C.soul : C.border}`, background: allSelected ? C.soul : "transparent",
-                  display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
-                }}>
-                {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
-                {!allSelected && someSelected && <div style= {{ width: 8, height: 2, background: C.soul, borderRadius: 1 }} />}
-              </div>
+
+          <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+            <StatCard label="Coverage" value={`${coveragePct}%`} icon={CheckCircle} accent={C.green}
+              sub={`${neverCalled} never called`} />
+            <StatCard label="Reached Rate" value={`${reachedPct}%`} icon={UserCheck} accent={C.blue}
+              sub={`${totalCalls} total calls logged`} />
+            <StatCard label="30+ Days Overdue" value={overdue30} icon={Clock} accent={C.danger} />
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <SoulCareSummaryPanel summaryText={insightText} />
+          </div>
+
+          <div className="greport" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={card}>
+              <SH title="Call Outcomes" icon={Phone} />
+              {totalCalls === 0 ? <PasEmpty label="No calls logged yet" /> : <PasOutcomeBars data={outcomeBars} />}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Name</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Visit Date</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", letterSpacing: ".07em", fontFamily: F.head }}>Testimony</div>
-          </div>
 
-          {pageRows.map((r, i) => {
-            const isChecked = selected.has(r.id);
-            const name = r.soul_care_contacts?.full_name || "—";
-            return (
-              <div key={r.id} onClick={() => toggleRow(r.id)}
-                style={{
-                  display: "grid", gridTemplateColumns: "40px 1fr 120px 1fr", minWidth: 620, padding: "12px 16px", gap: 12, alignItems: "flex-start",
-                  borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
-                  background: isChecked ? `${C.soul}08` : C.surface, cursor: "pointer", transition: "background .12s",
-                }}
-                onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.soulLight; }}
-                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.soul}08` : C.surface; }}>
-                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
-                  <div style={{
-                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
-                    border: `2px solid ${isChecked ? C.soul : C.border}`, background: isChecked ? C.soul : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
-                  }}>{isChecked && <CheckCircle size={11} color="#fff" strokeWidth={3} />}</div>
-                </div>
-                <div>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: "50%", background: C.soulLight, display: "inline-flex", alignItems: "center",
-                    justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 13, fontFamily: F.head, marginBottom: 4, border: `1.5px solid ${C.soul}30`,
-                  }}>{name.charAt(0) || "?"}</div>
-                  <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>{name}</div>
-                </div>
-                <div style={{ fontSize: 13, color: C.textSecondary, paddingTop: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={11} color={C.textMuted} />{r.visit_date || "—"}</div>
-                </div>
-                <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, paddingTop: 4, wordBreak: "break-word" }}>{r.testimony}</div>
-              </div>
-            );
-          })}
-          </div>
-        </div>
-      )}
+            <div style={card}>
+              <SH title="Coverage" icon={Users} />
+              {total === 0 ? <PasEmpty label="No records in this category" /> : (
+                <PasDonut
+                  data={[
+                    { name: "Called at least once", value: total - neverCalled, color: C.green },
+                    { name: "Never called", value: neverCalled, color: C.flag },
+                  ].filter(d => d.value > 0)}
+                  centerValue={`${coveragePct}%`} centerLabel="coverage" />
+              )}
+            </div>
 
-      {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <span>Showing <strong>{filtered.length}</strong> of <strong>{rows.length}</strong> testimon{rows.length !== 1 ? "ies" : "y"}</span>
-          {selectedCount === 0 && filtered.length > 0 && <span style={{ color: C.soul, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
-        </div>
+            <div style={{ ...card, gridColumn: "1 / -1" }}>
+              <SH title="Weekly Call Activity" icon={Activity} />
+              {trendRows.length === 0 ? <PasEmpty label="No calls logged yet" /> : (
+                <ResponsiveContainer width="100%" height={240}>
+                  <AreaChart data={trendRows} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="scCallsGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.soul} stopOpacity={0.5} />
+                        <stop offset="95%" stopColor={C.soul} stopOpacity={0.03} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 5" stroke={C.border} vertical={false} />
+                    <XAxis dataKey="week" tick={{ fontSize: 11, fill: C.textMuted, fontFamily: F.body }}
+                      axisLine={{ stroke: C.border }} tickLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: C.textMuted, fontFamily: F.body }}
+                      axisLine={false} tickLine={false} width={28} />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 12, fontFamily: F.body, boxShadow: SHADOW.sm }} />
+                    <Area type="monotone" dataKey="Calls" stroke={C.soul} fill="url(#scCallsGrad)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            <div style={{ ...card, gridColumn: "1 / -1" }}>
+              <SH title="Caller Leaderboard" icon={UserCheck} />
+              {leaderboard.length === 0 ? <PasEmpty label="No calls logged yet" /> : leaderboard.slice(0, 8).map(([name, s]) => (
+                <PasBarRow key={name} label={name}
+                  value={s.total} max={maxCallerTotal} color={C.soul}
+                  sub={`${s.reached}/${s.total} reached (${Math.round((s.reached / s.total) * 100)}%)`} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TestimonyBank — v5.5. All testimonies submitted via the public Testimony
@@ -13888,177 +12022,6 @@ function TestimonyBank({ currentUser }) {
     </div>
   );
 }
-// ─────────────────────────────────────────────────────────────────────────────
-// VisitationTab — admin/pasteam oversight view of ALL visits (unchanged nav id)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function VisitationTab() {
-  const [data, setData]         = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [err, setErr]           = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo]     = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [expanded, setExpanded] = useState(null);
-
-  const load = useCallback(async () => {
-    setLoading(true); setErr("");
-    try {
-      let q = "soul_care_visits?select=*,soul_care_contacts(full_name,phone,gender,marital_status,life_stage)&order=created_at.desc&limit=500";
-      if (dateFrom) q += `&visit_date=gte.${dateFrom}`;
-      if (dateTo)   q += `&visit_date=lte.${dateTo}`;
-      setData((await sb(q)) || []);
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  }, [dateFrom, dateTo]);
-  useEffect(() => { load(); }, [load]);
-
-  const now = new Date();
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const completedMonth = data.filter(r => r.visit_status === "Completed" && r.visit_date >= monthStart).length;
-  const highPriority   = data.filter(r => r.urgency === "High" && r.visit_status !== "Completed").length;
-  const escalated      = data.filter(r => r.escalate_to_pastorate).length;
-
-  const filtered = data.filter(r => !statusFilter || r.visit_status === statusFilter);
-  const { visibleCount, onScroll } = usePagedScroll(`${statusFilter}|${dateFrom}|${dateTo}`, filtered.length, 10);
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Visitation Records" subtitle="Soul Care team visits — pastoral oversight view"
-        action={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 140 }} />
-            <input type="date" value={dateTo}   onChange={e => setDateTo(e.target.value)}   style={{ ...inputBase, width: 140 }} />
-            <button style={btn("primary")} onClick={load}><Filter size={14} />Filter</button>
-          </div>
-        } />
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total Visits Logged"    value={data.length}    icon={MapPin}      accent={C.soul}   />
-        <StatCard label="Completed This Month"    value={completedMonth} icon={CheckCircle} accent={C.green}  />
-        <StatCard label="High Priority / Open"    value={highPriority}   icon={AlertCircle} accent={C.danger} />
-        <StatCard label="Escalated to Pastorate"  value={escalated}      icon={Flag}        accent={C.flag}   />
-      </div>
-
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-        {["", "Scheduled", "Completed", "Rescheduled", "Member Unavailable"].map(s => {
-          const sm = VISIT_STATUS_META[s] || {};
-          return (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              style={{
-                padding: "5px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                fontFamily: F.body, transition: "all .15s",
-                background: statusFilter === s ? (sm.color || C.soul) : C.bg,
-                color: statusFilter === s ? "#fff" : C.textSecondary,
-                border: `1.5px solid ${statusFilter === s ? (sm.color || C.soul) : C.border}`,
-              }}>
-              {s || "All"} {s ? `(${data.filter(r => r.visit_status === s).length})` : `(${data.length})`}
-            </button>
-          );
-        })}
-      </div>
-
-      {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.slice(0, visibleCount).map(r => {
-            const contact = r.soul_care_contacts || {};
-            const sm = VISIT_STATUS_META[r.visit_status] || { color: C.textMuted, bg: C.bg };
-            const um = URGENCY_META[r.urgency] || {};
-            const isOpen = expanded === r.id;
-            return (
-              <div key={r.id} style={{ ...card, padding: 0, overflow: "hidden", borderLeft: `3px solid ${r.escalate_to_pastorate ? C.flag : sm.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "12px 16px", cursor: "pointer" }}
-                  onClick={() => setExpanded(isOpen ? null : r.id)}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    {r.visit_photo_url ? (
-                      <img src={r.visit_photo_url} alt="Visit" style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, objectFit: "cover", border: `2px solid ${C.soul}40` }} />
-                    ) : (
-                      <div style={{ width: 38, height: 38, borderRadius: "50%", flexShrink: 0, background: C.soulLight, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, color: C.soul, fontSize: 14, fontFamily: F.head }}>
-                        {contact.full_name?.charAt(0)}
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{contact.full_name}{scGenderTag(contact)}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>
-                        {contact.phone} · {r.visit_type}
-                        {r.visit_date && <> · <Calendar size={10} style={{ verticalAlign: "middle" }} /> {r.visit_date}</>}
-                      </div>
-                      {r.logged_by && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Logged by <strong>{r.logged_by}</strong></div>}
-                    </div>
-                  </div>
-                  <div className="et-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-                    {r.urgency && <span style={badge(um.color || C.textMuted, um.bg || C.bg, { fontSize: 11 })}>{r.urgency}</span>}
-                    {r.escalate_to_pastorate && <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={9} />Escalated</span>}
-                    {r.material_support && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}>Aid Given</span>}
-                    {r.visit_photo_url && <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><Camera size={9} />Photo</span>}
-                    <span style={badge(sm.color, sm.bg, { fontSize: 11 })}><span style={dot(sm.color)} />{r.visit_status}</span>
-                    <ChevronDown size={14} color={C.textMuted} style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
-                  </div>
-                </div>
-                {isOpen && (
-                  <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${C.border}`, marginTop: -4 }}>
-                    {r.visit_photo_url && (
-                      <div style={{ marginTop: 14, marginBottom: 14 }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 8, display: "flex", alignItems: "center", gap: 4, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
-                          <Camera size={11} />Visit Photo
-                        </div>
-                        <img src={r.visit_photo_url} alt="From the visit"
-                          style={{ width: "100%", maxWidth: 360, height: 220, objectFit: "cover", borderRadius: 10, border: `1.5px solid ${C.border}`, display: "block", cursor: "pointer" }}
-                          onClick={() => window.open(r.visit_photo_url, "_blank")} title="Click to open full image" />
-                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Click image to open full size</div>
-                      </div>
-                    )}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 14 }} className="g2">
-                      {r.reason_for_care && <DetailBlock icon={Info} label="Reason for Care" value={r.reason_for_care} />}
-                      {r.meeting_notes   && <DetailBlock icon={FileText} label="Meeting Notes" value={r.meeting_notes} />}
-                      {r.prayer_requests && <DetailBlock icon={Heart} label="Prayer Requests" value={r.prayer_requests} color={C.soul} />}
-                      {r.testimony       && <DetailBlock icon={Star} label="Testimony" value={r.testimony} color={C.goldDark} />}
-                      {r.material_support && r.material_support_notes && <DetailBlock icon={Shield} label="Material Support" value={r.material_support_notes} />}
-                      {r.follow_up_required && r.next_follow_up_date && <DetailBlock icon={Calendar} label="Next Follow-Up" value={r.next_follow_up_date} color={C.amber} />}
-                      {r.escalate_to_pastorate && r.escalation_reason && <DetailBlock icon={Flag} label="Escalation Reason" value={r.escalation_reason} color={C.flag} />}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <MapPin size={28} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 700, fontFamily: F.head }}>No visitation records{dateFrom || dateTo ? " in this date range" : ""}</div>
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-      {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> visit{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DetailBlock({ icon: Icon, label, value, color }) {
-  return (
-    <div style={{ background: C.bg, borderRadius: 8, padding: "10px 12px" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: color || C.textMuted, marginBottom: 4, display: "flex", alignItems: "center", gap: 4, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".06em" }}>
-        {Icon && <Icon size={11} />}{label}
-      </div>
-      <div style={{ fontSize: 13, color: C.textPrimary, lineHeight: 1.6 }}>{value}</div>
-    </div>
-  );
-}
-
-// ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  END MODULE: SOUL CARE — VISITATION MANAGEMENT  (v7.0)                    ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 // ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                          ║
@@ -14977,21 +12940,20 @@ function MyProfilePage({ currentUser, username, role, onRenamed }) {
 }
 
 function AdminOverview({ setActive }) {
-  const [counts, setCounts] = useState({ ft: 0, fb: 0, flagged: 0, users: 0, visits: 0, pending: 0 });
+  const [counts, setCounts] = useState({ ft: 0, fb: 0, flagged: 0, users: 0, pending: 0 });
   useEffect(() => {
     (async () => {
       try {
-        const [ft, fb, fl, us, vis, pend] = await Promise.all([
+        const [ft, fb, fl, us, pend] = await Promise.all([
           sb("first_timers?select=id"),
           sb("call_feedback?select=id"),
           sb("call_feedback?flagged_for_pastoral=eq.true&select=id"),
           sb("app_users?select=id"),
-          sb("soul_care_visits?select=id").catch(() => []),
           sb("app_users?is_pending=eq.true&select=id").catch(() => []),
         ]);
         setCounts({
           ft: (ft||[]).length, fb: (fb||[]).length, flagged: (fl||[]).length,
-          users: (us||[]).length, visits: (vis||[]).length, pending: (pend||[]).length,
+          users: (us||[]).length, pending: (pend||[]).length,
         });
       } catch {}
     })();
@@ -15033,7 +12995,7 @@ function AdminOverview({ setActive }) {
           { id: "admin_adduser",  label: "Add New User",   icon: UserPlus, desc: "Create a new staff account and assign a role"    },
           { id: "firsttimers",   label: "First-Timers",   icon: Users,    desc: "Browse and edit all visitor records"             },
           { id: "report",        label: "Full Report",    icon: BarChart2,desc: "View the Pastoral retention dashboard"           },
-          { id: "visitation_tab",label: "Visitations",    icon: MapPin,   desc: "Soul Care team visitation records"               },
+          { id: "appraisal_qr",  label: "Appraisal QR",   icon: QrCode,   desc: "Get the Stewards Appraisal link and QR code"     },
           { id: "flagged",       label: "Flagged Records",icon: Flag,     desc: "Review escalated cases"                         },
         ].map(item => {
           const Icon = item.icon;
@@ -15077,6 +13039,7 @@ function AdminUsers({ onEdit }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -15117,14 +13080,44 @@ function AdminUsers({ onEdit }) {
   };
 
   const pendingCount = users.filter(u => u.is_pending).length;
-  const sorted = [...users].sort((a, b) => (b.is_pending ? 1 : 0) - (a.is_pending ? 1 : 0));
-  const { visibleCount, onScroll } = usePagedScroll("users", sorted.length, 10);
+
+  const roleCounts = {};
+  users.forEach(u => { roleCounts[u.role] = (roleCounts[u.role] || 0) + 1; });
+  const roleFilters = [
+    { k: "all", label: "All", count: users.length },
+    ...Object.keys(ROLE_META)
+      .filter(k => roleCounts[k] > 0)
+      .sort((a, b) => (ROLE_META[a]?.label || a).localeCompare(ROLE_META[b]?.label || b))
+      .map(k => ({ k, label: ROLE_META[k]?.label || k, count: roleCounts[k] })),
+  ];
+
+  const roleScoped = roleFilter === "all" ? users : users.filter(u => u.role === roleFilter);
+  const tierOf = (u) => u.is_pending ? 0 : u.is_active ? 1 : 2; // pending first, active next, deactivated last
+  const sorted = [...roleScoped].sort((a, b) => {
+    const t = tierOf(a) - tierOf(b);
+    if (t !== 0) return t;
+    return (a.display_name || a.username || "").localeCompare(b.display_name || b.username || "");
+  });
+  const { visibleCount, onScroll } = usePagedScroll(`users|${roleFilter}`, sorted.length, 10);
 
   return (
     <div className="page-enter">
       <PageHeader title="System Users"
-        subtitle={`${users.length} accounts${pendingCount ? ` · ${pendingCount} pending approval` : ""}`}
+        subtitle={`${sorted.length} of ${users.length} account${users.length !== 1 ? "s" : ""}${pendingCount ? ` · ${pendingCount} pending approval` : ""}`}
         action={<button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>} />
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {roleFilters.map(f => (
+          <button key={f.k} onClick={() => setRoleFilter(f.k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: roleFilter === f.k ? C.soul : C.bg, color: roleFilter === f.k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${roleFilter === f.k ? C.soul : C.border}`,
+          }}>
+            {f.label} ({f.count})
+          </button>
+        ))}
+      </div>
+
       <Alert type="error"   msg={err} onClose={() => setErr("")} />
       <Alert type="success" msg={msg} onClose={() => setMsg("")} />
       {loading ? <SkeletonList rows={5} /> : (
@@ -15178,7 +13171,7 @@ function AdminUsers({ onEdit }) {
               </div>
             );
           })}
-          {users.length === 0 && <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>No users yet.</p>}
+          {sorted.length === 0 && <p style={{ color: C.textMuted, textAlign: "center", marginTop: 40 }}>No users in this department.</p>}
         </div>
         </div>
       )}
@@ -15261,11 +13254,10 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
           { value: "soulcare",      label: "Soul Care"       },
           { value: "research",      label: "Research Team"   },
           { value: "testimonyteam", label: "Testimony Team"  },
+          { value: "trainingteam",  label: "Training Team"   },
           { value: "admin",         label: "Admin"           },
           { value: "experienceadmin", label: "Experience Admin" },
           { value: "soulcareadmin",   label: "Soul Care Admin"  },
-          { value: "megastars",      label: "Megastars Team"  },
-          { value: "megastarsadmin", label: "Megastars Admin" },
           { value: "connectcentre", label: "Connect Centre" },
         ]} />
       <div style={{
@@ -15275,17 +13267,14 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
         <strong style={{ color: C.green }}>Role permissions:</strong><br />
         <strong>Data Officer</strong> — Add/edit first-timer records, generate QR code<br />
         <strong>Experience Team</strong> — My Calls, call queue, log feedback, flag for pastoral<br />
-        <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records, visitation view<br />
-        <strong>Soul Care</strong> — My Visits, visit queue (assigned contacts only), flagged records<br />
-        <strong>Soul Care Admin</strong> — Bulk import contacts, assign visits, view all visits, flagged records, Testimonies<br />
-        <strong>Soul Care</strong> — My Visits, visit queue (assigned contacts only), flagged records<br />
-        <strong>Soul Care Admin</strong> — Bulk import contacts, assign visits, view all visits, flagged records, Testimonies<br />
+        <strong>Pastoral Team</strong> — Report, all feedback (with date filter), flagged records<br />
+        <strong>Soul Care</strong> — Members/Stewards Care, care priority list, My New Converts<br />
+        <strong>Soul Care Admin</strong> — Members/Stewards Care, care priority list, New Converts assignment, Potential Envoys<br />
         <strong>Research Team</strong> — View and download service feedback responses (CSV export)<br />
-        <strong>Testimony Team</strong> — View and download Soul Care member testimonies (CSV export)<br />
+        <strong>Testimony Team</strong> — View and download Testimony Bank submissions (CSV export)<br />
+        <strong>Training Team</strong> — View and download the Training Module (VIPs / Potential Envoys and New Converts due for Envoys Training)<br />
         <strong>Admin</strong> — All of the above + user management + bulk import<br />
         <strong>Experience Admin</strong> — Assign contacts to team members, view call queue and all feedback<br />
-        <strong>Megastars Team</strong> — View and download Megastars feedback responses (CSV export)<br />
-        <strong>Megastars Admin</strong> — View and download Megastars feedback responses (CSV export) + user management<br />
         <strong>Connect Centre</strong> — View and download Connect Centre feedback responses (CSV export) + user management<br />
       </div>
 
@@ -15311,9 +13300,9 @@ const SIGNUP_ROLES = [
   { value: "soulcare",      label: "Soul Care"       },
   { value: "dofficer",      label: "Data Officer"    },
   { value: "pasteam",       label: "Pastoral Team"   },
-  { value: "megastars",     label: "Megastars Team"  },
   { value: "research",      label: "Research Team"   },
   { value: "testimonyteam", label: "Testimony Team"  },
+  { value: "trainingteam",  label: "Training Team"   },
   { value: "connectcentre", label: "Connect Centre" },
 ];
 
@@ -16031,6 +14020,43 @@ function PublicAppraisalForm() {
 }
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// StewardAppraisalQRPage — QR code + link for the public appraisal form,
+// mirrors NOMQRCodePage / FeedbackQRPage.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function StewardAppraisalQRPage() {
+  const appraisalUrl = window.location.origin + "/appraisal";
+  const [custom, setCustom] = useState(appraisalUrl);
+  const [display, setDisplay] = useState(appraisalUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=A3792B&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => {
+    const a = document.createElement("a");
+    a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=A3792B&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+    a.download = "envoys-appraisal-qr.png"; a.target = "_blank"; a.click();
+  };
+  return (
+    <div className="page-enter">
+      <PageHeader title="Stewards Appraisal QR Code" subtitle="Share this link or QR code so stewards can submit their appraisal." />
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div style={{ ...card, textAlign: "center", flex: "0 0 auto" }}>
+          <img src={qrSrc} alt="QR Code" width={240} height={240} style={{ display: "block", borderRadius: 8, border: `1px solid ${C.border}` }} />
+          <div style={{ marginTop: 12, fontSize: 11, color: C.textMuted, wordBreak: "break-all", maxWidth: 240 }}>{display}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
+            <button style={btn("gold")} onClick={download}><Download size={14} />Download PNG</button>
+            <button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button>
+          </div>
+        </div>
+        <div style={{ ...card, flex: 1, minWidth: 260 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head, marginBottom: 4 }}>Form URL</div>
+          <FieldInput label="Appraisal Form URL" id="appraisalurl" value={custom} onChange={e => setCustom(e.target.value)} />
+          <button style={{ ...btn("gold"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StewardAppraisalDashboard() {
   const [month, setMonth] = useState(currentAppraisalMonth());
   const [rows, setRows] = useState([]);
@@ -16217,9 +14243,8 @@ function App() {
   const [flagCount,      setFlagCount]      = useState(0);
   const [editWeekTarget,   setEditWeekTarget]   = useState(null); // { person, week }
   const [editOverviewTarget, setEditOverviewTarget] = useState(null);
-  const [visitLogTarget,  setVisitLogTarget]  = useState(null);
-  const [visitEditTarget, setVisitEditTarget] = useState(null);
   const [memberProfileTarget, setMemberProfileTarget] = useState(null);
+  const [soulCallLogTarget, setSoulCallLogTarget] = useState(null);
   const [showFeedback,    setShowFeedback]    = useState(false);
   const [showTestimony,   setShowTestimony]   = useState(false);
   const [showNewConvert,  setShowNewConvert]  = useState(false);
@@ -16274,8 +14299,8 @@ function App() {
   setActive(v);
   setEditTarget(null); setFeedbackTarget(null); setEditUser(null);
   setEditWeekTarget(null); setEditOverviewTarget(null);
-  setVisitLogTarget(null); setVisitEditTarget(null);
   setMemberProfileTarget(null);
+  setSoulCallLogTarget(null);
   setMobileOpen(false);
   if (v !== active) {
     window.history.pushState({ active: v }, "", window.location.pathname);
@@ -16347,10 +14372,6 @@ function App() {
     if (active === "allfeedback") return <AllFeedback />;
     if (active === "report") return <Report />;
     if (active === "flagged") return <FlaggedRecords />;
-    if (active === "visitation_tab") return <VisitationTab />;
-    if (active === "megastars_checkinout") return <MegastarsCheckInOut currentUser={user} />;
-    if (active === "megastars_services")   return <MegastarsServices currentUser={user} />;
-    if (active === "megastars_roster")     return <MegastarsRoster currentUser={user} role={role} />;
     if (active === "research_feedback") return <ResearchFeedback />;
     if (active === "general_feedback")  return <GeneralFeedback />;
     if (active === "feedback_qr")       return <FeedbackQRPage />;
@@ -16360,6 +14381,7 @@ function App() {
     if (active === "vip_journey_dashboard") return <VipJourneyDashboard />;
     if (active === "nom_registry") return <NOMFirstTimersList currentUser={user} />;
     if (active === "nom_qr") return <NOMQRCodePage />;
+    if (active === "appraisal_qr") return <StewardAppraisalQRPage />;
     if (active === "steward_appraisal_results") return <StewardAppraisalDashboard />;
 
     if (active === "firsttimers") {
@@ -16427,7 +14449,7 @@ function App() {
     if (active === "envoys_visitors") return <EnvoysVisitors />;
 
     if (active === "completed_pipelines") {
-      const cpBackTarget = role === "soulcareadmin" ? "sc_assign" : "assign_calls";
+      const cpBackTarget = role === "soulcareadmin" ? "pe_assign" : "assign_calls";
       return <CompletedPipelines onBack={() => navTo(cpBackTarget)} />;
     }
 
@@ -16479,10 +14501,6 @@ function App() {
       );
     }
 
-    if (active === "sc_assign") {
-      return <AssignVisitsView currentUser={user} />;
-    }
-
     if (active === "pe_assign") return <PotentialEnvoysAssignView currentUser={user} />;
 
     if (active === "pe_mine") {
@@ -16498,18 +14516,8 @@ function App() {
       return <MyPotentialEnvoys currentUser={user} onLogFeedback={r => setFeedbackTarget(r)} />;
     }
 
-    if (active === "add_visit") {
-      const backTarget = (role === "soulcareadmin" || role === "admin") ? "sc_queue" : "sc_mine";
-      return (
-        <AddVisitPage
-          currentUser={user}
-          onCancel={() => navTo(backTarget)}
-          onLoggingDone={() => navTo(backTarget)}
-        />
-      );
-    }
-
     if (active === "soulcare_dashboard") return <SoulCareReportingDashboard />;
+    if (active === "sc_calls_analytics") return <SoulCallsAnalyticsDashboard />;
 
     if (active === "nc_assign") return <NewConvertsAssignView currentUser={user} />;
     if (active === "nc_qr")     return <NewConvertQRPage />;
@@ -16522,6 +14530,28 @@ function App() {
       return <CarePriorityList onViewProfile={m => setMemberProfileTarget(m)} />;
     }
 
+    if (active === "sc_assign_calls") return <AssignSoulCalls currentUser={user} />;
+
+    if (active === "sc_call_queue" || active === "sc_my_calls") {
+      if (soulCallLogTarget) {
+        return (
+          <LogSoulCallForm
+            person={soulCallLogTarget}
+            loggedBy={user}
+            onCancel={() => setSoulCallLogTarget(null)}
+            onDone={() => setSoulCallLogTarget(null)}
+          />
+        );
+      }
+      return (
+        <SoulCallQueue
+          currentUser={user}
+          currentUserRole={role}
+          onLogCall={p => setSoulCallLogTarget(p)}
+        />
+      );
+    }
+
     if (active === "nc_mine") {
       if (feedbackTarget) {
         return (
@@ -16532,7 +14562,7 @@ function App() {
           />
         );
       }
-      return <MyNewConverts currentUser={user} onLogCheckin={r => setFeedbackTarget(r)} />;
+      return <MyNewConverts currentUser={user} role={role} onLogCheckin={r => setFeedbackTarget(r)} />;
     }
 
     if (active === "steward_care") {
@@ -16547,49 +14577,8 @@ function App() {
       }
       return <MembersCare currentUser={user} role={role} onViewProfile={m => setMemberProfileTarget(m)} />;
     }
-    if (active === "sc_flagged") return <SoulCareFlagged />;
-    if (active === "sc_testimonies") return <Testimonies />;
     if (active === "testimony_bank") return <TestimonyBank currentUser={user} />;
-
-    if (active === "sc_queue" || active === "sc_mine") {
-      if (visitEditTarget) {
-        return (
-          <LogVisitForm
-            contact={visitEditTarget.contact}
-            editVisit={visitEditTarget.visit}
-            loggedBy={user}
-            onBack={() => setVisitEditTarget(null)}
-            onDone={() => { setVisitEditTarget(null); navTo(active); }}
-          />
-        );
-      }
-      if (visitLogTarget) {
-        return (
-          <LogVisitForm
-            contact={visitLogTarget}
-            loggedBy={user}
-            onBack={() => setVisitLogTarget(null)}
-            onDone={() => { setVisitLogTarget(null); navTo(active); }}
-          />
-        );
-      }
-      if (active === "sc_queue") {
-        return (
-          <SoulCareQueue
-            currentUser={user}
-            currentUserRole={role}
-            onLogVisit={c => setVisitLogTarget(c)}
-          />
-        );
-      }
-      return (
-        <MySoulCareVisits
-          currentUser={user}
-          onLogVisit={c => setVisitLogTarget(c)}
-          onEditVisit={(contact, visit) => setVisitEditTarget({ contact, visit })}
-        />
-      );
-    }
+    if (active === "training_module") return <TrainingModule />;
 
     return null;
   };
