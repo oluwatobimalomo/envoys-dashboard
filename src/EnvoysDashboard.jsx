@@ -665,6 +665,7 @@ const NAV_ICONS = {
   sc_assign_calls: UserCheck,
   sc_call_queue: Phone,
   sc_calls_analytics: Activity,
+  available_for_visitation: MapPin,
   sc_my_calls: Phone,
   connect_centre_prospects: MapPin,
   vip_journey_dashboard: TrendingUp,
@@ -708,7 +709,7 @@ const NAV = {
     { id: "testimony_bank", label: "Testimony Bank" },
     { id: "soulcare_dashboard", label: "Retention Dashboard" },
     { id: "sc_calls_analytics", label: "Calls Analytics" },
-    { id: "connect_centre_prospects", label: "Connect Centre" },
+    { id: "available_for_visitation", label: "Available for Visitation" },
     { id: "nom_registry",  label: "Night of Mercy" },
     { id: "nom_qr",        label: "NOM QR Code" },
     { id: "appraisal_qr",  label: "Appraisal QR" },
@@ -770,6 +771,7 @@ const NAV = {
     { id: "nc_report",           label: "New Converts Retention" },
     { id: "soulcare_dashboard",  label: "Retention Dashboard" },
     { id: "sc_calls_analytics",  label: "Calls Analytics" },
+    { id: "available_for_visitation", label: "Available for Visitation" },
     { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
   ],
   research: [
@@ -819,7 +821,7 @@ const NAV_GROUPS = {
     { title: "Experience Team",  ids: ["assign_calls", "callqueue", "experience_dashboard"] },
     { title: "VIP Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors", "vip_journey_dashboard"] },
     { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics", "available_for_visitation"] },
     { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
     { title: "Testimonies",      ids: ["testimony_bank", "testimony_qr"] },
@@ -830,7 +832,7 @@ const NAV_GROUPS = {
   soulcareadmin: [
     { title: "VIP Retention Funnel", ids: ["completed_pipelines", "pe_assign", "pe_mine", "envoys_visitors", "vip_journey_dashboard"] },
     { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report"] },
-    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics"] },
+    { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics", "available_for_visitation"] },
     { title: "Oversight",   ids: ["completed_pipelines", "soulcare_dashboard"] },
   ],
 
@@ -9926,6 +9928,11 @@ function MemberProfile({ member, currentUser, role, onBack }) {
                     {h.flagged_for_pastoral && (
                       <span style={badge(C.flag, C.flagLight, { fontSize: 11 })}><Flag size={10} />Flagged</span>
                     )}
+                    {h.visitation_availability && (
+                      <span style={badge(h.visitation_availability === "Available" ? C.green : C.textMuted, h.visitation_availability === "Available" ? C.greenLight : C.bg, { fontSize: 11 })}>
+                        Visit: {h.visitation_availability}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {h.notes && <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>{h.notes}</div>}
@@ -10947,6 +10954,7 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
   const [status, setStatus] = useState("Reached");
   const [notes, setNotes]   = useState("");
   const [flag, setFlag]     = useState(false);
+  const [visitAvailability, setVisitAvailability] = useState(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState("");
 
@@ -10977,6 +10985,7 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
           call_status: status,
           notes: notes.trim() || null,
           flagged_for_pastoral: flag,
+          visitation_availability: visitAvailability,
         }),
       });
       toast.success(`Call logged for ${person.full_name}.`);
@@ -11011,6 +11020,11 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
                     <span style={{ fontSize: 12, color: C.textSecondary }}>{h.call_date}</span>
                     <span style={{ fontSize: 11, color: C.textMuted }}>· by {h.called_by || "—"}</span>
                     {h.flagged_for_pastoral && <span style={badge(C.flag, C.flagLight, { fontSize: 10 })}><Flag size={9} />Flagged</span>}
+                    {h.visitation_availability && (
+                      <span style={badge(h.visitation_availability === "Available" ? C.green : C.textMuted, h.visitation_availability === "Available" ? C.greenLight : C.bg, { fontSize: 10 })}>
+                        Visit: {h.visitation_availability}
+                      </span>
+                    )}
                   </div>
                   {h.notes && <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.45 }}>{h.notes}</div>}
                 </div>
@@ -11043,6 +11057,26 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
         </div>
         <FieldInput label="Notes (optional)" id="sc-call-notes" type="textarea"
           value={notes} onChange={e => setNotes(e.target.value)} placeholder="Prayer requests, welfare notes, anything worth remembering…" />
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: 6 }}>
+            Open to a visit from the Visitation Team? <span style={{ fontWeight: 400, color: C.textMuted }}>(optional)</span>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {["Available", "Unavailable"].map(v => (
+              <button key={v} onClick={() => setVisitAvailability(cur => cur === v ? null : v)}
+                style={{
+                  padding: "8px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  border: `1.5px solid ${visitAvailability === v ? (v === "Available" ? C.green : C.textMuted) : C.border}`,
+                  background: visitAvailability === v ? (v === "Available" ? C.green : C.textMuted) : C.surface,
+                  color: visitAvailability === v ? "#fff" : C.textSecondary,
+                }}>
+                {v}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSecondary, margin: "6px 0 18px", cursor: "pointer" }}>
           <input type="checkbox" checked={flag} onChange={e => setFlag(e.target.checked)} style={{ width: 16, height: 16 }} />
           Flag for Pastoral attention
@@ -11059,6 +11093,190 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
 // AssignSoulCalls — soulcareadmin only. Bulk/individual assignment of
 // Stewards + Members to Soul Care team members for calling.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AvailableForVisitation — a clean handoff list for the church's Visitation
+// Team: everyone whose most recent call within the selected period recorded
+// a visitation-availability answer. Soul Care doesn't visit anyone here —
+// this just filters and exports the names for a different team to act on.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AvailableForVisitation() {
+  const [logs, setLogs]     = useState([]);
+  const [stewards, setStewards] = useState([]);
+  const [members, setMembers]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [err, setErr]           = useState("");
+  const [category, setCategory] = useState("Steward");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]     = useState("");
+  const [decisionFilter, setDecisionFilter] = useState("Available");
+  const [search, setSearch]     = useState("");
+  const [selected, setSelected] = useState(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setErr("");
+      try {
+        const [lg, sw, cm] = await Promise.all([
+          sb("soul_call_logs?visitation_availability=not.is.null&select=*&order=call_date.asc"),
+          sb("stewards?select=id,full_name,phone"),
+          sb("church_members?select=id,full_name,phone"),
+        ]);
+        if (!cancelled) { setLogs(lg || []); setStewards(sw || []); setMembers(cm || []); }
+      } catch (e) { if (!cancelled) setErr(e.message); }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const table = category === "Steward" ? "stewards" : "church_members";
+  const personMap = {};
+  (category === "Steward" ? stewards : members).forEach(p => { personMap[String(p.id)] = p; });
+
+  const periodLogs = logs.filter(l => {
+    if (l.person_table !== table) return false;
+    if (dateFrom && l.call_date < dateFrom) return false;
+    if (dateTo && l.call_date > dateTo) return false;
+    return true;
+  });
+
+  // One row per person — their most recent recorded decision within the period.
+  const latestByPerson = {};
+  periodLogs.forEach(l => {
+    const k = l.person_id;
+    if (!latestByPerson[k] || l.call_date >= latestByPerson[k].call_date) latestByPerson[k] = l;
+  });
+  const rows = Object.values(latestByPerson)
+    .map(l => ({ ...l, person: personMap[String(l.person_id)] || {} }))
+    .filter(r => r.person.full_name)
+    .filter(r => decisionFilter === "All" || r.visitation_availability === decisionFilter)
+    .filter(r => !search || r.person.full_name?.toLowerCase().includes(search.toLowerCase()) || r.person.phone?.includes(search))
+    .sort((a, b) => (a.person.full_name || "").localeCompare(b.person.full_name || ""));
+
+  const availableCount   = Object.values(latestByPerson).filter(l => l.visitation_availability === "Available").length;
+  const unavailableCount = Object.values(latestByPerson).filter(l => l.visitation_availability === "Unavailable").length;
+
+  const allIds = rows.map(r => r.id);
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    allIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+  const selectedCount = rows.filter(r => selected.has(r.id)).length;
+
+  const downloadCSV = () => {
+    const toExport = rows.filter(r => selected.has(r.id));
+    if (!toExport.length) return;
+    const escape = (v) => {
+      if (v === null || v === undefined) return "";
+      const str = String(v).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    };
+    const header = ["Full Name", "Phone", "Category", "Decision", "Date Recorded", "Notes"];
+    const csvRows = [
+      header.join(","),
+      ...toExport.map(r => [
+        escape(r.person.full_name), escape(r.person.phone), escape(category),
+        escape(r.visitation_availability), escape(r.call_date), escape(r.notes),
+      ].join(",")),
+    ];
+    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `visitation_availability_${category.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="page-enter">
+      {CREDS_MISSING && <CredsBanner />}
+      <PageHeader title="Available for Visitation" subtitle="Handoff list for the church's Visitation Team"
+        action={
+          <div style={{ position: "relative" }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          </div>
+        } />
+
+      <div style={{ marginBottom: 20 }}>
+        <CategoryToggle value={category} onChange={setCategory} counts={{
+          Steward: logs.filter(l => l.person_table === "stewards").length,
+          Member:  logs.filter(l => l.person_table === "church_members").length,
+        }} />
+      </div>
+
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo}
+        label="Filter by date recorded:" />
+
+      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, margin: "20px 0 16px" }}>
+        <StatCard label="Available" value={availableCount} icon={CheckCircle} accent={C.green} />
+        <StatCard label="Unavailable" value={unavailableCount} icon={X} accent={C.textMuted} />
+      </div>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        {["Available", "Unavailable", "All"].map(k => (
+          <button key={k} onClick={() => setDecisionFilter(k)} style={{
+            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            background: decisionFilter === k ? C.green : C.bg, color: decisionFilter === k ? "#fff" : C.textSecondary,
+            border: `1.5px solid ${decisionFilter === k ? C.green : C.border}`,
+          }}>{k}</button>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+        <button onClick={toggleAll} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
+        }}>
+          {allSelected ? "Deselect All" : "Select All"}
+        </button>
+        <button style={{ ...btn("gold", { padding: "6px 14px", fontSize: 12 }), opacity: selectedCount === 0 ? .5 : 1 }}
+          onClick={downloadCSV} disabled={selectedCount === 0}>
+          <Download size={13} />Download {selectedCount > 0 ? `(${selectedCount})` : ""}
+        </button>
+      </div>
+
+      <Alert type="error" msg={err} onClose={() => setErr("")} />
+      {loading ? <SkeletonList rows={6} /> : rows.length === 0 ? (
+        <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
+          <Users size={28} style={{ marginBottom: 8, opacity: .4 }} />
+          <div style={{ fontWeight: 600, fontFamily: F.head }}>No records for this filter yet.</div>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {rows.map(r => (
+            <div key={r.id} style={{
+              ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
+              alignItems: "center", flexWrap: "wrap", gap: 10,
+              borderLeft: `3px solid ${r.visitation_availability === "Available" ? C.green : C.textMuted}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
+                  style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
+                <Avatar name={r.person.full_name} size={36} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.person.full_name}</div>
+                  <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.person.phone} withWhatsApp /></div>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={badge(r.visitation_availability === "Available" ? C.green : C.textMuted, r.visitation_availability === "Available" ? C.greenLight : C.bg, { fontSize: 11 })}>
+                  {r.visitation_availability}
+                </span>
+                <span style={{ fontSize: 12, color: C.textMuted }}>{r.call_date}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function AssignSoulCalls({ currentUser, onViewProfile }) {
   const { data, loading, err, reload } = useSoulCallData();
@@ -14834,6 +15052,7 @@ function App() {
 
     if (active === "soulcare_dashboard") return <SoulCareReportingDashboard />;
     if (active === "sc_calls_analytics") return <SoulCallsAnalyticsDashboard />;
+    if (active === "available_for_visitation") return <AvailableForVisitation />;
 
     if (active === "nc_assign") return <NewConvertsAssignView currentUser={user} />;
     if (active === "nc_qr")     return <NewConvertQRPage />;
