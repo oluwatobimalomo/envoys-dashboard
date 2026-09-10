@@ -653,8 +653,6 @@ const NAV_ICONS = {
   members_care: Heart,
   vip_contact: MessageCircle,
   envoys_visitors: Users,
-  pe_assign: UserCheck,
-  pe_mine: Clipboard,
   nc_assign: UserCheck,
   nc_mine: Clipboard,
   nc_qr: QrCode,
@@ -689,12 +687,12 @@ const NAV = {
     { id: "callqueue",           label: "Call Queue"          },
     { id: "experience_dashboard", label: "Analytics Dashboard" },
     { id: "vip_journey_dashboard", label: "VIP Journey Dashboard" },
-    { id: "pe_assign",     label: "Potential Envoys" },
     { id: "nc_registry",   label: "Registry" },
     { id: "nc_qr",         label: "QR Code" },
     { id: "nc_assign",     label: "Assign Calls" },
     { id: "nc_mine",       label: "Call Queue" },
     { id: "nc_report",     label: "New Converts Retention" },
+    { id: "training_module", label: "Training Module" },
     { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",  label: "Members Care" },
     { id: "care_priority_list", label: "Care Priority List" },
@@ -745,7 +743,6 @@ const NAV = {
     { id: "steward_appraisal_results", label: "Stewards Appraisal" },
   ],
   soulcare: [
-    { id: "pe_mine",          label: "My Potential Envoys" },
     { id: "envoys_visitors",  label: "Envoys Visitors" },
     { id: "steward_care",  label: "Stewards Care" },
     { id: "members_care",     label: "Members Care" },
@@ -755,8 +752,6 @@ const NAV = {
     { id: "nc_report",        label: "New Converts Retention" },
   ],
   soulcareadmin: [
-    { id: "pe_assign",           label: "Potential Envoys"    },
-    { id: "pe_mine",             label: "My Potential Envoys" },
     { id: "envoys_visitors",     label: "Envoys Visitors"     },
     { id: "steward_care",        label: "Stewards Care" },
     { id: "members_care",        label: "Members Care" },
@@ -789,7 +784,6 @@ const NAV = {
   experienceadmin: [
   { id: "assign_calls",        label: "Assign Calls"        },
   { id: "completed_pipelines", label: "Completed Pipelines" },
-  { id: "pe_assign",           label: "Potential Envoys"    },
   { id: "envoys_visitors",     label: "Envoys Visitors"     },
   { id: "callqueue",           label: "Call Queue"          },
   { id: "allfeedback",         label: "All Feedback"        },
@@ -819,8 +813,8 @@ const NAV_GROUPS = {
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
     { title: "First-Timers",     ids: ["firsttimers", "vip_contact", "qrcode"] },
     { title: "Experience Team",  ids: ["assign_calls", "callqueue", "experience_dashboard"] },
-    { title: "VIP Retention Funnel", ids: ["completed_pipelines", "pe_assign", "envoys_visitors", "vip_journey_dashboard"] },
-    { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report"] },
+    { title: "VIP Retention Funnel", ids: ["completed_pipelines", "envoys_visitors", "vip_journey_dashboard"] },
+    { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report", "training_module"] },
     { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics", "available_for_visitation"] },
     { title: "Pastoral",        ids: ["report", "allfeedback", "flagged"] },
     { title: "Research",         ids: ["research_feedback", "general_feedback", "feedback_qr"] },
@@ -830,20 +824,20 @@ const NAV_GROUPS = {
     { title: "Stewards Appraisal", ids: ["appraisal_qr", "steward_appraisal_results"] },
   ],
   soulcareadmin: [
-    { title: "VIP Retention Funnel", ids: ["completed_pipelines", "pe_assign", "pe_mine", "envoys_visitors", "vip_journey_dashboard"] },
+    { title: "VIP Retention Funnel", ids: ["completed_pipelines", "envoys_visitors", "vip_journey_dashboard"] },
     { title: "New Converts",     ids: ["nc_qr", "nc_registry", "nc_assign", "nc_mine", "nc_report"] },
     { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_assign_calls", "sc_call_queue", "soulcare_dashboard", "sc_calls_analytics", "available_for_visitation"] },
     { title: "Oversight",   ids: ["completed_pipelines", "soulcare_dashboard"] },
   ],
 
   soulcare: [
-    { title: "VIP Retention Funnel", ids: ["envoys_visitors", "pe_mine"] },
+    { title: "VIP Retention Funnel", ids: ["envoys_visitors"] },
     { title: "New Converts",     ids: ["nc_mine", "nc_report"] },
     { title: "Care Channels",    ids: ["members_care", "steward_care", "care_priority_list", "sc_my_calls"] },
   ],
 
   experienceadmin: [
-    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "pe_assign", "envoys_visitors", "experience_dashboard", "vip_journey_dashboard"] },
+    { title: "Calls",    ids: ["assign_calls", "callqueue", "completed_pipelines", "envoys_visitors", "experience_dashboard", "vip_journey_dashboard"] },
     { title: "Feedback", ids: ["allfeedback", "flagged"] },
   ],
 };
@@ -1484,7 +1478,7 @@ function NotificationBell({ role, user, setActive, inline = false }) {
   const flagTargetId = (NAV[role] || []).some(n => n.id === "flagged") ? "flagged" : null;
   const dueTargetId = role === "expteam" || role === "experienceadmin" ? "mycalls" : null;
 
-  const goTo = (id) => { if (id) { setActive(id); setOpen(false); } };
+  const goTo = (id) => { if (id) { setActive(id); setOpen(false); reload(); } };
 
   const items = [];
   if (flagCount > 0 && flagTargetId) {
@@ -1515,7 +1509,7 @@ function NotificationBell({ role, user, setActive, inline = false }) {
         ? { position: "relative", zIndex: 200 }
         : { position: "fixed", top: 16, right: 16, zIndex: 200 }}
       className={inline ? undefined : "notif-bell-wrap"}>
-      <button onClick={() => setOpen(o => !o)} style={{
+      <button onClick={() => setOpen(o => { const next = !o; if (next) reload(); return next; })} style={{
         position: "relative", width: inline ? 32 : 40, height: inline ? 32 : 40, borderRadius: "50%",
         background: inline ? "rgba(255,255,255,.08)" : C.surface,
         border: `1px solid ${inline ? "rgba(255,255,255,.15)" : C.border}`,
@@ -2159,7 +2153,7 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
                 lineHeight: 1.2, letterSpacing: "-.01em",
               }}>THE ENVOYS</div>
               <div style={{ color: C.goldMid, fontSize: 10, letterSpacing: ".06em", marginTop: 1 }}>
-                EnvoysByte
+                Retention
               </div>
             </div>
           </div>
@@ -2393,7 +2387,7 @@ function generateSoulCareSummary(funnelStats, ncStats) {
     );
     if (funnelStats.totalPE > 0) {
       sentences.push(
-        `Of those recommended, ${funnelStats.graduated} of ${funnelStats.totalPE} Potential Envoys have completed the 3-week follow-up and training, a ${funnelStats.graduationRate}% graduation rate — bringing the overall VIP-to-Member conversion to ${funnelStats.overallConversionRate}%.`
+        `Of those recommended, ${funnelStats.graduated} of ${funnelStats.totalPE} Potential Envoys have completed Membership Training, a ${funnelStats.graduationRate}% graduation rate — bringing the overall VIP-to-Member conversion to ${funnelStats.overallConversionRate}%.`
       );
     }
     if (funnelStats.recommendationRate >= 60) {
@@ -2402,7 +2396,7 @@ function generateSoulCareSummary(funnelStats, ncStats) {
       sentences.push(`A ${funnelStats.recommendationRate}% recommendation rate may be worth a closer look at what's happening during the 3-week call window.`);
     }
     if (funnelStats.stillActivePE > 0) {
-      sentences.push(`${funnelStats.stillActivePE} Potential Envoy${funnelStats.stillActivePE !== 1 ? "s are" : " is"} still active in the 3-week pipeline — keep an eye on their follow-up dates so momentum doesn't stall near the finish line.`);
+      sentences.push(`${funnelStats.stillActivePE} Potential Envoy${funnelStats.stillActivePE !== 1 ? "s are" : " is"} still awaiting Membership Training — worth checking in on their progress.`);
     }
   }
 
@@ -5507,6 +5501,25 @@ function EnvoysVisitors() {
     return r.full_name?.toLowerCase().includes(q) || r.phone?.includes(search);
   });
 
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+  const onSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortKey(key); setSortDir("asc"); }
+  };
+  const SORT_GETTERS = {
+    name: r => r.full_name?.toLowerCase(),
+    phone: r => r.phone,
+    gender: r => r.gender,
+    dob: r => r.dob,
+    marital: r => r.marital_status,
+    life: r => r.life_stage,
+    service_date: r => r.service_date,
+    decision: r => r.membership_decision,
+    moved: r => r.moved_at,
+  };
+  const sorted = sortKey ? genericSort(filtered, SORT_GETTERS[sortKey], sortDir) : filtered;
+
   const allFilteredIds = filtered.map(r => r.id);
   const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
   const someSelected = allFilteredIds.some(id => selected.has(id));
@@ -5636,14 +5649,18 @@ function EnvoysVisitors() {
                 {allSelected && <CheckCircle size={11} color="#fff" strokeWidth={3} />}
                 {!allSelected && someSelected && <div style={{ width: 8, height: 2, background: "#fff", borderRadius: 1 }} />}
               </div>
-              <div style={{ ...headCell, ...stickyLeft(C.bg, 4) }}>Full Name</div>
-              {["Phone", "Gender", "DOB", "Marital Status", "Life Stage", "Service Date", "Decision", "Moved", "Feedback"].map(h => (
-                <div key={h} style={headCell}>{h}</div>
+              <SortableHead label="Full Name" sortKey="name" activeKey={sortKey} dir={sortDir} onSort={onSort} style={{ ...headCell, ...stickyLeft(C.bg, 4) }} />
+              {[
+                ["Phone", "phone"], ["Gender", "gender"], ["DOB", "dob"], ["Marital Status", "marital"],
+                ["Life Stage", "life"], ["Service Date", "service_date"], ["Decision", "decision"], ["Moved", "moved"],
+              ].map(([label, key]) => (
+                <SortableHead key={key} label={label} sortKey={key} activeKey={sortKey} dir={sortDir} onSort={onSort} style={headCell} />
               ))}
+              <div style={headCell}>Feedback</div>
               <div style={headCell}>Restore</div>
             </div>
 
-            {filtered.map((r, i) => {
+            {sorted.map((r, i) => {
               const isChecked = selected.has(r.id);
               const isRestored = !!r.restored_at;
               return (
@@ -5651,7 +5668,7 @@ function EnvoysVisitors() {
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
                   padding: "10px 16px", minWidth: 1420,
                   background: isChecked ? `${C.textSecondary}10` : C.surface,
-                  borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
+                  borderBottom: i < sorted.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div onClick={() => toggleRow(r.id)} style={{
                     width: 18, height: 18, borderRadius: 4, cursor: "pointer",
@@ -6402,6 +6419,26 @@ function NewConvertsRegistry() {
   const [selected, setSelected] = useState(new Set());
   const [typeFilter, setTypeFilter] = useState("all");
   const [trainingFilter, setTrainingFilter] = useState("all");
+
+  const [togglingId, setTogglingId] = useState(null);
+
+  const toggleTrainingCompleted = async (r) => {
+    setTogglingId(r.id);
+    try {
+      const next = !r.envoys_training_completed;
+      await sb(`new_converts?id=eq.${r.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          envoys_training_completed: next,
+          envoys_training_completed_date: next ? new Date().toISOString().slice(0, 10) : null,
+        }),
+      });
+      toast.success(next ? `${r.full_name} marked training complete.` : `${r.full_name} marked pending.`);
+      load();
+    } catch (e) { toast.error(e.message); }
+    setTogglingId(null);
+  };
+
   const clearDates = () => { setDateFrom(""); setDateTo(""); };
 
   const load = useCallback(async () => {
@@ -6583,10 +6620,11 @@ function NewConvertsRegistry() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <span style={badge(col, bg)}><span style={dot(col)} />{r.conversion_type || "–"}</span>
-                  <span style={badge(r.envoys_training_completed ? C.green : C.gold, r.envoys_training_completed ? C.greenLight : C.goldLight, { fontSize: 11 })}>
+                  <button onClick={() => toggleTrainingCompleted(r)} disabled={togglingId === r.id}
+                    style={{ ...badge(r.envoys_training_completed ? C.green : C.gold, r.envoys_training_completed ? C.greenLight : C.goldLight, { fontSize: 11 }), border: "none", cursor: "pointer" }}>
                     {r.envoys_training_completed ? <CheckCircle size={10} /> : <Clock size={10} />}
-                    {r.envoys_training_completed ? "Training Completed" : "Pending Training"}
-                  </span>
+                    {togglingId === r.id ? "Saving…" : r.envoys_training_completed ? "Training Completed" : "Pending Training"}
+                  </button>
                 </div>
               </div>
             );
@@ -6620,8 +6658,27 @@ function NewConvertsRegistry() {
 function PotentialEnvoysTrainingList() {
   const { data, loading, err, reload } = usePotentialEnvoyData();
   const [search, setSearch] = useState("");
+
   const [trainingFilter, setTrainingFilter] = useState("all");
   const [selected, setSelected] = useState(new Set());
+  const [togglingId, setTogglingId] = useState(null);
+
+  const toggleTrainingCompleted = async (r) => {
+    setTogglingId(r.id);
+    try {
+      const next = !r.training_completed;
+      await sb(`potential_envoys?id=eq.${r.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          training_completed: next,
+          training_completed_date: next ? new Date().toISOString().slice(0, 10) : null,
+        }),
+      });
+      toast.success(next ? `${r.full_name} marked training complete.` : `${r.full_name} marked pending.`);
+      reload();
+    } catch (e) { toast.error(e.message); }
+    setTogglingId(null);
+  };
 
   const filtered = data.filter(r => {
     const matchSearch = !search ||
@@ -6652,13 +6709,13 @@ function PotentialEnvoysTrainingList() {
       const str = String(v).replace(/"/g, '""');
       return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
     };
-    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Connect Center","Weeks Completed","Training Status","Graduated"];
+    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Connect Center","Training Status","Graduated"];
     const csvRows = [
       header.join(","),
       ...toExport.map(r => [
         escape(r.full_name), escape(r.phone), escape(r.gender), escape(r.dob),
         escape(r.marital_status), escape(r.life_stage), escape(r.connect_center),
-        escape(peWeeksLogged(r.fbRows).size), escape(r.training_completed ? "Completed" : "Pending"),
+        escape(r.training_completed ? "Completed" : "Pending"),
         escape(r.promoted_to_membership ? "Yes" : "No"),
       ].join(",")),
     ];
@@ -6732,10 +6789,11 @@ function PotentialEnvoysTrainingList() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 {r.promoted_to_membership && <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><Star size={10} />Graduated</span>}
-                <span style={badge(r.training_completed ? C.green : C.gold, r.training_completed ? C.greenLight : C.goldLight, { fontSize: 11 })}>
+                <button onClick={() => toggleTrainingCompleted(r)} disabled={togglingId === r.id}
+                  style={{ ...badge(r.training_completed ? C.green : C.gold, r.training_completed ? C.greenLight : C.goldLight, { fontSize: 11 }), border: "none", cursor: "pointer" }}>
                   {r.training_completed ? <CheckCircle size={10} /> : <Clock size={10} />}
-                  {r.training_completed ? "Training Completed" : "Pending Training"}
-                </span>
+                  {togglingId === r.id ? "Saving…" : r.training_completed ? "Training Completed" : "Pending Training"}
+                </button>
               </div>
             </div>
           ))}
@@ -7359,68 +7417,6 @@ function VipJourneyDashboard() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Soul Care Revamp Phase 2 — Potential Envoys: shared helpers, data hook,
-// and pipeline bar. Mirrors useCallData / PipelineBar / weeksLogged /
-// nextWeek / pipelineComplete from the Experience Team module, but for the
-// 3-week potential_envoys_feedback pipeline — kept as separate functions
-// rather than generalizing the originals, since those are load-bearing
-// elsewhere and shouldn't be touched.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function peWeeksLogged(fbRows) {
-  const weeks = new Set();
-  (fbRows || []).forEach(r => { if (r.week_number) weeks.add(r.week_number); });
-  return weeks;
-}
-function peNextWeek(fbRows) {
-  const done = peWeeksLogged(fbRows);
-  for (let w = 1; w <= 3; w++) { if (!done.has(w)) return w; }
-  return null;
-}
-function pePipelineComplete(fbRows) {
-  return peNextWeek(fbRows) === null;
-}
-
-function PEPipelineBar({ fbRows, trainingCompleted }) {
-  const done = peWeeksLogged(fbRows);
-  const complete = pePipelineComplete(fbRows);
-  const weekColor = (w) => {
-    if (!done.has(w)) return { bg: C.border, text: C.textMuted };
-    const row = (fbRows || []).find(r => r.week_number === w);
-    const norm = normaliseStatus(row?.call_status);
-    if (norm === "Reached")           return { bg: C.green,  text: "#fff" };
-    if (norm === "Call Back")         return { bg: C.amber,  text: "#fff" };
-    if (norm === "Incorrect Contact") return { bg: C.danger, text: "#fff" };
-    return { bg: C.greenMid, text: "#fff" };
-  };
-  return (
-    <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-      {[1, 2, 3].map(w => {
-        const c = weekColor(w);
-        return (
-          <div key={w} style={{
-            padding: "4px 9px", borderRadius: 6, background: c.bg, color: c.text,
-            fontSize: 11, fontWeight: 700, fontFamily: F.head,
-            border: `1.5px solid ${done.has(w) ? "transparent" : C.border}`,
-          }}>W{w}</div>
-        );
-      })}
-      <span style={{
-        ...badge(trainingCompleted ? C.green : C.gold, trainingCompleted ? C.greenLight : C.goldLight, { fontSize: 11 }),
-        marginLeft: 4,
-      }}>
-        {trainingCompleted ? <CheckCircle size={10} /> : <Clock size={10} />}
-        Training {trainingCompleted ? "Complete" : "Pending"}
-      </span>
-      {complete
-        ? <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><CheckCircle size={10} />3 weeks complete</span>
-        : <span style={{ fontSize: 11, color: C.textMuted }}>Next: Week {peNextWeek(fbRows)}</span>
-      }
-    </div>
-  );
-}
-
 function usePotentialEnvoyData() {
   const [data, setData]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -7433,26 +7429,8 @@ function usePotentialEnvoyData() {
     (async () => {
       setLoading(true); setErr("");
       try {
-        const [peRows, fbRows, asgRows] = await Promise.all([
-          sb("potential_envoys?order=created_at.desc&limit=500"),
-          sb("potential_envoys_feedback?select=*&order=created_at.asc"),
-          sb("potential_envoys_assignments?select=*").catch(() => []),
-        ]);
-        const fbMap = {};
-        (fbRows || []).forEach(f => {
-          if (!fbMap[f.potential_envoy_id]) fbMap[f.potential_envoy_id] = [];
-          fbMap[f.potential_envoy_id].push(f);
-        });
-        const asgMap = {};
-        (asgRows || []).forEach(a => { asgMap[a.potential_envoy_id] = a; });
-
-        if (!cancelled) {
-          setData((peRows || []).map(r => ({
-            ...r,
-            fbRows:     fbMap[r.id]  || [],
-            assignment: asgMap[r.id] || null,
-          })));
-        }
+        const peRows = await sb("potential_envoys?order=created_at.desc&limit=500");
+        if (!cancelled) setData(peRows || []);
       } catch (e) { if (!cancelled) setErr(e.message); }
       if (!cancelled) setLoading(false);
     })();
@@ -7461,564 +7439,6 @@ function usePotentialEnvoyData() {
 
   return { data, loading, err, reload };
 }
-
-function PotentialEnvoysAssignView({ currentUser }) {
-  const { data, loading, err, reload } = usePotentialEnvoyData();
-  const { options: teamOptions, loading: teamLoading } = useRoleUsers(["soulcare", "soulcareadmin"]);
-
-  const [selectedMember, setSelectedMember] = useState("");
-  const [search, setSearch]                 = useState("");
-  const [filter, setFilter]                 = useState("unassigned");
-  const [saving, setSaving]                 = useState(false);
-  const [msg, setMsg]                       = useState("");
-  const [msgType, setMsgType]               = useState("success");
-  const [pendingAssign, setPendingAssign]   = useState({});
-  const [selected, setSelected]             = useState(new Set());
-
-  const filtered = data.filter(r => {
-    const matchSearch = !search ||
-      r.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      r.phone?.includes(search);
-    if (filter === "unassigned") return matchSearch && !r.assignment;
-    if (filter === "assigned")   return matchSearch && !!r.assignment;
-    if (filter === "graduated")  return matchSearch && r.promoted_to_membership;
-    if (filter === "active")     return matchSearch && !r.promoted_to_membership;
-    return matchSearch;
-  });
-  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}`, filtered.length, 10);
-
-  const allFilteredIds = filtered.map(r => r.id);
-  const allSelected  = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
-  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const toggleAll = () => setSelected(prev => {
-    const n = new Set(prev);
-    allFilteredIds.forEach(id => allSelected ? n.delete(id) : n.add(id));
-    return n;
-  });
-  const selectedCount = filtered.filter(r => selected.has(r.id)).length;
-
-  const downloadCSV = () => {
-    const toExport = filtered.filter(r => selected.has(r.id));
-    if (!toExport.length) return;
-    const escape = (v) => {
-      if (v === null || v === undefined) return "";
-      const str = String(v).replace(/"/g, '""');
-      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
-    };
-    const header = ["Full Name","Phone","Gender","DOB","Marital Status","Life Stage","Connect Center","Assigned To","Weeks Completed","Training Completed","Graduated"];
-    const csvRows = [
-      header.join(","),
-      ...toExport.map(r => [
-        escape(r.full_name), escape(r.phone), escape(r.gender), escape(r.dob),
-        escape(r.marital_status), escape(r.life_stage), escape(r.connect_center),
-        escape(r.assignment?.assigned_to), escape(peWeeksLogged(r.fbRows).size),
-        escape(r.training_completed ? "Yes" : "No"), escape(r.promoted_to_membership ? "Yes" : "No"),
-      ].join(",")),
-    ];
-    const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = `potential_envoys_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const assignedCount   = data.filter(r => !!r.assignment).length;
-  const unassignedCount = data.filter(r => !r.assignment).length;
-  const graduatedCount  = data.filter(r => r.promoted_to_membership).length;
-
-  const bulkAssign = async () => {
-    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
-    const targets = data.filter(r => !r.assignment);
-    if (!targets.length) { setMsg("No unassigned Potential Envoys to assign."); setMsgType("warn"); return; }
-    setSaving(true); setMsg("");
-    try {
-      const payload = targets.map(r => ({
-        potential_envoy_id: r.id, assigned_to: selectedMember, assigned_by: currentUser,
-      }));
-      for (let i = 0; i < payload.length; i += 50) {
-        await sb("potential_envoys_assignments", {
-          method: "POST",
-          prefer: "resolution=merge-duplicates,return=representation",
-          body: JSON.stringify(payload.slice(i, i + 50)),
-        });
-      }
-      setMsg(`${targets.length} assigned to ${selectedMember}.`); setMsgType("success"); reload();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setSaving(false);
-  };
-
-  const saveAssignment = async (peId) => {
-    const member = pendingAssign[peId];
-    if (!member) return;
-    setSaving(true);
-    try {
-      const existing = data.find(r => r.id === peId)?.assignment;
-      if (existing) {
-        await sb(`potential_envoys_assignments?id=eq.${existing.id}`, {
-          method: "PATCH", body: JSON.stringify({ assigned_to: member, assigned_by: currentUser }),
-        });
-      } else {
-        await sb("potential_envoys_assignments", {
-          method: "POST",
-          body: JSON.stringify({ potential_envoy_id: peId, assigned_to: member, assigned_by: currentUser }),
-        });
-      }
-      setPendingAssign(p => { const n = { ...p }; delete n[peId]; return n; });
-      setMsg(`Assigned to ${member}.`); setMsgType("success"); reload();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setSaving(false);
-  };
-
-  const removeAssignment = async (asgId) => {
-    setSaving(true);
-    try {
-      await sb(`potential_envoys_assignments?id=eq.${asgId}`, { method: "DELETE", prefer: "return=minimal" });
-      setMsg("Assignment removed."); setMsgType("success"); reload();
-    } catch (e) { setMsg(e.message); setMsgType("error"); }
-    setSaving(false);
-  };
-
-  const tabs = [
-    { k: "unassigned", label: "Unassigned", count: unassignedCount, col: C.gold      },
-    { k: "assigned",   label: "Assigned",   count: assignedCount,   col: C.soul      },
-    { k: "graduated",  label: "Graduated",  count: graduatedCount,  col: C.green     },
-    { k: "all",        label: "All",        count: data.length,     col: C.textMuted },
-  ];
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="Potential Envoys"
-        subtitle="VIPs recommended for membership — 3-week Soul Care follow-up + training before graduation" />
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Total"      value={data.length}      icon={Users}       accent={C.soul}  />
-        <StatCard label="Assigned"   value={assignedCount}    icon={UserCheck}   accent={C.green} />
-        <StatCard label="Unassigned" value={unassignedCount}  icon={AlertCircle} accent={C.gold}
-          sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
-        <StatCard label="Graduated"  value={graduatedCount}   icon={Star}        accent={C.goldDark}
-          sub="Completed 3 weeks + training" />
-      </div>
-
-      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em", display: "flex", alignItems: "center", gap: 5 }}>
-          <Zap size={11} />Bulk Assignment
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
-              Assign all <strong>{unassignedCount}</strong> unassigned to:
-            </div>
-            {teamLoading ? (
-              <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div>
-            ) : (
-              <select value={selectedMember} onChange={e => setSelectedMember(e.target.value)} style={{ ...inputBase, cursor: "pointer" }}>
-                <option value="">Select Caller</option>
-                {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            )}
-          </div>
-          <button style={{ ...btn("soul"), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
-            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
-            <UserCheck size={14} />{saving ? "Saving…" : `Assign ${unassignedCount}`}
-          </button>
-        </div>
-      </div>
-
-      <Alert type={msgType} msg={msg} onClose={() => setMsg("")} />
-      <Alert type="error" msg={err} onClose={() => {}} />
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)} style={{
-            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-            fontFamily: F.body, transition: "all .15s",
-            background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
-            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
-          }}>{t.label} ({t.count})</button>
-        ))}
-        <button onClick={toggleAll} style={{
-          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
-        }}>
-          {allSelected ? "Deselect All" : "Select All"}
-        </button>
-        <button style={{ ...btn("gold", { padding: "6px 14px", fontSize: 12 }), opacity: selectedCount === 0 ? .5 : 1 }}
-          onClick={downloadCSV} disabled={selectedCount === 0}>
-          <Download size={13} />Download {selectedCount > 0 ? `(${selectedCount})` : ""}
-        </button>
-        <div style={{ marginLeft: "auto", position: "relative" }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
-        </div>
-        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
-      </div>
-
-      {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-        <div style={{ display: "grid", gap: 8 }}>
-          {filtered.slice(0, visibleCount).map(r => {
-            const complete = r.promoted_to_membership;
-            const pending  = pendingAssign[r.id];
-            return (
-              <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${complete ? C.green : r.assignment ? C.soul : C.gold}` }}>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
-                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
-                    style={{ width: 16, height: 16, marginTop: 4, cursor: "pointer", flexShrink: 0 }} />
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flex: 1, minWidth: 220 }}>
-                    <Avatar name={r.full_name} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.connect_center || "—"}</div>
-                      <div style={{ marginTop: 5 }}><PEPipelineBar fbRows={r.fbRows} trainingCompleted={r.training_completed} /></div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
-                    {complete && <span style={badge(C.green, C.greenLight, { fontSize: 11 })}><Star size={10} />Graduated to Membership</span>}
-                    {r.assignment && !pending ? (
-                      <>
-                        <span style={badge(C.soul, C.soulLight, { fontSize: 11 })}><UserCheck size={10} />{r.assignment.assigned_to}</span>
-                        {!complete && (
-                          <>
-                            <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })}
-                              onClick={() => setPendingAssign(p => ({ ...p, [r.id]: r.assignment.assigned_to }))}>
-                              <Edit3 size={10} />Reassign
-                            </button>
-                            <button style={btn("danger", { padding: "5px 10px", fontSize: 11 })}
-                              onClick={() => removeAssignment(r.assignment.id)} disabled={saving}>
-                              <X size={10} />Unassign
-                            </button>
-                          </>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {teamLoading ? (
-                          <span style={{ fontSize: 12, color: C.textMuted }}>Loading…</span>
-                        ) : (
-                          <select value={pending ?? ""} onChange={e => setPendingAssign(p => ({ ...p, [r.id]: e.target.value }))}
-                            style={{ ...inputBase, width: 180, padding: "6px 10px", fontSize: 13 }}>
-                            <option value="">Select Caller</option>
-                            {teamOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                          </select>
-                        )}
-                        {pending && (
-                          <>
-                            <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => saveAssignment(r.id)} disabled={saving}>
-                              {saving ? "…" : "Save"}
-                            </button>
-                            <button style={btn("ghost", { padding: "6px 10px", fontSize: 12 })}
-                              onClick={() => setPendingAssign(p => { const n = { ...p }; delete n[r.id]; return n; })}>
-                              <X size={12} />
-                            </button>
-                          </>
-                        )}
-                        {!pending && !r.assignment && <span style={badge(C.gold, C.goldLight, { fontSize: 11 })}>Unassigned</span>}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <UserCheck size={28} style={{ marginBottom: 8, opacity: .4 }} />
-              <div style={{ fontWeight: 600, fontFamily: F.head }}>No Potential Envoys in this category</div>
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-      {!loading && filtered.length > 0 && (
-        <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
-          Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong>
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PETrainingBlock({ pe, onSaved }) {
-  const [editing, setEditing] = useState(false);
-  const [completed, setCompleted] = useState(pe.training_completed);
-  const [date, setDate] = useState(pe.training_completed_date || new Date().toISOString().slice(0, 10));
-  const [notes, setNotes] = useState(pe.training_notes || "");
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
-
-  const save = async () => {
-    setSaving(true); setErr("");
-    try {
-      await sb(`potential_envoys?id=eq.${pe.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          training_completed: completed,
-          training_completed_date: completed ? date : null,
-          training_notes: notes || null,
-        }),
-      });
-      toast.success(completed ? "Training marked complete." : "Training status updated.");
-      setEditing(false);
-      onSaved?.();
-    } catch (e) { setErr(e.message); }
-    setSaving(false);
-  };
-
-  if (!editing) {
-    return (
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 12px",
-        background: pe.training_completed ? C.greenXLight : C.goldLight, borderRadius: 8,
-        border: `1px solid ${pe.training_completed ? C.greenBorder : C.gold}30`,
-      }}>
-        {pe.training_completed
-          ? <CheckCircle size={13} color={C.green} />
-          : <Clock size={13} color={C.goldDark} />}
-        <span style={{ fontSize: 12, color: C.textSecondary, flex: 1 }}>
-          Envoys Membership Training: <strong>{pe.training_completed ? `Completed ${pe.training_completed_date || ""}` : "Not yet completed"}</strong>
-        </span>
-        <button style={btn("ghost", { padding: "5px 10px", fontSize: 11 })} onClick={() => setEditing(true)}>
-          <Edit3 size={10} />{pe.training_completed ? "Edit" : "Mark Complete"}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ marginTop: 8, padding: "12px 14px", background: C.goldLight, borderRadius: 8, border: `1px solid ${C.gold}30` }}>
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-      <FieldInput label="Envoys Membership Training Completed" id={`tr-${pe.id}`} type="bool-toggle"
-        value={completed} onChange={setCompleted} />
-      {completed && (
-        <FieldInput label="Date Completed" id={`trd-${pe.id}`} type="date" value={date}
-          onChange={e => setDate(e.target.value)} />
-      )}
-      <FieldInput label="Notes" id={`trn-${pe.id}`} type="textarea" value={notes}
-        onChange={e => setNotes(e.target.value)} placeholder="Which session/cohort, facilitator notes, etc." />
-      <div style={{ display: "flex", gap: 8 }}>
-        <button style={btn("gold", { padding: "7px 14px", fontSize: 13 })} onClick={save} disabled={saving}>
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button style={btn("ghost", { padding: "7px 14px", fontSize: 13 })} onClick={() => setEditing(false)}>Cancel</button>
-      </div>
-    </div>
-  );
-}
-
-function MyPotentialEnvoys({ currentUser, onLogFeedback }) {
-  const { data, loading, err, reload } = usePotentialEnvoyData();
-  const [filter, setFilter] = useState("active");
-
-  const mine = data.filter(r => r.assignment?.assigned_to === currentUser);
-  const active     = mine.filter(r => !r.promoted_to_membership);
-  const graduated  = mine.filter(r => r.promoted_to_membership);
-  const flagged    = mine.filter(r => r.fbRows.some(f => f.flagged_for_pastoral));
-  const views    = { active, graduated, flagged, all: mine };
-  const filtered = views[filter] || mine;
-
-  const dueTodayStr = new Date().toISOString().slice(0, 10);
-  const dueEntries = active
-    .map(r => {
-      const last = r.fbRows[r.fbRows.length - 1];
-      if (!last || !last.follow_up_date || last.follow_up_date > dueTodayStr) return null;
-      return { id: r.id, row: r, name: r.full_name, phone: r.phone, dueDate: last.follow_up_date, note: last.notes };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-
-  const tabs = [
-    { k: "active",    label: "Active",    count: active.length,    col: C.soul      },
-    { k: "graduated", label: "Graduated", count: graduated.length, col: C.green     },
-    { k: "flagged",   label: "Flagged",   count: flagged.length,   col: C.flag      },
-    { k: "all",       label: "All",       count: mine.length,      col: C.textMuted },
-  ];
-
-  return (
-    <div className="page-enter">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader title="My Potential Envoys" subtitle={`${mine.length} assigned to you`} />
-
-      <DueTodayPanel entries={dueEntries} actionLabel="Log Call" onAction={r => onLogFeedback(r)} />
-
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label="Assigned to Me" value={mine.length}      icon={Users}     accent={C.soul}  />
-        <StatCard label="Graduated"      value={graduated.length} icon={Star}      accent={C.green} />
-        <StatCard label="Flagged"        value={flagged.length}   icon={Flag}      accent={C.flag}
-          sub={flagged.length > 0 ? "Needs pastoral attention" : ""} />
-      </div>
-
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)} style={{
-            padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
-            fontFamily: F.body, background: filter === t.k ? t.col : C.bg,
-            color: filter === t.k ? "#fff" : C.textSecondary,
-            border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
-          }}>{t.label} ({t.count})</button>
-        ))}
-        <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}><RefreshCw size={13} /></button>
-      </div>
-
-      <Alert type="error" msg={err} onClose={() => {}} />
-
-      {loading ? <SkeletonList rows={6} /> : (
-        <div style={{ display: "grid", gap: 10 }}>
-          {filtered.map(r => {
-            const nxt = peNextWeek(r.fbRows);
-            const isComplete = pePipelineComplete(r.fbRows);
-            const canGraduate = isComplete && r.training_completed && !r.promoted_to_membership;
-            return (
-              <div key={r.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${r.promoted_to_membership ? C.green : C.soul}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
-                    <Avatar name={r.full_name} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>
-                        {r.full_name}{r.promoted_to_membership && <span style={{ marginLeft: 6 }}>🎉</span>}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /></div>
-                    </div>
-                  </div>
-                  {!r.promoted_to_membership && !isComplete && (
-                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogFeedback(r)}>
-                      <Phone size={13} />Log Week {nxt}
-                    </button>
-                  )}
-                  {r.promoted_to_membership && (
-                    <span style={badge(C.green, C.greenLight, { fontSize: 12 })}><Star size={11} />Now a Member</span>
-                  )}
-                </div>
-
-                <div style={{ marginTop: 10 }}><PEPipelineBar fbRows={r.fbRows} trainingCompleted={r.training_completed} /></div>
-
-                {!r.promoted_to_membership && <PETrainingBlock pe={r} onSaved={reload} />}
-
-                {canGraduate && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: C.textMuted, fontStyle: "italic" }}>
-                    All requirements met — this person will move to Membership automatically.
-                  </div>
-                )}
-
-                {r.fbRows.length > 0 && (
-                  <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
-                    {r.fbRows.map(fb => {
-                      const fsm = statusMeta(fb.call_status);
-                      return (
-                        <div key={fb.id} style={{ background: C.bg, borderRadius: 8, padding: "8px 12px", border: `1px solid ${C.border}` }}>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4, alignItems: "center" }}>
-                            <span style={badge(fsm.color, fsm.bg, { fontSize: 10, fontFamily: F.head })}>Week {fb.week_number} · {fsm.label}</span>
-                            {fb.flagged_for_pastoral && <span style={badge(C.flag, C.flagLight, { fontSize: 10 })}><Flag size={9} />Flagged</span>}
-                          </div>
-                          <div style={{ fontSize: 12, color: C.textSecondary }}>
-                            {fb.caller_name}
-                            {fb.follow_up_date && <span style={{ marginLeft: 8, color: C.amber }}><Calendar size={10} style={{ verticalAlign: "middle" }} /> {fb.follow_up_date}</span>}
-                          </div>
-                          {fb.notes && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 3 }}>{fb.notes}</div>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {!loading && filtered.length === 0 && (
-            <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
-              <Heart size={28} color={C.soul} style={{ marginBottom: 8 }} />
-              <div style={{ fontWeight: 600, fontFamily: F.head }}>
-                {mine.length === 0 ? "No Potential Envoys assigned to you yet." : "Nothing in this category."}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LogPotentialEnvoyFeedback({ person, callerName, onBack }) {
-  const nxt = peNextWeek(person.fbRows);
-  const [form, setForm] = useState({
-    call_status: "", notes: "", follow_up_date: "",
-    flagged_for_pastoral: false, flag_reason: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState("");
-
-  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e && e.target !== undefined ? e.target.value : e }));
-
-  const submit = async () => {
-    if (!form.call_status) { setErr("Call status is required."); return; }
-    if (form.flagged_for_pastoral && !form.flag_reason.trim()) { setErr("Describe the reason for flagging."); return; }
-    setLoading(true); setErr("");
-    try {
-      await sb("potential_envoys_feedback", {
-        method: "POST",
-        body: JSON.stringify({
-          potential_envoy_id: person.id,
-          week_number: nxt,
-          call_status: form.call_status,
-          notes: form.notes || null,
-          follow_up_date: form.follow_up_date || null,
-          caller_name: callerName,
-          flagged_for_pastoral: !!form.flagged_for_pastoral,
-          flag_reason: form.flagged_for_pastoral ? form.flag_reason : null,
-        }),
-      });
-      toast.success(`Week ${nxt} logged.`);
-      setDone(true);
-    } catch (e) { setErr(e.message); }
-    setLoading(false);
-  };
-
-  if (done) return (
-    <div style={{ ...card, textAlign: "center", padding: "3rem" }} className="page-enter">
-      <CheckCircle size={48} color={C.green} style={{ marginBottom: 12 }} />
-      <h3 style={{ color: C.green, fontFamily: F.head, margin: "0 0 8px" }}>Week {nxt} logged for {person.full_name}</h3>
-      <button style={{ ...btn("outline"), marginTop: 12 }} onClick={onBack}><ArrowLeft size={14} />Back</button>
-    </div>
-  );
-
-  return (
-    <div style={card} className="page-enter">
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <button style={btn("ghost", { padding: "7px 10px" })} onClick={onBack}><ArrowLeft size={14} /></button>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontFamily: F.head, fontWeight: 800 }}>Week {nxt} Check-In — {person.full_name}</h2>
-          <p style={{ margin: "3px 0 0", fontSize: 13, color: C.textMuted }}><PhoneLink phone={person.phone} withWhatsApp size={13} bold /></p>
-        </div>
-      </div>
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
-      <FieldInput label="Call Status" id="pecs" type="select" required value={form.call_status} onChange={set("call_status")} options={CALL_STATUS_OPTIONS} />
-      {form.call_status && !["Reached"].includes(form.call_status) && (
-        <FieldInput label="Follow-Up Date" id="pefd" type="date" value={form.follow_up_date} onChange={set("follow_up_date")} />
-      )}
-      <FieldInput label="Notes" id="pent" type="textarea" value={form.notes} onChange={set("notes")}
-        placeholder="How are they settling in? Any needs, questions, or encouragement shared…" />
-      <div style={{ background: C.flagLight, border: "1px solid #FECACA", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-        <div style={{ fontWeight: 700, fontSize: 13, color: C.flag, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-          <Flag size={13} />Flag for Pastoral Team
-        </div>
-        <FieldInput label="Flag this person for pastoral attention" id="pefl" type="toggle"
-          value={form.flagged_for_pastoral} onChange={set("flagged_for_pastoral")} />
-        {form.flagged_for_pastoral && (
-          <FieldInput label="Reason" id="pefr" type="textarea" required value={form.flag_reason} onChange={set("flag_reason")} />
-        )}
-      </div>
-      <button style={{ ...btn("soul"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
-        {loading ? "Saving…" : `Save Week ${nxt}`}
-      </button>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CompletedPipelines — experienceadmin view
-// Change: VIP Name column shows "Full Name (M/F)" in table rows
-// ─────────────────────────────────────────────────────────────────────────────
 
 function CompletedPipelines({ onBack }) {
   const [rows, setRows]         = useState([]);
@@ -9058,9 +8478,9 @@ function FlaggedRecords({ currentUser }) {
                   background: C.flagLight, borderRadius: 8, padding: "10px 14px",
                   fontSize: 13, color: C.flag, lineHeight: 1.6,
                 }}>
-                  <strong>Reason flagged:</strong> {isSoulCare ? (r.notes || "No reason provided") : (r.flag_reason || "No reason provided")}
+                  <strong>Reason flagged:</strong> {r.flag_reason || (isSoulCare ? r.notes : null) || "No reason provided"}
                 </div>
-                {!isSoulCare && r.notes && (
+                {(r.flag_reason || !isSoulCare) && r.notes && (
                   <p style={{ margin: "8px 0 0", fontSize: 13, color: C.textSecondary, lineHeight: 1.55 }}>
                     <strong>Call notes:</strong> {r.notes}
                   </p>
@@ -9920,7 +9340,7 @@ function MemberProfile({ member, currentUser, role, onBack }) {
             const sm = SC_CALL_STATUS_META[h.call_status] || { color: C.textMuted, bg: C.bg };
             return (
               <div key={h.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${sm.color}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: h.notes ? 6 : 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: (h.notes || h.flag_reason || h.visitation_date) ? 6 : 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={badge(sm.color, sm.bg, { fontSize: 11 })}>{h.call_status}</span>
                     <span style={{ fontSize: 12, color: C.textSecondary }}>{h.call_date}</span>
@@ -9935,6 +9355,13 @@ function MemberProfile({ member, currentUser, role, onBack }) {
                     )}
                   </div>
                 </div>
+                {h.visitation_availability === "Available" && (h.visitation_date || h.visitation_time) && (
+                  <div style={{ fontSize: 13, color: C.green, marginBottom: 4 }}>
+                    <Calendar size={11} style={{ verticalAlign: "middle", marginRight: 4 }} />
+                    Proposed visit: {h.visitation_date || "date TBC"}{h.visitation_time ? ` at ${h.visitation_time.slice(0, 5)}` : ""}
+                  </div>
+                )}
+                {h.flag_reason && <div style={{ fontSize: 13, color: C.flag, marginBottom: 4 }}><strong>Flagged:</strong> {h.flag_reason}</div>}
                 {h.notes && <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>{h.notes}</div>}
               </div>
             );
@@ -10089,9 +9516,8 @@ function StewardsCSVImport({ currentUser, onDone }) {
         Required column: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>.
         Optional: phone, email, gender, dob, marital_status, life_stage,{" "}
         <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>department</code>,{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>position</code> (defaults to "Steward" if
-        left blank \u2014 anything else, e.g. "Team Lead" or "Assistant Team Lead", makes that person eligible to submit
-        Steward Appraisals for their department), membership_status, date_joined, house_address, nearest_landmark.
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>position</code> membership_status, date_joined, house_address, 
+        nearest_landmark.
       </p>
       <Alert type="error"   msg={err}     onClose={() => setErr("")} />
       <Alert type="success" msg={success} onClose={() => setSuccess("")} />
@@ -10387,7 +9813,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                   </div>
                   <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
                   <div style={{ fontSize: 12, color: C.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.email || <span style={{ color: C.textMuted }}>\u2014</span>}
+                    {m.email || <span style={{ color: C.textMuted }}>—</span>}
                   </div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "\u2014"}</div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
@@ -10954,7 +10380,10 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
   const [status, setStatus] = useState("Reached");
   const [notes, setNotes]   = useState("");
   const [flag, setFlag]     = useState(false);
+  const [flagReason, setFlagReason] = useState("");
   const [visitAvailability, setVisitAvailability] = useState(null);
+  const [visitDate, setVisitDate] = useState("");
+  const [visitTime, setVisitTime] = useState("");
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState("");
 
@@ -10974,6 +10403,7 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
   }, [person._table, person.id]);
 
   const submit = async () => {
+    if (flag && !flagReason.trim()) { setErr("Describe the reason for flagging."); return; }
     setSaving(true); setErr("");
     try {
       await sb("soul_call_logs", {
@@ -10985,7 +10415,10 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
           call_status: status,
           notes: notes.trim() || null,
           flagged_for_pastoral: flag,
+          flag_reason: flag ? flagReason.trim() : null,
           visitation_availability: visitAvailability,
+          visitation_date: visitAvailability === "Available" ? (visitDate || null) : null,
+          visitation_time: visitAvailability === "Available" ? (visitTime || null) : null,
         }),
       });
       toast.success(`Call logged for ${person.full_name}.`);
@@ -11015,7 +10448,7 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
               const sm = SC_CALL_STATUS_META[h.call_status] || { color: C.textMuted, bg: C.bg };
               return (
                 <div key={h.id} style={{ ...card, padding: "10px 14px", borderLeft: `3px solid ${sm.color}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: h.notes ? 4 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: (h.notes || h.flag_reason || h.visitation_date) ? 4 : 0 }}>
                     <span style={badge(sm.color, sm.bg, { fontSize: 10 })}>{h.call_status}</span>
                     <span style={{ fontSize: 12, color: C.textSecondary }}>{h.call_date}</span>
                     <span style={{ fontSize: 11, color: C.textMuted }}>· by {h.called_by || "—"}</span>
@@ -11026,6 +10459,13 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
                       </span>
                     )}
                   </div>
+                  {h.visitation_availability === "Available" && (h.visitation_date || h.visitation_time) && (
+                    <div style={{ fontSize: 12, color: C.green, marginBottom: 4 }}>
+                      <Calendar size={10} style={{ verticalAlign: "middle", marginRight: 3 }} />
+                      Proposed: {h.visitation_date || "date TBC"}{h.visitation_time ? ` at ${h.visitation_time.slice(0, 5)}` : ""}
+                    </div>
+                  )}
+                  {h.flag_reason && <div style={{ fontSize: 12, color: C.flag, marginBottom: 4 }}><strong>Flagged:</strong> {h.flag_reason}</div>}
                   {h.notes && <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.45 }}>{h.notes}</div>}
                 </div>
               );
@@ -11075,12 +10515,40 @@ function LogSoulCallForm({ person, loggedBy, onCancel, onDone }) {
               </button>
             ))}
           </div>
+          {visitAvailability === "Available" && (
+            <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>Preferred date</div>
+                <input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} style={inputBase} />
+              </div>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>Preferred time</div>
+                <input type="time" value={visitTime} onChange={e => setVisitTime(e.target.value)} style={inputBase} />
+              </div>
+            </div>
+          )}
         </div>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.textSecondary, margin: "6px 0 18px", cursor: "pointer" }}>
-          <input type="checkbox" checked={flag} onChange={e => setFlag(e.target.checked)} style={{ width: 16, height: 16 }} />
-          Flag for Pastoral attention
-        </label>
+        <div style={{
+          background: C.flagLight, border: `1px solid #FECACA`,
+          borderRadius: 10, padding: "16px", marginBottom: 14,
+        }}>
+          <div style={{
+            fontWeight: 700, fontSize: 13, fontFamily: F.head, color: C.flag, marginBottom: 10,
+            display: "flex", alignItems: "center", gap: 6,
+          }}>
+            <Flag size={13} />Flag for Pastoral Team
+          </div>
+          <FieldInput label="Flag this person for Pastoral Team attention" id="sc-fp" type="toggle"
+            value={flag} onChange={setFlag}
+            hint="Use this if the person raised a concern, prayer request, or needs pastoral follow-up" />
+          {flag && (
+            <FieldInput label="Reason for flagging" id="sc-fr" type="textarea" required
+              value={flagReason} onChange={e => setFlagReason(e.target.value)}
+              placeholder="Describe the concern that needs pastoral attention…" />
+          )}
+        </div>
+
         <button style={{ ...btn("soul"), width: "100%" }} onClick={submit} disabled={saving}>
           {saving ? "Saving…" : "Save Call Log"}
         </button>
@@ -11176,12 +10644,13 @@ function AvailableForVisitation() {
       const str = String(v).replace(/"/g, '""');
       return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
     };
-    const header = ["Full Name", "Phone", "Category", "Decision", "Date Recorded", "Notes"];
+    const header = ["Full Name", "Phone", "Category", "Decision", "Proposed Visit Date", "Proposed Visit Time", "Date Recorded", "Notes"];
     const csvRows = [
       header.join(","),
       ...toExport.map(r => [
         escape(r.person.full_name), escape(r.person.phone), escape(category),
-        escape(r.visitation_availability), escape(r.call_date), escape(r.notes),
+        escape(r.visitation_availability), escape(r.visitation_date), escape(r.visitation_time?.slice(0, 5)),
+        escape(r.call_date), escape(r.notes),
       ].join(",")),
     ];
     const blob = new Blob([csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
@@ -11261,6 +10730,12 @@ function AvailableForVisitation() {
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.person.full_name}</div>
                   <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.person.phone} withWhatsApp /></div>
+                  {r.visitation_availability === "Available" && (r.visitation_date || r.visitation_time) && (
+                    <div style={{ fontSize: 12, color: C.green, marginTop: 2 }}>
+                      <Calendar size={11} style={{ verticalAlign: "middle", marginRight: 3 }} />
+                      Proposed: {r.visitation_date || "date TBC"}{r.visitation_time ? ` at ${r.visitation_time.slice(0, 5)}` : ""}
+                    </div>
+                  )}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -11290,6 +10765,7 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
   const [msg, setMsg]                     = useState("");
   const [msgType, setMsgType]             = useState("success");
   const [pendingAssign, setPendingAssign] = useState({});
+  const [selected, setSelected] = useState(new Set());
 
   const byCategory = data.filter(r => r.category === category);
   const filtered = sortByCallPriority(byCategory.filter(r => {
@@ -11305,26 +10781,40 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
   const assignedCount   = byCategory.filter(r => !!r.assignment).length;
   const unassignedCount = byCategory.filter(r => !r.assignment).length;
 
+    const selectedCount   = filtered.filter(r => selected.has(r.id)).length;
+
+  const toggleRow = (id) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const visibleIds = filtered.slice(0, visibleCount).map(r => r.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
+  const toggleSelectAll = () => setSelected(prev => {
+    const n = new Set(prev);
+    visibleIds.forEach(id => allVisibleSelected ? n.delete(id) : n.add(id));
+    return n;
+  });
+
   const bulkAssign = async () => {
-    if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
-    const targets = byCategory.filter(r => !r.assignment);
-    if (!targets.length) { setMsg("No unassigned contacts to assign."); setMsgType("warn"); return; }
-    setSaving(true); setMsg("");
-    try {
-      const payload = targets.map(r => ({
-        person_table: r._table, person_id: String(r.id),
-        assigned_to: selectedMember, assigned_by: currentUser,
-      }));
-      for (let i = 0; i < payload.length; i += 50) {
-        await sb("soul_call_assignments", {
-          method: "POST",
-          prefer: "resolution=merge-duplicates,return=representation",
-          body: JSON.stringify(payload.slice(i, i + 50)),
-        });
-      }
-      setMsg(`${targets.length} ${category.toLowerCase()}${targets.length !== 1 ? "s" : ""} assigned to ${selectedMember}.`);
-      setMsgType("success");
-      reload();
+  if (!selectedMember) { setMsg("Select a team member first."); setMsgType("warn"); return; }
+  const targets = selectedCount > 0
+    ? byCategory.filter(r => selected.has(r.id))
+    : byCategory.filter(r => !r.assignment);
+  if (!targets.length) { setMsg("No contacts to assign."); setMsgType("warn"); return; }
+  setSaving(true); setMsg("");
+  try {
+    const payload = targets.map(r => ({
+      person_table: r._table, person_id: String(r.id),
+      assigned_to: selectedMember, assigned_by: currentUser,
+    }));
+    for (let i = 0; i < payload.length; i += 50) {
+      await sb("soul_call_assignments", {
+        method: "POST",
+        prefer: "resolution=merge-duplicates,return=representation",
+        body: JSON.stringify(payload.slice(i, i + 50)),
+      });
+    }
+    setMsg(`${targets.length} ${category.toLowerCase()}${targets.length !== 1 ? "s" : ""} assigned to ${selectedMember}.`);
+    setMsgType("success");
+    setSelected(new Set());
+    reload();
     } catch (e) { setMsg(e.message); setMsgType("error"); }
     setSaving(false);
   };
@@ -11372,7 +10862,7 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
       <PageHeader title="Assign Calls" subtitle="Allocate Stewards and Members to Soul Care team members for calling" />
 
       <div style={{ marginBottom: 20 }}>
-        <CategoryToggle value={category} onChange={setCategory} counts={{
+                <CategoryToggle value={category} onChange={c => { setCategory(c); setSelected(new Set()); }} counts={{
           Steward: data.filter(r => r.category === "Steward").length,
           Member:  data.filter(r => r.category === "Member").length,
         }} />
@@ -11392,7 +10882,9 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 5 }}>
-              Assign all <strong>{unassignedCount}</strong> unassigned {category === "Steward" ? "stewards" : "members"} to:
+              {selectedCount > 0
+                ? <>Assign <strong>{selectedCount}</strong> selected {category === "Steward" ? "steward" : "member"}{selectedCount !== 1 ? "s" : ""} to:</>
+                : <>Assign all <strong>{unassignedCount}</strong> unassigned {category === "Steward" ? "stewards" : "members"} to:</>}
             </div>
             {teamLoading ? (
               <div style={{ ...inputBase, color: C.textMuted }}>Loading…</div>
@@ -11403,9 +10895,9 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
               </select>
             )}
           </div>
-          <button style={{ ...btn("primary", { background: C.blue }), opacity: (!selectedMember || unassignedCount === 0) ? .5 : 1 }}
-            onClick={bulkAssign} disabled={saving || !selectedMember || unassignedCount === 0}>
-            <Zap size={14} />Assign All
+          <button style={{ ...btn("primary", { background: C.blue }), opacity: (!selectedMember || (selectedCount === 0 && unassignedCount === 0)) ? .5 : 1 }}
+            onClick={bulkAssign} disabled={saving || !selectedMember || (selectedCount === 0 && unassignedCount === 0)}>
+            <Zap size={14} />{selectedCount > 0 ? `Assign (${selectedCount})` : "Assign All"}
           </button>
         </div>
       </div>
@@ -11424,6 +10916,12 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
             {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
           </button>
         ))}
+        <button onClick={toggleSelectAll} style={{
+          padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
+        }}>
+          {allVisibleSelected ? "Deselect All" : "Select All"}
+        </button>
         <div style={{ position: "relative", marginLeft: "auto" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
@@ -11438,6 +10936,8 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
               return (
                 <div key={r.id} style={{ ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                    <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
+                      style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
                     <Avatar name={r.full_name} size={36} />
                     <div style={{ minWidth: 0 }}>
                       <div onClick={() => onViewProfile && onViewProfile(r)} style={{
@@ -13561,6 +13061,21 @@ function AdminOverview({ setActive }) {
   );
 }
 
+// Roles that should share one filter tab instead of two separate ones —
+// e.g. "Soul Care Admin" accounts show up under the same "Soul Care" tab as
+// regular "Soul Care" accounts, just sorted to the top of that list.
+const ROLE_GROUPS = {
+  soulcare: "soulcare", soulcareadmin: "soulcare",
+  expteam: "expteam", experienceadmin: "expteam",
+};
+const GROUP_LABELS = {
+  soulcare: "Soul Care",
+  expteam: "Experience Team",
+};
+const ADMIN_VARIANT_ROLES = new Set(["soulcareadmin", "experienceadmin"]);
+const groupOf = (u) => ROLE_GROUPS[u.role] || u.role;
+const groupLabel = (g) => GROUP_LABELS[g] || ROLE_META[g]?.label || g;
+
 function AdminUsers({ onEdit }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13609,25 +13124,28 @@ function AdminUsers({ onEdit }) {
   const pendingCount = users.filter(u => u.is_pending).length;
 
   const roleCounts = {};
-  users.forEach(u => { roleCounts[u.role] = (roleCounts[u.role] || 0) + 1; });
+  users.forEach(u => { const g = groupOf(u); roleCounts[g] = (roleCounts[g] || 0) + 1; });
   const roleFilters = [
     { k: "all", label: "All", count: users.length },
-    ...Object.keys(ROLE_META)
-      .filter(k => roleCounts[k] > 0)
-      .sort((a, b) => (ROLE_META[a]?.label || a).localeCompare(ROLE_META[b]?.label || b))
-      .map(k => ({ k, label: ROLE_META[k]?.label || k, count: roleCounts[k] })),
+    ...Object.keys(roleCounts)
+      .sort((a, b) => groupLabel(a).localeCompare(groupLabel(b)))
+      .map(g => ({ k: g, label: groupLabel(g), count: roleCounts[g] })),
   ];
 
-  const roleScoped = roleFilter === "all" ? users : users.filter(u => u.role === roleFilter);
+  const roleScoped = roleFilter === "all" ? users : users.filter(u => groupOf(u) === roleFilter);
   const tierOf = (u) => u.is_pending ? 0 : u.is_active ? 1 : 2; // pending first, active next, deactivated last
+  const roleRank = (u) => ADMIN_VARIANT_ROLES.has(u.role) ? 0 : 1; // admin variant first within a merged group
   const sorted = [...roleScoped].sort((a, b) => {
     const t = tierOf(a) - tierOf(b);
     if (t !== 0) return t;
+    const r = roleRank(a) - roleRank(b);
+    if (r !== 0) return r;
     return (a.display_name || a.username || "").localeCompare(b.display_name || b.username || "");
   });
   const { visibleCount, onScroll } = usePagedScroll(`users|${roleFilter}`, sorted.length, 10);
 
   return (
+ 
     <div className="page-enter">
       <PageHeader title="System Users"
         subtitle={`${sorted.length} of ${users.length} account${users.length !== 1 ? "s" : ""}${pendingCount ? ` · ${pendingCount} pending approval` : ""}`}
@@ -13663,7 +13181,9 @@ function AdminUsers({ onEdit }) {
                   <Avatar name={u.display_name || u.username} size={40} />
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{u.display_name || u.username}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>@{u.username}</div>
+                    <div style={{ fontSize: 12, color: C.textMuted }}>
+                      @{u.username}{u.created_at ? ` · Joined ${u.created_at.slice(0, 10)}` : ""}
+                    </div>
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -14983,7 +14503,7 @@ function App() {
     if (active === "envoys_visitors") return <EnvoysVisitors />;
 
     if (active === "completed_pipelines") {
-      const cpBackTarget = role === "soulcareadmin" ? "pe_assign" : "assign_calls";
+      const cpBackTarget = role === "soulcareadmin" ? "envoys_visitors" : "assign_calls";
       return <CompletedPipelines onBack={() => navTo(cpBackTarget)} />;
     }
 
@@ -15033,21 +14553,6 @@ function App() {
           onLogFeedback={r => setFeedbackTarget(r)}
         />
       );
-    }
-
-    if (active === "pe_assign") return <PotentialEnvoysAssignView currentUser={user} />;
-
-    if (active === "pe_mine") {
-      if (feedbackTarget) {
-        return (
-          <LogPotentialEnvoyFeedback
-            person={feedbackTarget}
-            callerName={user}
-            onBack={() => setFeedbackTarget(null)}
-          />
-        );
-      }
-      return <MyPotentialEnvoys currentUser={user} onLogFeedback={r => setFeedbackTarget(r)} />;
     }
 
     if (active === "soulcare_dashboard") return <SoulCareReportingDashboard />;
