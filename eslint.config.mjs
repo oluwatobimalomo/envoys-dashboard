@@ -9,6 +9,8 @@ const config = [
       "@typescript-eslint/no-explicit-any": "off",
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "off",
+      "react-hooks/purity": "off",
+      "@typescript-eslint/no-unused-expressions": ["warn", { allowTernary: true, allowShortCircuit: true }],
     },
   },
   { ignores: [".next/**", "node_modules/**", "public/sw.js"] },

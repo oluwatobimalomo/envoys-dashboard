@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import {
-  ArrowLeft, CheckCircle2, Download, FileText, Filter, MapPin, Phone, RefreshCw, RotateCcw, Search, Star, TrendingUp, UserCheck, Users,
+  ArrowLeft, CheckCircle2, Download, FileText, Filter, MapPin, Phone, RefreshCw, RotateCcw, Star, Users,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import {
   StatCard, StatGrid, ToneBadge, Toolbar, ViewToggle, td, th, usePersistentState,
 } from "@/components/app/kit"
 import { DateRangeBar, SortableHead } from "@/components/app/shared"
-import { BarRow, CHART, ChartCard, ChartEmpty, Donut, SectionLabel, SummaryPanel, VBars } from "@/components/app/charts"
+import { BarRow, ChartCard, ChartEmpty, Donut, SectionLabel, SummaryPanel, VBars } from "@/components/app/charts"
 import { useNav, useSession } from "@/components/app/session"
 import { genderTag } from "@/modules/calls"
 import { sb } from "@/lib/supabase"

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
-  Activity, AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, Download, FileText, Flag, Heart, Phone, Star, TrendingUp,
+  AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, Download, FileText, Flag, Heart, Phone, Star, TrendingUp,
   UserCheck, Users, X, Zap,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -647,7 +647,10 @@ export function SoulCareReportingDashboard() {
   const { stats: f, loading: fl, err } = useSoulCareFunnelData(dateFrom, dateTo)
   const { data: nc, loading: nl } = useNewConvertData(dateFrom, dateTo)
   const [pdfBusy, setPdfBusy] = useState(false)
-  const refs = { vipDecision: useRef<HTMLDivElement>(null), vipFunnel: useRef<HTMLDivElement>(null), ncType: useRef<HTMLDivElement>(null), ncMonth: useRef<HTMLDivElement>(null) }
+  const vipDecisionRef = useRef<HTMLDivElement>(null)
+  const vipFunnelRef = useRef<HTMLDivElement>(null)
+  const ncTypeRef = useRef<HTMLDivElement>(null)
+  const ncMonthRef = useRef<HTMLDivElement>(null)
   const ncTotal = nc.length
   const ncCompleted = nc.filter((r) => ncComplete(r.fbRows) && r.envoys_training_completed).length
   const ncStats = { total: ncTotal, completed: ncCompleted, trainingDone: nc.filter((r) => r.envoys_training_completed).length, retentionPct: ncTotal > 0 ? Math.round((ncCompleted / ncTotal) * 100) : 0 }
@@ -665,7 +668,7 @@ export function SoulCareReportingDashboard() {
     try {
       const [{ default: html2canvas }, { renderSoulCarePdf }] = await Promise.all([import("html2canvas-pro"), import("@/modules/soul-care-report-pdf")])
       const cap = async (r: React.RefObject<HTMLDivElement | null>) => (r.current ? (await html2canvas(r.current, { backgroundColor: "#ffffff", scale: 2 })).toDataURL("image/png") : null)
-      const [vipDecision, vipFunnel, ncType, ncMonth, logoDataUri] = await Promise.all([cap(refs.vipDecision), cap(refs.vipFunnel), cap(refs.ncType), cap(refs.ncMonth), fetchLogoDataUri()])
+      const [vipDecision, vipFunnel, ncType, ncMonth, logoDataUri] = await Promise.all([cap(vipDecisionRef), cap(vipFunnelRef), cap(ncTypeRef), cap(ncMonthRef), fetchLogoDataUri()])
       const blob = await renderSoulCarePdf({ funnelStats: f, ncStats, summary, dateFrom, dateTo, chartImages: { vipDecision, vipFunnel, ncType, ncMonth }, logoDataUri })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -699,10 +702,10 @@ export function SoulCareReportingDashboard() {
           </StatGrid>
           <SectionLabel>Visual breakdown</SectionLabel>
           <div className="mb-6 grid gap-4 lg:grid-cols-2">
-            <ChartCard title="VIP decision split"><div ref={refs.vipDecision}>{decision.length === 0 ? <ChartEmpty label="No VIP overviews in this range" /> : <Donut data={decision} centerValue={f?.totalOverviews ?? 0} centerLabel="Overviews submitted" />}</div></ChartCard>
-            <ChartCard title="VIP funnel stages"><div ref={refs.vipFunnel}><VBars data={funnel} valueLabel="People" /></div></ChartCard>
-            <ChartCard title="New converts by type"><div ref={refs.ncType}>{typeDonut.length === 0 ? <ChartEmpty label="No new converts in this range" /> : <Donut data={typeDonut} centerValue={ncStats.total} centerLabel="New converts" />}</div></ChartCard>
-            <ChartCard title="New converts — weekly reach"><div ref={refs.ncMonth}><VBars data={reach} valueLabel="Reached" /></div></ChartCard>
+            <ChartCard title="VIP decision split"><div ref={vipDecisionRef}>{decision.length === 0 ? <ChartEmpty label="No VIP overviews in this range" /> : <Donut data={decision} centerValue={f?.totalOverviews ?? 0} centerLabel="Overviews submitted" />}</div></ChartCard>
+            <ChartCard title="VIP funnel stages"><div ref={vipFunnelRef}><VBars data={funnel} valueLabel="People" /></div></ChartCard>
+            <ChartCard title="New converts by type"><div ref={ncTypeRef}>{typeDonut.length === 0 ? <ChartEmpty label="No new converts in this range" /> : <Donut data={typeDonut} centerValue={ncStats.total} centerLabel="New converts" />}</div></ChartCard>
+            <ChartCard title="New converts — weekly reach"><div ref={ncMonthRef}><VBars data={reach} valueLabel="Reached" /></div></ChartCard>
           </div>
           <SummaryPanel>{summary}</SummaryPanel>
           <p className="mt-4 text-xs text-muted-foreground">For the weekly call-outcome breakdown, see the Pastoral Report. For a full breakdown of new converts, see New Converts Retention.</p>

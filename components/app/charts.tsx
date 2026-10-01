@@ -95,10 +95,10 @@ export function VBars({ data, height = 220, valueLabel = "Count" }: { data: Datu
   if (!data.length || !data.some((d) => d.value)) return <ChartEmpty height={height} />
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} margin={{ top: 6, right: 6, left: -18, bottom: 0 }} barCategoryGap="22%">
+      <BarChart data={data} margin={{ top: 6, right: 6, left: 0, bottom: 0 }} barCategoryGap="22%">
         <CartesianGrid strokeDasharray="3 5" stroke="var(--border)" vertical={false} />
         <XAxis dataKey="name" tick={axisTick} axisLine={{ stroke: "var(--border)" }} tickLine={false} interval={0} />
-        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={32} />
+        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={40} />
         <Tooltip cursor={{ fill: "var(--muted)" }} contentStyle={tooltipStyle} formatter={(v: any) => [v, valueLabel]} />
         <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false}>
           {data.map((d, i) => <Cell key={i} fill={d.color || CHART[0]} />)}
@@ -131,10 +131,10 @@ export function StackedArea({ rows, xKey, series, height = 260, empty = "No data
   if (!rows.length) return <ChartEmpty label={empty} height={height} />
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={rows} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+      <AreaChart data={rows} margin={{ top: 6, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 5" stroke="var(--border)" vertical={false} />
         <XAxis dataKey={xKey} tick={axisTick} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
-        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={32} />
+        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={40} />
         <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: "var(--border-strong)" }} />
         <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
         {series.map((s) => (
@@ -149,10 +149,10 @@ export function Lines({ rows, xKey, series, height = 240 }: { rows: any[]; xKey:
   if (!rows.length) return <ChartEmpty height={height} />
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={rows} margin={{ top: 6, right: 10, left: -18, bottom: 0 }}>
+      <LineChart data={rows} margin={{ top: 6, right: 10, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 5" stroke="var(--border)" vertical={false} />
         <XAxis dataKey={xKey} tick={axisTick} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
-        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={32} />
+        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={40} />
         <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: "var(--border-strong)" }} />
         {series.length > 1 && <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />}
         {series.map((s) => (
@@ -168,10 +168,10 @@ export function MultiBars({ rows, xKey, series, height = 240, stacked = false }:
   if (!rows.length) return <ChartEmpty height={height} />
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={rows} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
+      <BarChart data={rows} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 5" stroke="var(--border)" vertical={false} />
         <XAxis dataKey={xKey} tick={axisTick} axisLine={{ stroke: "var(--border)" }} tickLine={false} />
-        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={32} />
+        <YAxis allowDecimals={false} tick={axisTick} axisLine={false} tickLine={false} width={40} />
         <Tooltip cursor={{ fill: "var(--muted)" }} contentStyle={tooltipStyle} />
         <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
         {series.map((s, i) => (

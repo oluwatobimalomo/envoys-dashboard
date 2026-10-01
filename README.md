@@ -1,70 +1,47 @@
-# Getting Started with Create React App
+# The Envoys — Membership Retention
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+The retention workspace for RCCG The Envoys: first-timers, VIP follow-up calls, new converts, Soul Care, testimonies, research feedback, Night of Mercy and stewards appraisal.
 
-## Available Scripts
+**Stack:** Next.js 16 (App Router, TypeScript) · Tailwind CSS v4 · shadcn/ui (Radix) · Recharts · Supabase (existing project and tables, unchanged).
 
-In the project directory, you can run:
+## Getting started
 
-### `npm start`
+```bash
+cp .env.example .env.local   # fill in the values
+npm install
+npm run dev                  # http://localhost:3000
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The existing Supabase project. If unset, the app falls back to the project the legacy app used. |
+| `AUTH_SECRET` | Signs the session cookie. **Set this in Vercel** (`openssl rand -base64 32`). |
+| `ANTHROPIC_API_KEY` | Used by `/api/generate-insight` (optional `ANTHROPIC_MODEL`). |
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Scripts: `npm run build`, `npm run lint`, `npm run typecheck`.
 
-### `npm test`
+## How it is organised
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```
+app/
+  (app)/[section]/   every signed-in page, e.g. /members-care, /call-queue
+  login/             sign-in + request access
+  register, feedback, testimony, new-convert, nom-register, appraisal   public QR forms
+  present/[slug]     testimony projector links (old /?present=slug links redirect here)
+  api/auth/*         login / logout / refresh (signed httpOnly cookie)
+components/
+  ui/                shadcn/ui primitives (branded)
+  app/               shell (sidebar, top bar), kit, charts, widgets, public layout
+modules/             one file per area; each exports the screens listed in modules/registry.tsx
+lib/                 supabase REST helper, session, nav/roles, formatting helpers
+proxy.ts             route protection (Next 16 "proxy", formerly middleware)
+```
 
-### `npm run build`
+- **Roles and navigation** live in `lib/nav.ts` (same roles, menus and groups as before).
+- **Data access** uses the same PostgREST queries as the legacy app via `sb()` in `lib/supabase.ts`, so no database changes are needed.
+- **Sign-in** is checked on the server against `app_users` (same salted SHA-256 hashes; legacy plain-text passwords are upgraded on first sign-in), then stored in a signed, httpOnly cookie for 12 hours.
+- **Design tokens** (light and dark) are in `app/globals.css` and mirror the Envoys design system artifact. Brand colours: forest green `#1A7A3C`, deep green `#1B3A2D`, gold `#D4922A`. Type: Cabinet Grotesk + Satoshi (Fontshare).
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Agent skills
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+`.claude/skills/` vendors the `jakubkrehel/skills` (better-ui, better-typography, better-accessibility, …) and `shadcn` skills so Claude Code sessions in this repo can use them.
