@@ -181,3 +181,20 @@ export function MultiBars({ rows, xKey, series, height = 240, stacked = false }:
     </ResponsiveContainer>
   )
 }
+
+/** Written period summary, shown under dashboards. */
+export function SummaryPanel({ title = "Period summary", children, action }: { title?: React.ReactNode; children: React.ReactNode; action?: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border border-gold/30 bg-gold-tint p-5 sm:p-6">
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="flex-1 font-display text-[15px] font-bold text-gold-ink">{title}</h3>
+        {action}
+      </div>
+      <div className="rounded-md bg-card px-4 py-3.5 text-[14px] leading-7 whitespace-pre-line text-foreground">{children}</div>
+    </section>
+  )
+}
+
+export function SectionLabel({ children }: { children: React.ReactNode }) {
+  return <h2 className="eyebrow mb-3 mt-2">{children}</h2>
+}

@@ -217,8 +217,12 @@ export function buildNavSections(role: string): NavSection[] {
 export const pathFor = (id: string) => `/${id.replace(/_/g, "-")}`
 export const idFromSlug = (slug: string) => slug.replace(/-/g, "_")
 
+const ALL_IDS = new Set(Object.values(NAV).flat().map((n) => n.id))
+
 export function canAccess(role: string, id: string) {
   if (id === "myprofile") return true
+  // Admin can open any module (e.g. the Pastoral report from Overview quick actions).
+  if (role === "admin") return ALL_IDS.has(id)
   return (NAV[role] || []).some((n) => n.id === id)
 }
 
@@ -228,7 +232,7 @@ export function homeFor(role: string) {
 
 export function labelFor(role: string, id: string) {
   if (id === "myprofile") return "My Profile"
-  return NAV[role]?.find((n) => n.id === id)?.label || "Dashboard"
+  return NAV[role]?.find((n) => n.id === id)?.label || Object.values(NAV).flat().find((n) => n.id === id)?.label || "Dashboard"
 }
 
 export function groupFor(role: string, id: string) {

@@ -184,3 +184,11 @@ export function genericSort<T>(rows: T[], getter: (r: T) => any, dir: "asc" | "d
   })
   return withVal.map((x) => x.r)
 }
+
+// ── Soul Care call statuses ──
+export const SC_STATUS_TONE: Record<string, Tone> = {
+  Reached: "brand",
+  "No Answer": "warning",
+  "Call Back Requested": "info",
+  "Wrong Number": "danger",
+}
