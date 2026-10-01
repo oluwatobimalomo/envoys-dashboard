@@ -1,0 +1,19 @@
+import type { MetadataRoute } from "next"
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "The Envoys Retention App",
+    short_name: "Envoys Retention",
+    description: "Membership Retention for The Envoys",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#F4F7F5",
+    theme_color: "#1B3A2D",
+    orientation: "portrait-primary",
+    icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  }
+}
