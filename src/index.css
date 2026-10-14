@@ -1570,7 +1570,7 @@ textarea.field-control { min-height: 100px; }
   }
   .app-shell .content-inner .sc-call-stats .statcard { min-width: 0; min-height: 76px; padding: 10px 8px !important; border-radius: 13px !important; }
   .app-shell .content-inner .sc-call-stats .statcard-content { gap: 0 !important; }
-  .app-shell .content-inner .sc-call-stats .statcard-icon { display: none !important; }
+  .app-shell .content-inner .sc-call-stats .statcard-icon { display: flex !important; }
   .app-shell .content-inner .sc-call-stats .statcard-value { font-size: 20px !important; }
   .app-shell .content-inner .sc-call-stats .statcard-copy > div:nth-child(2) { margin-top: 2px !important; font-size: 10px !important; white-space: nowrap; }
 
@@ -1869,6 +1869,28 @@ textarea.field-control { min-height: 100px; }
 .event-public-heading h1 span { color: #a77b28; }
 .event-public-heading p { margin: 0; color: #557360; font-size: 14px; font-weight: 600; }
 .event-public-card { padding: 20px; border: 1px solid #dce7df; border-radius: 16px; background: #fff; box-shadow: 0 4px 18px rgba(21, 54, 38, .06); }
+.event-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.event-form-grid > .input-field { min-width: 0; margin-bottom: 0 !important; }
+.event-form-grid > .input-field:nth-child(n + 7) { grid-column: 1 / -1; }
+.event-phone-control { display: flex; min-width: 0; gap: 6px; }
+.event-phone-control select, .event-phone-control input { box-sizing: border-box; min-width: 0; height: 42px; border: 1px solid #dce7df; border-radius: 9px; background: #fff; color: #173b2c; font: inherit; font-size: 14px; }
+.event-phone-control select { flex: 0 0 46%; padding: 0 7px; }
+.event-phone-control input { flex: 1 1 0; padding: 0 10px; }
+.event-phone-control select:focus, .event-phone-control input:focus { outline: 2px solid rgba(23, 122, 66, .2); border-color: #177a42; }
+.event-phone-control select { font-size: 15px; text-align: center; }
+.event-country-combobox { position: relative; }
+.event-country-combobox > input { box-sizing: border-box; width: 100%; height: 42px; padding: 0 40px 0 12px; border: 1px solid #dce7df; border-radius: 9px; background: #fff; color: #173b2c; font: inherit; font-size: 14px; }
+.event-country-combobox > input:focus { outline: 2px solid rgba(23, 122, 66, .2); border-color: #177a42; }
+.event-country-toggle { position: absolute; inset-inline-end: 3px; top: 3px; display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #557360; cursor: pointer; }
+.event-country-toggle:hover { background: #edf5ef; }
+.event-country-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+.event-country-options { position: absolute; z-index: 30; inset: calc(100% + 4px) 0 auto; max-height: 230px; overflow-y: auto; padding: 4px; border: 1px solid #dce7df; border-radius: 10px; background: #fff; box-shadow: 0 10px 26px rgba(20, 54, 38, .16); }
+.event-country-options button { display: flex; width: 100%; min-height: 38px; align-items: center; gap: 10px; padding: 7px 9px; border: 0; border-radius: 7px; background: transparent; color: #173b2c; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.event-country-options button:hover, .event-country-options button.is-active { background: #edf5ef; }
+.event-country-options button[aria-selected="true"] { font-weight: 700; }
+.event-country-empty { padding: 12px 10px; color: #708177; font-size: 13px; }
+.event-confirmation { margin-top: 12vh; text-align: center; }
+.event-confirmation p { max-width: 480px; margin: 0 auto; color: #557360; line-height: 1.7; }
 .event-submit { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; margin-top: 12px; border: 0; border-radius: 10px; background: #c9953e; color: white; font-size: 15px; font-weight: 700; cursor: pointer; }
 .event-submit:disabled { opacity: .65; cursor: wait; }
 .event-success-mark { display: grid; width: 56px; height: 56px; margin: 0 auto 14px; place-items: center; border-radius: 50%; background: #e7f4ea; color: #177a42; }
@@ -1996,6 +2018,10 @@ textarea.field-control { min-height: 100px; }
   .event-public-banner { border-radius: 14px; }
   .event-public-heading { padding: 18px 4px 12px; }
   .event-public-card { padding: 14px; }
+  .event-form-grid { gap: 12px 10px; }
+  .event-phone-control { gap: 4px; }
+  .event-phone-control select { flex-basis: 44%; padding: 0 4px; font-size: 14px; }
+  .event-phone-control input { padding: 0 7px; font-size: 13px; }
   .event-qr-layout { grid-template-columns: 1fr; }
   .event-qr-preview { justify-items: center; }
   .event-registry-list { grid-template-columns: 1fr; }
@@ -2412,11 +2438,7 @@ textarea.field-control { min-height: 100px; }
   .app-shell .content-inner .g4.nom-registry-stats .statcard,
   .app-shell .content-inner .g4.convention-stats .statcard,
   .app-shell .content-inner .g4.sc-call-stats .statcard { min-height: 62px !important; padding: 7px !important; }
-  .app-shell .content-inner .g4.nom-registry-stats .statcard-icon,
-  .app-shell .content-inner .g4.convention-stats .statcard-icon,
-  .app-shell .content-inner .g4.sc-call-stats .statcard-icon { display: none !important; }
   .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard { min-height: 62px !important; padding: 7px !important; }
-  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-icon { display: none !important; }
 
   /* Dense operational screens use 40px controls; full-width form controls
      stay at 44px to remain comfortable without making every icon button huge. */
@@ -2538,13 +2560,11 @@ textarea.field-control { min-height: 100px; }
     height: 36px;
     flex: 0 0 36px;
   }
-  .app-shell .content-inner .page-header:has(+ .first-timers-date-filter),
-  .app-shell .content-inner .page-header:has(+ .sc-date-filter) {
+  .app-shell .content-inner .page-header:has(+ .first-timers-date-filter) {
     position: relative;
     padding-inline-end: 44px !important;
   }
-  .app-shell .content-inner .page-header:has(+ .first-timers-date-filter) > div:last-child,
-  .app-shell .content-inner .page-header:has(+ .sc-date-filter) > div:last-child {
+  .app-shell .content-inner .page-header:has(+ .first-timers-date-filter) > div:last-child {
     position: absolute !important;
     inset-inline-end: 0 !important;
     top: 0 !important;
@@ -2932,5 +2952,321 @@ textarea.field-control { min-height: 100px; }
     height: 28px !important;
     min-height: 28px !important;
     justify-self: end;
+  }
+}
+
+/* Mobile control type scale and birthday actions: keep controls legible
+   without allowing button hit-area defaults to collide with row content. */
+@media (max-width: 768px) {
+  .app-shell .content-inner input::placeholder,
+  .app-shell .content-inner textarea::placeholder {
+    font-size: 14px !important;
+    line-height: 1.25;
+    opacity: .78;
+  }
+
+  .app-shell .content-inner select {
+    font-size: 14px !important;
+  }
+  .app-shell .content-inner .care-filterbar select.care-filter-select,
+  .app-shell .content-inner .event-registry-filter-grid select,
+  .app-shell .content-inner .event-registry-filter-grid label,
+  .app-shell .content-inner .stewards-mobile-sort select {
+    font-size: 13px !important;
+  }
+
+  .app-shell .content-inner .birthday-entry {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: minmax(26px, auto) minmax(30px, auto) !important;
+    gap: 4px 8px !important;
+    min-height: 0 !important;
+    align-content: center;
+    padding: 7px 8px !important;
+  }
+  .app-shell .content-inner .birthday-entry .birthday-date {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    max-width: min(42vw, 150px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 10px !important;
+    line-height: 1.2;
+  }
+  .app-shell .content-inner .birthday-entry .birthday-person > div:last-child {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    font-size: 11px !important;
+    line-height: 1.2;
+  }
+  .app-shell .content-inner .birthday-entry button.birthday-send-wishes,
+  .app-shell .content-inner .birthday-entry .birthday-wished {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    align-self: center;
+    flex: 0 0 30px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    max-height: 30px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 9px !important;
+  }
+  .app-shell .content-inner .birthday-entry button.birthday-send-wishes svg,
+  .app-shell .content-inner .birthday-entry .birthday-wished svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Metric cards keep their semantic icon and a stable value/label hierarchy
+   across dashboard, call queue, and event registry screens. */
+.app-shell .content-inner .statcard-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.app-shell .content-inner .statcard-label {
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.app-shell .content-inner .statcard-sub {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 768px) {
+  .app-shell .content-inner .statcard-icon { display: flex !important; }
+  .app-shell .content-inner .statcard-copy { align-self: center; }
+  .app-shell .content-inner .statcard-label { white-space: normal !important; }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard,
+  .app-shell .content-inner .g4.convention-stats .statcard,
+  .app-shell .content-inner .g4.sc-call-stats .statcard {
+    min-height: 74px !important;
+    padding: 8px 7px !important;
+    gap: 6px !important;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-content,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-content,
+  .app-shell .content-inner .g4.convention-stats .statcard-content,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-content {
+    min-width: 0;
+    gap: 6px !important;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-icon,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-icon,
+  .app-shell .content-inner .g4.convention-stats .statcard-icon,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-icon {
+    flex: 0 0 24px;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 8px !important;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-icon svg,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-icon svg,
+  .app-shell .content-inner .g4.convention-stats .statcard-icon svg,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-icon svg {
+    width: 13px;
+    height: 13px;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-value,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-value,
+  .app-shell .content-inner .g4.convention-stats .statcard-value,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-value {
+    font-size: 19px !important;
+    line-height: 1 !important;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-label,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-label,
+  .app-shell .content-inner .g4.convention-stats .statcard-label,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-label {
+    margin-top: 3px !important;
+    font-size: 9px !important;
+    line-height: 1.15 !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard,
+  .app-shell .content-inner .g4.convention-stats .statcard,
+  .app-shell .content-inner .g4.sc-call-stats .statcard {
+    padding-inline: 6px !important;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-icon,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-icon,
+  .app-shell .content-inner .g4.convention-stats .statcard-icon,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-icon {
+    flex-basis: 22px;
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-label,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-label,
+  .app-shell .content-inner .g4.convention-stats .statcard-label,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-label {
+    font-size: 8.5px !important;
+  }
+}
+
+/* Event registry: keep the date controls tied to their heading and avoid
+   spending the full desktop width on small summary controls. */
+.app-shell .content-inner .page-enter:has(> .sc-date-filter) > .page-header {
+  margin-bottom: 18px !important;
+}
+.app-shell .content-inner .sc-date-filter {
+  width: fit-content;
+  max-width: 100%;
+}
+.app-shell .content-inner .sc-date-range-fields { flex: 0 1 auto !important; }
+.app-shell .content-inner .g4.convention-stats {
+  width: min(100%, 780px);
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+.app-shell .content-inner .event-registry-controls { width: auto; max-width: 760px; }
+.app-shell .content-inner .event-registry-controls .event-registry-search {
+  flex: 0 1 330px;
+  max-width: 330px;
+}
+.compact-event-registry-person {
+  display: grid !important;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+  width: auto !important;
+  height: auto !important;
+  font-size: inherit !important;
+}
+.compact-event-registry-person > strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #182c22;
+  font-size: 13px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-event-registry-demographics {
+  min-width: 0;
+  overflow: hidden;
+  color: #718879;
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.compact-event-registry-card .compact-event-registry-heading { align-items: center; }
+.compact-event-registry-card .compact-event-registry-summary { margin-inline-start: 0; }
+#main-content .compact-event-registry-heading > .compact-event-registry-person {
+  display: grid !important;
+  width: auto !important;
+  height: auto !important;
+  flex: 1 1 auto !important;
+}
+#main-content .compact-event-registry-heading > .compact-event-registry-action {
+  min-height: 30px !important;
+}
+
+@media (max-width: 768px) {
+  .app-shell .content-inner .page-enter:has(> .sc-date-filter) > .page-header {
+    margin-bottom: 18px !important;
+    padding-bottom: 10px !important;
+  }
+  .app-shell .content-inner .sc-date-filter {
+    width: 100%;
+    margin-top: 0 !important;
+    margin-bottom: 12px !important;
+    padding: 6px 8px !important;
+  }
+  .app-shell .content-inner .sc-date-range-fields {
+    flex: 1 1 auto !important;
+    width: 100%;
+  }
+  .app-shell .content-inner .sc-date-field { justify-content: space-between; }
+  .app-shell .content-inner .g4.convention-stats { width: 100%; }
+  .app-shell .content-inner .event-registry-controls { width: 100%; max-width: none; }
+  .app-shell .content-inner .event-registry-controls .event-registry-search {
+    flex: 1 1 100px;
+    max-width: none;
+  }
+  .app-shell .content-inner .compact-event-registry-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 3px 8px;
+    padding: 8px 9px !important;
+  }
+  .app-shell .content-inner .compact-event-registry-heading {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+    min-height: 0;
+    gap: 7px;
+  }
+  .app-shell .content-inner .compact-event-registry-person { flex: 1 1 auto !important; }
+  .app-shell .content-inner .compact-event-registry-person > strong { font-size: 13px; }
+  .app-shell .content-inner .compact-event-registry-demographics { font-size: 10px; }
+  .app-shell .content-inner .compact-event-registry-status {
+    max-width: 80px;
+    font-size: 9px;
+  }
+  .app-shell .content-inner .compact-event-registry-action {
+    flex: 0 0 30px !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+  }
+  .app-shell .content-inner .compact-event-registry-summary {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    margin: 0 !important;
+    gap: 6px;
+    font-size: 10px;
+  }
+  .app-shell .content-inner .compact-event-registry-summary a[href^="tel:"] { font-size: 11px !important; }
+  .app-shell .mobile-bottom-nav { inset-inline: 8% !important; padding: 3px !important; }
+  .app-shell .mobile-bottom-nav { gap: 1px !important; }
+  .app-shell .mobile-bottom-nav button { padding-inline: 2px !important; }
+
+  .app-shell .sidebar nav { padding: 4px 8px !important; }
+  .app-shell .sidebar nav > div { margin: 0 !important; padding: 0 !important; }
+  .app-shell .sidebar nav .sidebar-section-toggle {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 4px 10px !important;
+    line-height: 1 !important;
+  }
+  .app-shell .sidebar nav .sidebar-item {
+    height: 46px !important;
+    min-height: 46px !important;
+    padding-block: 5px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 0 !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .app-shell .sidebar nav { padding-block: 4px !important; }
+  .app-shell .sidebar nav > div { margin: 0 !important; padding: 0 !important; }
+  .app-shell .sidebar nav .sidebar-section-toggle {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding-block: 3px !important;
+    line-height: 1.1 !important;
+  }
+  .app-shell .sidebar nav .sidebar-item {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding-block: 5px !important;
+    margin-bottom: 0 !important;
   }
 }

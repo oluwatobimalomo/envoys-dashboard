@@ -29,7 +29,7 @@ Run `npm test` to execute the Vitest suite. No automated test files have been ad
 
 The Supabase project URL and public anon key are currently configured in `src/lib/supabase.js`. The Anthropic key used by the insight endpoint must be set as `ANTHROPIC_API_KEY` in the Vercel project environment. Supabase row-level security and Storage policies must be configured in the Supabase project.
 
-The Mercy Convention 2026 registration module uses a separate table. Apply `supabase/migrations/20261011000000_mercy_convention_2026.sql` in the Supabase SQL editor before enabling registration submissions.
+The Mercy Convention 2026 registration module uses a separate table. Apply `supabase/migrations/20261011000000_mercy_convention_2026.sql` in the Supabase SQL editor before enabling registration submissions. Apply later Mercy Convention migrations in timestamp order; `20261014090000_mercy_convention_registration_fields.sql` adds the split name, church/denomination, and country-of-residence fields while preserving existing registrations.
 
 ## Deployment
 

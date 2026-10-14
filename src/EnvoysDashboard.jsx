@@ -6,6 +6,7 @@
 //   • New "research" role added across ROLE_META, NAV, AdminAddUser
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback, useRef } from "react";
+import countryTelephoneData from "country-telephone-data";
 import {
   Home, Users, UserPlus, Phone, RefreshCw, BarChart2, MessageSquare,
   Flag, QrCode, LogOut, Menu, X, Heart, MapPin, Calendar, ChevronRight,
@@ -1055,8 +1056,8 @@ function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) 
         <div className="statcard-value" style={{
           fontSize: 26, fontWeight: 800, color: accent, fontFamily: F.head, lineHeight: 1.1,
         }}><CountUp value={value} /></div>
-        <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{label}</div>
-        {sub && <div style={{ fontSize: 11, color: accent, marginTop: 1 }}>{sub}</div>}
+        <div className="statcard-label" style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{label}</div>
+        {sub && <div className="statcard-sub" style={{ fontSize: 11, color: accent, marginTop: 1 }}>{sub}</div>}
       </div>
     </>
   );
@@ -13615,36 +13616,23 @@ function RegistryIconFilter({ icon: Icon, label, value, onChange, options }) {
   </label>;
 }
 
-function EventRegistryCard({ row, variant = "nom", busy = false, onToggle, lift }) {
-  const [expanded, setExpanded] = useState(false);
-  const convention = variant === "convention";
-  const demographics = [
-    convention && row.membership_status,
-    row.gender,
-    row.marital_status,
-    row.life_stage,
-  ].filter(Boolean).join(" · ");
-  const location = [row.house_address, row.nearest_landmark && `Near ${row.nearest_landmark}`].filter(Boolean).join(" · ");
-  return <article className={`nom-registry-card compact-event-registry-card${expanded ? " is-expanded" : ""}`} style={{ borderLeftColor: row.contacted ? C.green : C.gold }} {...lift}>
+function EventRegistryCard({ row, busy = false, onToggle, lift }) {
+  const demographics = [row.gender, row.marital_status, row.life_stage].filter(Boolean).join(" · ");
+  return <article className="nom-registry-card compact-event-registry-card" style={{ borderLeftColor: row.contacted ? C.green : C.gold }} {...lift}>
     <div className="compact-event-registry-heading">
-      <Avatar name={row.full_name} size={34} />
-      <strong title={row.full_name}>{row.full_name}</strong>
+      <div className="compact-event-registry-person">
+        <strong title={row.full_name}>{row.full_name}</strong>
+        {demographics && <span className="compact-event-registry-demographics">{demographics}</span>}
+      </div>
       <span className={`compact-event-registry-status${row.contacted ? " is-contacted" : ""}`}><i />{row.contacted ? "Contacted" : "Not contacted"}</span>
-      <button className="compact-event-registry-expand" type="button" aria-label={`${expanded ? "Hide" : "Show"} details for ${row.full_name}`} aria-expanded={expanded} onClick={() => setExpanded(value => !value)} title={expanded ? "Hide details" : "Show details"}><ChevronDown size={15} /></button>
       <button className="compact-event-registry-action" type="button" aria-label={row.contacted ? `Mark ${row.full_name} not contacted` : `Mark ${row.full_name} contacted`} title={row.contacted ? "Mark not contacted" : "Mark contacted"} onClick={() => onToggle(row)} disabled={busy}>
         <CheckCircle size={15} />
       </button>
     </div>
     <div className="compact-event-registry-summary">
       <PhoneLink phone={row.phone} withWhatsApp size={12} bold />
-      <span className="compact-event-registry-meta" title={[row.service_date, row.source === "QR" ? "QR registration" : "Manual entry"].filter(Boolean).join(" · ")}>{row.service_date}</span>
+      <span className="compact-event-registry-meta">{row.service_date}</span>
     </div>
-    {expanded && <div className="compact-event-registry-expanded">
-      <span>{row.source === "QR" ? "QR registration" : "Manual entry"}</span>
-      {demographics && <span>{demographics}</span>}
-      {location && <span>{location}</span>}
-      {row.contacted && row.contacted_by && <span>Contacted by {row.contacted_by}</span>}
-    </div>}
   </article>;
 }
 
@@ -13775,32 +13763,77 @@ function NOMFirstTimersList({ currentUser }) {
 
 
 const CONVENTION_TABLE = "mercy_convention_2026_registrations";
-const BLANK_CONVENTION = { full_name: "", phone: "", gender: "", marital_status: "", life_stage: "", membership_status: "", house_address: "", nearest_landmark: "", service_date: new Date().toISOString().slice(0, 10) };
+const COUNTRY_NAMES_EN = new Intl.DisplayNames(["en"], { type: "region" });
+const englishCountryName = country => {
+  const iso2 = country.iso2.toUpperCase();
+  const localized = COUNTRY_NAMES_EN.of(iso2);
+  return localized && localized !== iso2 ? localized : country.name.replace(/\s*\([^)]*\)/g, "").trim();
+};
+const CONVENTION_COUNTRIES = countryTelephoneData.allCountries.map(country => ({
+  name: englishCountryName(country),
+  iso2: country.iso2,
+  dialCode: country.dialCode,
+})).sort((a, b) => Number(a.dialCode) - Number(b.dialCode) || a.name.localeCompare(b.name));
+const COUNTRY_FLAG = iso2 => String.fromCodePoint(...[...iso2.toUpperCase()].map(char => 127397 + char.charCodeAt(0)));
+const BLANK_CONVENTION = { first_name: "", surname: "", phone: "", phone_country_iso2: "ng", gender: "", marital_status: "", life_stage: "", church_denomination: "", other_denomination: "", country_of_residence: "", house_address: "", service_date: new Date().toISOString().slice(0, 10) };
+
+function CountryResidenceCombobox({ value, onChange, required }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef(null);
+  const listId = "mc26-country-options";
+  const filtered = CONVENTION_COUNTRIES.filter(country => country.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const choose = country => { onChange(country.name); setQuery(""); setOpen(false); setActiveIndex(0); };
+  const onKeyDown = event => {
+    if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); setActiveIndex(index => Math.min(index + 1, Math.max(0, filtered.length - 1))); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); setOpen(true); setActiveIndex(index => Math.max(0, index - 1)); }
+    else if (event.key === "Escape") { setOpen(false); setQuery(""); }
+    else if (event.key === "Enter" && open && filtered.length) { event.preventDefault(); choose(filtered[Math.min(activeIndex, filtered.length - 1)]); }
+  };
+  return <div className="input-field event-country-field">
+    <UIlabel htmlFor="mc26country" className="input-field-label">Country of Residence<span style={{ color: C.danger }}> *</span></UIlabel>
+    <div className="event-country-combobox">
+      <input ref={inputRef} id="mc26country" role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId} aria-activedescendant={open && filtered[activeIndex] ? `${listId}-${filtered[activeIndex].iso2}` : undefined} autoComplete="off" required value={open ? query : value} onFocus={() => { setQuery(""); setActiveIndex(0); setOpen(true); }} onChange={event => { setQuery(event.target.value); onChange(""); setActiveIndex(0); setOpen(true); }} onKeyDown={onKeyDown} onBlur={() => { setOpen(false); setQuery(""); }} placeholder="Search for a country" />
+      <button className="event-country-toggle" type="button" aria-label={open ? "Close country list" : "Open country list"} aria-expanded={open} onMouseDown={event => event.preventDefault()} onClick={() => { if (open) { setOpen(false); setQuery(""); } else { inputRef.current?.focus(); setOpen(true); } }}><ChevronDown size={16} aria-hidden="true" /></button>
+      {open && <div className="event-country-options" id={listId} role="listbox">{filtered.length ? filtered.map((country, index) => <button id={`${listId}-${country.iso2}`} key={country.iso2} type="button" role="option" aria-selected={index === activeIndex} className={index === activeIndex ? "is-active" : ""} onMouseDown={event => event.preventDefault()} onClick={() => choose(country)}>{COUNTRY_FLAG(country.iso2)}<span>{country.name}</span></button>) : <div className="event-country-empty">No matching country</div>}</div>}
+    </div>
+  </div>;
+}
 
 function MercyConvention2026Form() {
   const [form, setForm] = useState({ ...BLANK_CONVENTION });
   const [done, setDone] = useState(false); const [loading, setLoading] = useState(false); const [err, setErr] = useState("");
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }));
   const submit = async () => {
-    if (!form.full_name.trim() || !form.phone.trim() || !form.membership_status) { setErr("Name, phone and membership status are required."); return; }
+    if (!form.first_name.trim() || !form.surname.trim() || !form.phone.trim() || !form.gender || !form.marital_status || !form.life_stage || !form.church_denomination || !form.country_of_residence || !form.house_address.trim()) { setErr("Please complete all required fields."); return; }
+    if (!CONVENTION_COUNTRIES.some(country => country.name === form.country_of_residence)) { setErr("Select your country of residence from the country list."); return; }
+    if (form.church_denomination === "Other Denomination" && !form.other_denomination.trim()) { setErr("Please enter your denomination."); return; }
     setLoading(true); setErr("");
-    try { await sb(CONVENTION_TABLE, { method: "POST", body: JSON.stringify({ ...form, full_name: form.full_name.trim(), phone: form.phone.trim(), source: "QR" }) }); setDone(true); }
+    const fullName = `${form.first_name.trim()} ${form.surname.trim()}`;
+    const phoneCountry = CONVENTION_COUNTRIES.find(country => country.iso2 === form.phone_country_iso2) || CONVENTION_COUNTRIES.find(country => country.iso2 === "ng");
+    const phone = `+${phoneCountry.dialCode} ${form.phone.trim()}`;
+    try { await sb(CONVENTION_TABLE, { method: "POST", body: JSON.stringify({ first_name: form.first_name.trim(), surname: form.surname.trim(), full_name: fullName, phone, gender: form.gender || null, marital_status: form.marital_status || null, life_stage: form.life_stage || null, church_denomination: form.church_denomination, other_denomination: form.church_denomination === "Other Denomination" ? form.other_denomination.trim() : null, country_of_residence: form.country_of_residence.trim(), house_address: form.house_address.trim() || null, service_date: form.service_date, membership_status: form.church_denomination === "RCCG The Envoys" ? "I am an Envoy" : "Non-Envoy", source: "QR" }) }); setDone(true); }
     catch (e) { setErr(e.message); }
     setLoading(false);
   };
-  if (done) return <div className="event-public-page"><div className="event-public-card" role="status"><div className="event-success-mark"><CheckCircle size={28} /></div><h1>Thank you!</h1><p>Your Mercy Convention 2026 registration is complete.</p></div></div>;
+  if (done) return <div className="event-public-page"><div className="event-public-wrap"><div className="event-public-card event-confirmation" role="status"><div className="event-success-mark"><CheckCircle size={28} /></div><h1>Thank you for registering!</h1><p>We are delighted to have you at Mercy Convention 2026. May you experience God's abundant mercy and blessings throughout this convention.</p></div></div></div>;
   return <main className="event-public-page"><div className="event-public-wrap">
     <img className="event-public-banner" src="/mercy-convention-2026-banner.jpg" alt="Mercy Convention 2026 — Unending Open Doors" />
-    <header className="event-public-heading"><div className="event-public-kicker">MERCY CONVENTION 2026</div><h1>Welcome to <span>Mercy Convention 2026</span></h1><p>Unending Open Doors</p></header>
+    <header className="event-public-heading"><h1>Welcome to <span>Mercy Convention 2026</span></h1><p>Unending Open Doors</p></header>
     <section className="event-public-card"><Alert type="error" msg={err} onClose={() => setErr("")} />
-      <FieldInput label="Full Name" id="mc26name" required value={form.full_name} onChange={set("full_name")} placeholder="Your full name" />
-      <FieldInput label="Phone Number" id="mc26phone" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
-      <FieldInput label="Membership Status" id="mc26membership" type="select" required value={form.membership_status} onChange={set("membership_status")} options={[{ value: "I am an Envoy", label: "I am an Envoy" }, { value: "Non-Envoy", label: "Non-Envoy" }]} />
-      <FieldInput label="Gender" id="mc26gender" type="select" value={form.gender} onChange={set("gender")} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
-      <FieldInput label="Marital Status" id="mc26marital" type="select" value={form.marital_status} onChange={set("marital_status")} options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
-      <FieldInput label="Life Stage" id="mc26life" type="select" value={form.life_stage} onChange={set("life_stage")} options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
-      <FieldInput label="House Address" id="mc26address" value={form.house_address} onChange={set("house_address")} placeholder="Full House Address" />
-      <FieldInput label="Nearest Landmark" id="mc26landmark" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="Nearest landmark" />
+      <div className="event-form-grid">
+        <FieldInput label="First Name" id="mc26firstname" required value={form.first_name} onChange={set("first_name")} placeholder="Your first name" />
+        <FieldInput label="Surname" id="mc26surname" required value={form.surname} onChange={set("surname")} placeholder="Your surname" />
+        <div className="input-field event-phone-field"><UIlabel htmlFor="mc26phone" className="input-field-label">Phone Number<span style={{ color: C.danger }}> *</span></UIlabel><div className="event-phone-control"><select aria-label={`Country calling code: ${CONVENTION_COUNTRIES.find(country => country.iso2 === form.phone_country_iso2)?.name || "Nigeria"}`} title={CONVENTION_COUNTRIES.find(country => country.iso2 === form.phone_country_iso2)?.name || "Select country code"} value={form.phone_country_iso2} required onChange={set("phone_country_iso2")}>{CONVENTION_COUNTRIES.map(country => <option key={country.iso2} value={country.iso2}>{COUNTRY_FLAG(country.iso2)} +{country.dialCode}</option>)}</select><input id="mc26phone" type="tel" inputMode="tel" autoComplete="tel-national" required value={form.phone} onChange={set("phone")} placeholder="801 234 5678" /></div></div>
+        <FieldInput label="Gender" id="mc26gender" type="select" required value={form.gender} onChange={set("gender")} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+        <FieldInput label="Life Stage" id="mc26life" type="select" required value={form.life_stage} onChange={set("life_stage")} options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
+        <FieldInput label="Marital Status" id="mc26marital" type="select" required value={form.marital_status} onChange={set("marital_status")} options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
+        <FieldInput label="Church & Denomination" id="mc26church" type="select" required value={form.church_denomination} onChange={set("church_denomination")} options={[{ value: "RCCG The Envoys", label: "RCCG The Envoys" }, { value: "Other RCCG Parish", label: "Other RCCG Parish" }, { value: "Other Denomination", label: "Other Denomination" }]} />
+        {form.church_denomination === "Other Denomination" && <FieldInput label="Please specify your denomination" id="mc26otherdenom" required value={form.other_denomination} onChange={set("other_denomination")} placeholder="Enter denomination" />}
+        <CountryResidenceCombobox value={form.country_of_residence} onChange={value => setForm(current => ({ ...current, country_of_residence: value }))} required />
+        <FieldInput label="House Address" id="mc26address" required value={form.house_address} onChange={set("house_address")} placeholder="Full House Address" />
+      </div>
       <button className="event-submit" onClick={submit} disabled={loading}>{loading ? "Submitting…" : "Complete Registration"}</button>
     </section>
   </div></main>;
@@ -13823,7 +13856,7 @@ function MercyConvention2026Registry({ currentUser }) {
   useEffect(() => { reload(); }, [reload]);
   const filtered = rows.filter(r => {
     if (search && !`${r.full_name || ""} ${r.phone || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
-    if (memberFilter !== "all" && r.membership_status !== memberFilter) return false;
+    if (memberFilter !== "all" && (r.church_denomination || r.membership_status) !== memberFilter) return false;
     if (contactFilter === "contacted" && !r.contacted || contactFilter === "uncontacted" && r.contacted) return false;
     if (genderFilter !== "all" && r.gender !== genderFilter || maritalFilter !== "all" && r.marital_status !== maritalFilter || lifeFilter !== "all" && r.life_stage !== lifeFilter) return false;
     if (sourceFilter !== "all" && (r.source || "Manual") !== sourceFilter) return false;
@@ -13846,7 +13879,7 @@ function MercyConvention2026Registry({ currentUser }) {
       <div className="event-registry-search"><Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or phone" aria-label="Search convention registrants" /></div>
       <button className="event-registry-refresh" style={btn("ghost", { padding: "6px 10px" })} onClick={reload} aria-label="Refresh registrations"><RefreshCw size={13} /></button>
       <div className="event-registry-filter-grid">
-      <RegistryIconFilter icon={UserCheck} label="Membership status" value={memberFilter} onChange={setMemberFilter} options={[{ value: "all", label: "Any membership" }, { value: "I am an Envoy", label: "I am an Envoy" }, { value: "Non-Envoy", label: "Non-Envoy" }]} />
+      <RegistryIconFilter icon={UserCheck} label="Church & denomination" value={memberFilter} onChange={setMemberFilter} options={[{ value: "all", label: "Any church or denomination" }, ...["RCCG The Envoys", "Other RCCG Parish", "Other Denomination", "I am an Envoy", "Non-Envoy"].map(value => ({ value, label: value }))]} />
       <RegistryIconFilter icon={Users} label="Gender" value={genderFilter} onChange={setGenderFilter} options={[{ value: "all", label: "Any gender" }, { value: "Female", label: "Female" }, { value: "Male", label: "Male" }]} />
       <RegistryIconFilter icon={Heart} label="Marital status" value={maritalFilter} onChange={setMaritalFilter} options={[{ value: "all", label: "Any marital status" }, ...["Single", "Married", "Divorced", "Widowed"].map(value => ({ value, label: value }))]} />
       <RegistryIconFilter icon={Activity} label="Life stage" value={lifeFilter} onChange={setLifeFilter} options={[{ value: "all", label: "Any life stage" }, ...["Student", "Employee", "Business Owner"].map(value => ({ value, label: value }))]} />
@@ -13855,7 +13888,7 @@ function MercyConvention2026Registry({ currentUser }) {
     </div>
     </div>
     <Alert type="error" msg={err} onClose={() => setErr("")} />
-    {busy ? <SkeletonList rows={6} /> : <div className="nom-registry-list convention-registry-list">{filtered.map(r => <EventRegistryCard key={r.id} row={r} variant="convention" busy={savingId === r.id} onToggle={toggleContacted} lift={lift} />)}{!filtered.length && <div className="event-registry-empty">No registrations found.</div>}</div>}
+    {busy ? <SkeletonList rows={6} /> : <div className="nom-registry-list convention-registry-list">{filtered.map(r => <EventRegistryCard key={r.id} row={r} busy={savingId === r.id} onToggle={toggleContacted} lift={lift} />)}{!filtered.length && <div className="event-registry-empty">No registrations found.</div>}</div>}
   </div>;
 }
 
