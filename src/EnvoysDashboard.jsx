@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // THE ENVOYS — Membership Retention Dashboard  v5.4
-// Cabinet Grotesk (headings) · Satoshi (body) · Forest Green + Gold palette
+// Geist Variable typography · Envoys forest green and gold palette
 // Changes v5.4:
 //   • Research Team module — service-feedback viewer with date filter + CSV download
 //   • New "research" role added across ROLE_META, NAV, AdminAddUser
@@ -10,7 +10,7 @@ import {
   Home, Users, UserPlus, Phone, RefreshCw, BarChart2, MessageSquare,
   Flag, QrCode, LogOut, Menu, X, Heart, MapPin, Calendar, ChevronRight,
   AlertCircle, CheckCircle, Clock, Clipboard, Upload, Search, ArrowLeft,
-  Star, TrendingUp, Activity, Shield, Edit3, UserCheck,
+  Star, TrendingUp, Activity, Shield, Edit3, UserCheck, ArrowUpDown,
   FileText, Filter, Download, ChevronDown, Info, Zap, Camera,
   MessageCircle, Gift, Maximize2, Bell, Award, Trophy, Moon,
 } from "lucide-react";
@@ -19,20 +19,26 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, AreaChart, Area,
 } from "recharts";
+import { CREDS_MISSING, sb, uploadVisitPhoto, hashPassword, cascadeRename } from "./lib/supabase.js";
+import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
+import { Button as UIbutton } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input as UIinput } from "@/components/ui/input";
+import { Label as UIlabel } from "@/components/ui/label";
+import { Badge as UIbadge } from "@/components/ui/badge";
+import { Avatar as UIavatar, AvatarFallback as UIavatarFallback } from "@/components/ui/avatar";
+import { Textarea as UItextarea } from "@/components/ui/textarea";
 
-import { Document, Page, Text, View, Image, StyleSheet, pdf } from "@react-pdf/renderer";
-import html2canvas from "html2canvas";
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  MODULE: GLOBAL STYLES & CSS INJECTION                                     ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 (function injectGlobals() {
   if (document.getElementById("envoys-globals")) return;
   const s = document.createElement("style");
   s.id = "envoys-globals";
   s.textContent = `
-    @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@700,800,900&f[]=satoshi@400,500,700&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
     html, body, #root { height: 100%; width: 100%; overflow-x: hidden; }
     body { -webkit-font-smoothing: antialiased; }
@@ -44,7 +50,7 @@ import html2canvas from "html2canvas";
     .mc-scroll::-webkit-scrollbar-thumb { background: #a9c4b3; border-radius: 6px; }
     .mc-scroll::-webkit-scrollbar-thumb:hover { background: #8fb09c; }
     .mc-scroll { scrollbar-width: thin; scrollbar-color: #a9c4b3 transparent; }
-    input, select, textarea, button { font-family: 'Satoshi', sans-serif; }
+    input, select, textarea, button { font-family: inherit; }
     @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
     .page-enter { animation: fadeIn .2s ease; }
@@ -129,125 +135,6 @@ import html2canvas from "html2canvas";
   document.head.appendChild(s);
 })();
 
-const pdfStyles = StyleSheet.create({
-  page: { padding: 28, fontSize: 10, fontFamily: "Helvetica" },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  headerLeft: { flexDirection: "row", alignItems: "center" },
-  logo: { width: 30, height: 30, marginRight: 10 },
-  title: { fontSize: 16, fontWeight: 700, color: "#1B3A2D" },
-  subtitle: { fontSize: 9, color: "#666", marginTop: 2 },
-  dateRange: { fontSize: 9, color: "#666", textAlign: "right" },
-  sectionLabel: { fontSize: 8, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-  statRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  statBox: { width: "23%", borderWidth: 1, borderColor: "#e2e2e2", borderRadius: 5, padding: 8 },
-  statValue: { fontSize: 15, fontWeight: 700, color: "#1B3A2D" },
-  statLabel: { fontSize: 7.5, color: "#666", marginTop: 2 },
-  statSub: { fontSize: 7, color: "#A66D15", marginTop: 1 },
-  chartRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  chartBox: { width: "23%", borderWidth: 1, borderColor: "#e2e2e2", borderRadius: 5, padding: 6 },
-  chartTitle: { fontSize: 7.5, fontWeight: 700, color: "#666", marginBottom: 4, textTransform: "uppercase" },
-  chartImage: { width: "100%" },
-  summaryBox: { borderWidth: 1, borderColor: "#F0DFAF", backgroundColor: "#FEF6E4", borderRadius: 6, padding: 10, marginTop: 4 },
-  summaryLabel: { fontSize: 8, fontWeight: 700, color: "#A66D15", marginBottom: 4, textTransform: "uppercase" },
-  summaryText: { fontSize: 8.5, lineHeight: 1.5, color: "#222" },
-});
-
-function SoulCareReportPDF({ funnelStats, ncStats, aiSummary, dateFrom, dateTo, chartImages, logoDataUri }) {
-  return (
-    <Document>
-      <Page size="A4" orientation="landscape" style={pdfStyles.page}>
-        <View wrap={false}>
-          <View style={pdfStyles.headerRow}>
-            <View style={pdfStyles.headerLeft}>
-              {logoDataUri && <Image src={logoDataUri} style={pdfStyles.logo} />}
-              <View>
-                <Text style={pdfStyles.title}>Soul Care Reporting Dashboard</Text>
-                <Text style={pdfStyles.subtitle}>RCCG The Envoys — Turning information into insight and insight into impact</Text>
-              </View>
-            </View>
-            <Text style={pdfStyles.dateRange}>
-              {dateFrom || "All time"} to {dateTo || "Present"}{"\n"}Generated {new Date().toLocaleDateString()}
-            </Text>
-          </View>
-
-          <Text style={pdfStyles.sectionLabel}>VIP → Membership Funnel</Text>
-          <View style={pdfStyles.statRow}>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{funnelStats?.totalOverviews ?? 0}</Text>
-              <Text style={pdfStyles.statLabel}>Overviews Submitted</Text>
-            </View>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{funnelStats?.recommended ?? 0}</Text>
-              <Text style={pdfStyles.statLabel}>Recommended (Yes)</Text>
-              <Text style={pdfStyles.statSub}>{funnelStats?.recommendationRate ?? 0}% of overviews</Text>
-            </View>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{funnelStats?.graduated ?? 0}</Text>
-              <Text style={pdfStyles.statLabel}>Potential Envoys Graduated</Text>
-              <Text style={pdfStyles.statSub}>{funnelStats?.graduationRate ?? 0}% graduation rate</Text>
-            </View>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{funnelStats?.overallConversionRate ?? 0}%</Text>
-              <Text style={pdfStyles.statLabel}>Overall VIP → Member</Text>
-              <Text style={pdfStyles.statSub}>End-to-end conversion</Text>
-            </View>
-          </View>
-
-          <Text style={pdfStyles.sectionLabel}>New Converts</Text>
-          <View style={pdfStyles.statRow}>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{ncStats?.total ?? 0}</Text>
-              <Text style={pdfStyles.statLabel}>Total New Converts</Text>
-            </View>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{ncStats?.completed ?? 0}</Text>
-              <Text style={pdfStyles.statLabel}>Fully Discipled</Text>
-            </View>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{ncStats?.trainingDone ?? 0}</Text>
-              <Text style={pdfStyles.statLabel}>Training Completed</Text>
-            </View>
-            <View style={pdfStyles.statBox}>
-              <Text style={pdfStyles.statValue}>{ncStats?.retentionPct ?? 0}%</Text>
-              <Text style={pdfStyles.statLabel}>Retention Rate</Text>
-            </View>
-          </View>
-
-          {chartImages && (chartImages.vipDecision || chartImages.vipFunnel || chartImages.ncType || chartImages.ncMonth) && (
-            <>
-              <Text style={pdfStyles.sectionLabel}>Visual Breakdown</Text>
-              <View style={pdfStyles.chartRow}>
-                <View style={pdfStyles.chartBox}>
-                  <Text style={pdfStyles.chartTitle}>VIP Decision Split</Text>
-                  {chartImages.vipDecision && <Image src={chartImages.vipDecision} style={pdfStyles.chartImage} />}
-                </View>
-                <View style={pdfStyles.chartBox}>
-                  <Text style={pdfStyles.chartTitle}>VIP Funnel Stages</Text>
-                  {chartImages.vipFunnel && <Image src={chartImages.vipFunnel} style={pdfStyles.chartImage} />}
-                </View>
-                <View style={pdfStyles.chartBox}>
-                  <Text style={pdfStyles.chartTitle}>New Converts by Type</Text>
-                  {chartImages.ncType && <Image src={chartImages.ncType} style={pdfStyles.chartImage} />}
-                </View>
-                <View style={pdfStyles.chartBox}>
-                  <Text style={pdfStyles.chartTitle}>Monthly Reach</Text>
-                  {chartImages.ncMonth && <Image src={chartImages.ncMonth} style={pdfStyles.chartImage} />}
-                </View>
-              </View>
-            </>
-          )}
-
-          {aiSummary && (
-            <View style={pdfStyles.summaryBox}>
-              <Text style={pdfStyles.summaryLabel}>Period Summary</Text>
-              <Text style={pdfStyles.summaryText}>{aiSummary}</Text>
-            </View>
-          )}
-        </View>
-      </Page>
-    </Document>
-  );
-}
 // ─────────────────────────────────────────────────────────────────────────────
 // v5.7 — Click-to-call
 // normalizePhone(): returns a dialable E.164-ish number.
@@ -285,7 +172,7 @@ function PhoneLink({ phone, withWhatsApp = false, size = 12, bold = false, color
           color: linkColor, textDecoration: "none",
           fontWeight: bold ? 700 : 600,
           display: "inline-flex", alignItems: "center", gap: 4,
-          borderBottom: `1px dashed ${linkColor}55`,
+          borderBottom: "none",
         }}>
         <Phone size={size} style={{ flexShrink: 0 }} />{phone}
       </a>
@@ -319,123 +206,12 @@ function PhoneLink({ phone, withWhatsApp = false, size = 12, bold = false, color
   });
 })();
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: GLOBAL STYLES & CSS INJECTION                                 ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  MODULE: SUPABASE CONFIG & API HELPERS                                     ║
-// ║  Includes: credentials, sb() fetch wrapper, uploadVisitPhoto()             ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
-
-const SUPABASE_URL      = "https://bhtbypqzukugnenyqvlg.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJodGJ5cHF6dWt1Z25lbnlxdmxnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTE4NjYsImV4cCI6MjA5Nzg2Nzg2Nn0.eAsuBENwgtbj_RsNpOPdNrYZkULEuJv7pnwclIM_ito";
-const CREDS_MISSING = !SUPABASE_URL || SUPABASE_URL.includes("your-project-id") || SUPABASE_ANON_KEY === "your-anon-key";
-
-const PHOTO_BUCKET = "visit-photos";
-
-async function sb(path, opts = {}) {
-  if (CREDS_MISSING) throw new Error("CREDS_MISSING");
-  let res;
-  try {
-    res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": "application/json",
-        Prefer: opts.prefer || "return=representation",
-        ...opts.headers,
-      },
-      ...opts,
-    });
-  } catch (e) {
-    throw new Error(`Network error — cannot reach Supabase. (${e.message})`);
-  }
-  if (!res.ok) {
-    const b = await res.json().catch(() => ({}));
-    throw new Error(b.message || b.error_description || b.hint || `HTTP ${res.status} ${res.statusText}`);
-  }
-  if (res.status === 204) return null;
-  return res.json();
-}
-
-async function uploadVisitPhoto(file) {
-  const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-  const objectPath = `public/${uniqueName}`;
-  const uploadUrl  = `${SUPABASE_URL}/storage/v1/object/${PHOTO_BUCKET}/${objectPath}`;
-
-  let res;
-  try {
-    res = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        apikey:         SUPABASE_ANON_KEY,
-        Authorization:  `Bearer ${SUPABASE_ANON_KEY}`,
-        "Content-Type": file.type || "image/jpeg",
-        "x-upsert":     "true",
-      },
-      body: file,
-    });
-  } catch (netErr) {
-    throw new Error(`Network error during photo upload: ${netErr.message}`);
-  }
-
-  if (!res.ok) {
-    let detail = "";
-    try {
-      const b = await res.json();
-      detail = b.message || b.error || JSON.stringify(b);
-    } catch { detail = `HTTP ${res.status}`; }
-    throw new Error(`Upload failed (${res.status}): ${detail}`);
-  }
-
-  return `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${objectPath}`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// v5.9 — Password hashing (salted SHA-256 via Web Crypto).
-// Salt = lowercase username, so identical passwords hash differently per user.
-// Matches the SQL migration: digest(lower(username) || ':' || password, 'sha256')
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function hashPassword(username, password) {
-  const salted = `${(username || "").trim().toLowerCase()}:${password}`;
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salted));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// v6.3 — display-name rename cascade. Assignments & history are keyed by
-// display-name strings, so a rename must propagate or the user's work is
-// orphaned. Failures are swallowed per-table; re-running a rename repairs.
-// ─────────────────────────────────────────────────────────────────────────────
-
-async function cascadeRename(oldName, newName) {
-  const enc = encodeURIComponent(oldName);
-  const targets = [
-    ["call_assignments",      "assigned_to"],
-    ["call_feedback",         "caller_name"],
-    ["pipeline_overviews",    "submitted_by"],
-  ];
-  for (const [table, col] of targets) {
-    await sb(`${table}?${col}=eq.${enc}`, {
-      method: "PATCH",
-      prefer: "return=minimal",
-      body: JSON.stringify({ [col]: newName }),
-    }).catch(() => {});
-  }
-}
-// ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  END MODULE: SUPABASE CONFIG & API HELPERS                                 ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
-
-
-// ╔═════════════════════════════════════════════════════════════════════════════╗
 // ║  MODULE: SESSION PERSISTENCE                                               ║
 // ║  Includes: saveSession(), loadSession(), clearSession()                    ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
-
 const SESSION_KEY = "envoys_session_v2";           // v2: bump forces one clean re-login
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;        // 12 hours
 
@@ -472,15 +248,15 @@ function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch {}
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: SESSION PERSISTENCE                                           ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: SHARED HOOKS                                                      ║
 // ║  Includes: useRoleUsers()                                                  ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 function useRoleUsers(role) {
   const [options, setOptions] = useState([]);
@@ -535,24 +311,46 @@ function usePagedScroll(resetSignal, totalLength, pageSize = 10) {
 
   useEffect(() => { setVisibleCount(pageSize); }, [resetSignal, pageSize]);
 
+  const revealMore = useCallback(() => {
+    setVisibleCount(c => Math.min(c + pageSize, totalLength || 0));
+  }, [pageSize, totalLength]);
+
   const onScroll = useCallback((e) => {
     const el = e.currentTarget;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) {
-      setVisibleCount(c => Math.min(c + pageSize, totalLength || 0));
+      revealMore();
     }
-  }, [pageSize, totalLength]);
+  }, [revealMore]);
+
+  useEffect(() => {
+    const appRoot = document.getElementById("root");
+    const appScroller = document.querySelector(".main-content");
+    const handlePageScroll = (event) => {
+      const fallback = event.currentTarget === window ? document.scrollingElement : event.currentTarget;
+      const root = [appRoot, appScroller, fallback].find(el => el && el.scrollHeight > el.clientHeight + 1 && getComputedStyle(el).overflowY !== "visible");
+      if (root && root.scrollTop + root.clientHeight >= root.scrollHeight - 180) revealMore();
+    };
+    appRoot?.addEventListener("scroll", handlePageScroll, { passive: true });
+    appScroller?.addEventListener("scroll", handlePageScroll, { passive: true });
+    window.addEventListener("scroll", handlePageScroll, { passive: true });
+    return () => {
+      appRoot?.removeEventListener("scroll", handlePageScroll);
+      appScroller?.removeEventListener("scroll", handlePageScroll);
+      window.removeEventListener("scroll", handlePageScroll);
+    };
+  }, [revealMore]);
 
   return { visibleCount, onScroll };
 }
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: SHARED HOOKS                                                  ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: DESIGN TOKENS — PALETTE, FONTS, SHADOWS, STYLE HELPERS           ║
 // ║  Includes: C (colours), F (fonts), SHADOW, btn(), card, badge(), dot()    ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 const C = {
   green:        "#1A7A3C",
@@ -591,8 +389,8 @@ const C = {
 };
 
 const F = {
-  head: "'Cabinet Grotesk','Segoe UI',sans-serif",
-  body: "'Satoshi','Inter',sans-serif",
+  head: "'Geist Variable', 'Geist', sans-serif",
+  body: "'Geist Variable', 'Geist', sans-serif",
 };
 
 const SHADOW = {
@@ -669,6 +467,8 @@ const NAV_ICONS = {
   vip_journey_dashboard: TrendingUp,
   nom_registry: Moon,
   nom_qr: QrCode,
+  mercy_convention_2026_registry: Award,
+  mercy_convention_2026_qr: QrCode,
   steward_appraisal_results: Trophy,
   appraisal_qr: QrCode,
   training_module: Award,
@@ -710,6 +510,8 @@ const NAV = {
     { id: "available_for_visitation", label: "Available for Visitation" },
     { id: "nom_registry",  label: "Night of Mercy" },
     { id: "nom_qr",        label: "NOM QR Code" },
+    { id: "mercy_convention_2026_registry", label: "Mercy Convention 2026" },
+    { id: "mercy_convention_2026_qr", label: "Convention QR Code" },
     { id: "appraisal_qr",  label: "Appraisal QR" },
     { id: "steward_appraisal_results", label: "Stewards Appraisal" },
   ],
@@ -722,6 +524,8 @@ const NAV = {
     { id: "nc_qr",         label: "QR Code" },
     { id: "nom_registry",  label: "Night of Mercy" },
     { id: "nom_qr",        label: "NOM QR Code" },
+    { id: "mercy_convention_2026_registry", label: "Mercy Convention 2026" },
+    { id: "mercy_convention_2026_qr", label: "Convention QR Code" },
   ],
   expteam: [
     { id: "mycalls",       label: "My Calls"      },
@@ -808,6 +612,7 @@ const NAV_GROUPS = {
     { title: "First-Timers", ids: ["firsttimers", "vip_contact", "addmember", "qrcode"] },
     { title: "New Converts", ids: ["nc_registry", "nc_qr"] },
     { title: "Night of Mercy", ids: ["nom_registry", "nom_qr"] },
+    { title: "Mercy Convention 2026", ids: ["mercy_convention_2026_registry", "mercy_convention_2026_qr"] },
   ],
   admin: [
     { title: "Administration",   ids: ["admin_overview", "admin_users", "admin_adduser"] },
@@ -821,6 +626,7 @@ const NAV_GROUPS = {
     { title: "Testimonies",      ids: ["testimony_bank", "testimony_qr"] },
     { title: "Connect Centre",   ids: ["connect_centre_prospects"] },
     { title: "Night of Mercy",   ids: ["nom_registry", "nom_qr"] },
+    { title: "Mercy Convention 2026", ids: ["mercy_convention_2026_registry", "mercy_convention_2026_qr"] },
     { title: "Stewards Appraisal", ids: ["appraisal_qr", "steward_appraisal_results"] },
   ],
   soulcareadmin: [
@@ -923,54 +729,42 @@ function parseAreas(raw) {
   catch { return []; }
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: DESIGN TOKENS — PALETTE, FONTS, SHADOWS, STYLE HELPERS       ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: SHARED UI PRIMITIVES                                              ║
 // ║  Includes: FieldInput, PhotoUpload, Logo, Alert, CredsBanner,             ║
 // ║            PageHeader, StatCard, SH (Section Heading)                     ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 function FieldInput({ label, id, type = "text", required, value, onChange,
   placeholder, options, hint, disabled }) {
-  const [focused, setFocused] = useState(false);
-  const base = {
-    ...inputBase,
-    borderColor: focused ? C.green : C.border,
-    ...(focused ? { boxShadow: `0 0 0 3px ${C.greenLight}` } : {}),
-    ...(disabled ? { opacity: .6, cursor: "not-allowed" } : {}),
-  };
-
   const wrap = (children) => (
-    <div style={{ marginBottom: 16 }}>
+    <div className="input-field" style={{ marginBottom: 16 }}>
       {label && (
-        <label htmlFor={id} style={{ display: "block", fontSize: 13, fontWeight: 600,
-          color: C.textSecondary, marginBottom: 5, fontFamily: F.body }}>
+        <UIlabel htmlFor={id} className="input-field-label">
           {label}{required && <span style={{ color: C.danger }}> *</span>}
-        </label>
+        </UIlabel>
       )}
       {children}
-      {hint && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>{hint}</div>}
+      {hint && <div className="input-field-hint">{hint}</div>}
     </div>
   );
 
   if (type === "select") return wrap(
     <select id={id} value={value} onChange={onChange} required={required}
-      disabled={disabled}
-      style={{ ...base, background: C.surface, cursor: disabled ? "not-allowed" : "pointer" }}
-      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+      disabled={disabled} className="field-control">
       <option value="">Select…</option>
       {(options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
 
   if (type === "textarea") return wrap(
-    <textarea id={id} value={value} onChange={onChange} placeholder={placeholder}
-      rows={3} disabled={disabled} style={{ ...base, resize: "vertical" }}
-      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+    <UItextarea id={id} value={value} onChange={onChange} placeholder={placeholder}
+      rows={3} disabled={disabled} className="field-control" />
   );
 
   if (type === "multicheck") {
@@ -1055,9 +849,9 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   }
 
   return wrap(
-    <input id={id} type={type} value={value} onChange={onChange}
+    <UIinput id={id} type={type} value={value} onChange={onChange}
       required={required} placeholder={placeholder} disabled={disabled}
-      style={base} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} />
+      className="field-control" />
   );
 }
 
@@ -1144,7 +938,7 @@ function PhotoUpload({ value, onChange, existingUrl }) {
           onDragOver={e => e.preventDefault()}
           onClick={() => fileRef.current?.click()}
           style={{
-            border: `2px dashed ${C.greenBorder}`, borderRadius: 10,
+            border: `1px solid ${C.greenBorder}`, borderRadius: 10,
             background: C.greenXLight, padding: "28px 20px",
             textAlign: "center", cursor: "pointer", transition: "border-color .15s, background .15s",
           }}
@@ -1226,58 +1020,62 @@ function Alert({ type, msg, onClose }) {
 
 function CredsBanner() {
   return (
-    <Alert type="error" msg="Supabase credentials not configured — open EnvoysDashboard.jsx and replace SUPABASE_URL and SUPABASE_ANON_KEY." />
+    <Alert type="error" msg="Supabase project configuration is missing. Set it in src/lib/supabase.js." />
   );
 }
 
 function PageHeader({ title, subtitle, action }) {
   return (
-    <div style={{
+    <header className="page-header" style={{
       display: "flex", justifyContent: "space-between", alignItems: "flex-start",
       marginBottom: 24, flexWrap: "wrap", gap: 12,
     }}>
       <div>
-        <h2 style={{
+        <h1 style={{
           margin: 0, fontSize: 22, fontFamily: F.head, fontWeight: 800,
           color: C.textPrimary, letterSpacing: "-.01em",
-        }}>{title}</h2>
+        }}>{title}</h1>
         {subtitle && <p style={{ margin: "4px 0 0", fontSize: 13, color: C.textMuted }}>{subtitle}</p>}
       </div>
       {action}
-    </div>
+    </header>
   );
 }
 
 function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) {
-  return (
-    <div onClick={onClick} className="statcard"
-      style={{
-        ...card, padding: "1.1rem 1.25rem", borderLeft: `3px solid ${accent}`,
-        cursor: onClick ? "pointer" : "default",
-        display: "flex", alignItems: "center", gap: 14,
-      }}
-      onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = SHADOW.md; }}
-      onMouseOut={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = SHADOW.xs; }}>
+  const content = (
+    <>
       <div className="statcard-icon" style={{
         width: 44, height: 44, borderRadius: 10, background: `${accent}14`,
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}>
-        {Icon && <Icon size={20} color={accent} strokeWidth={1.8} />}
+        {Icon && <Icon size={20} color={accent} strokeWidth={1.8} aria-hidden="true" />}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div className="statcard-copy" style={{ flex: 1, minWidth: 0 }}>
         <div className="statcard-value" style={{
           fontSize: 26, fontWeight: 800, color: accent, fontFamily: F.head, lineHeight: 1.1,
         }}><CountUp value={value} /></div>
         <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>{label}</div>
         {sub && <div style={{ fontSize: 11, color: accent, marginTop: 1 }}>{sub}</div>}
       </div>
-    </div>
+    </>
+  );
+  return (
+    onClick ? (
+      <UIbutton type="button" variant="outline" onClick={onClick} className="statcard statcard-action" style={{ borderLeft: `3px solid ${accent}` }}>
+        {content}
+      </UIbutton>
+    ) : (
+      <Card className="statcard" style={{ borderLeft: `3px solid ${accent}` }}>
+        <CardContent className="statcard-content">{content}</CardContent>
+      </Card>
+    )
   );
 }
 
 function SH({ title, icon: Icon }) {
   return (
-    <div style={{
+    <div className="section-heading" style={{
       display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700,
       letterSpacing: ".08em", color: C.textMuted, textTransform: "uppercase",
       marginBottom: 16, paddingBottom: 8, borderBottom: `1.5px solid ${C.greenLight}`,
@@ -1508,7 +1306,7 @@ function NotificationBell({ role, user, setActive, inline = false }) {
       style={inline
         ? { position: "relative", zIndex: 200 }
         : { position: "fixed", top: 16, right: 16, zIndex: 200 }}
-      className={inline ? undefined : "notif-bell-wrap"}>
+      className={inline ? "notif-bell-inline" : "notif-bell-wrap"}>
       <button onClick={() => setOpen(o => { const next = !o; if (next) reload(); return next; })} style={{
         position: "relative", width: inline ? 32 : 40, height: inline ? 32 : 40, borderRadius: "50%",
         background: inline ? "rgba(255,255,255,.08)" : C.surface,
@@ -1580,9 +1378,9 @@ function NotificationBell({ role, user, setActive, inline = false }) {
     </div>
   );
 }
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: SHARED UI PRIMITIVES                                          ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v5.8 — Skeleton loaders
@@ -1722,12 +1520,12 @@ function DueTodayPanel({ entries, actionLabel = "Log Call", actionIcon: ActionIc
   const todayCount   = entries.length - overdueCount;
 
   return (
-    <div style={{
+    <div className="due-today-panel" style={{
       ...card, marginBottom: 20, padding: "1rem 1.25rem",
       background: C.amberLight, border: `1px solid ${C.amber}30`,
       borderLeft: `3px solid ${overdueCount > 0 ? C.danger : C.amber}`,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+      <div className="due-today-heading" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <Clock size={14} color={C.amber} />
         <span style={{
           fontSize: 12, fontWeight: 700, fontFamily: F.head,
@@ -1754,20 +1552,20 @@ function DueTodayPanel({ entries, actionLabel = "Log Call", actionIcon: ActionIc
             ? Math.max(1, Math.floor((Date.now() - new Date(e.dueDate).getTime()) / 86400000))
             : 0;
           return (
-            <div key={e.id} style={{
+            <div key={e.id} className="due-today-entry" style={{
               display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
               background: C.surface, borderRadius: 8, padding: "8px 12px",
               border: `1px solid ${isOverdue ? C.danger : C.amber}`,
             }}>
               <Avatar name={e.name} size={30} />
-              <div style={{ flex: 1, minWidth: 140 }}>
+              <div className="due-today-person" style={{ flex: 1, minWidth: 140 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>{e.name}</div>
                 <div style={{ fontSize: 11, color: C.textMuted }}>
                   <PhoneLink phone={e.phone} />
                   {e.note ? <> · {e.note.slice(0, 60)}{e.note.length > 60 ? "…" : ""}</> : null}
                 </div>
               </div>
-              <span style={badge(
+              <span className="due-today-date" style={badge(
                 isOverdue ? C.danger : C.amber,
                 isOverdue ? C.dangerLight : C.amberLight,
                 { fontSize: 11 }
@@ -1775,7 +1573,7 @@ function DueTodayPanel({ entries, actionLabel = "Log Call", actionIcon: ActionIc
                 <Calendar size={10} />
                 {isOverdue ? `${days}d overdue` : "Due today"}
               </span>
-              <button style={btn("primary", { padding: "6px 12px", fontSize: 12 })}
+              <button className="due-today-action" style={btn("primary", { padding: "6px 12px", fontSize: 12 })}
                 onClick={() => onAction(e.row)}>
                 <ActionIcon size={11} />{actionLabel}
               </button>
@@ -1892,8 +1690,8 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
   if (people.length === 0 && !showEmpty) return null;
 
   return (
-    <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: people.length ? 12 : 0 }}>
+    <div className="birthday-widget" style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
+      <div className="birthday-heading" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: people.length ? 12 : 0 }}>
         <Gift size={14} color={C.goldDark} />
         <span style={{
           fontSize: 12, fontWeight: 700, fontFamily: F.head,
@@ -1905,7 +1703,7 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
           <span style={badge(C.goldDark, "#fff", { fontSize: 11 })}>{people.length}</span>
         )}
         {people.length === 0 && (
-          <span style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
+          <span className="birthday-empty" style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
             None in the next {daysAhead} days
           </span>
         )}
@@ -1919,34 +1717,39 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
             const key     = phoneKey(p.phone);
             const wished  = key && wishedSet.has(key);
             return (
-              <div key={p.id} style={{
+              <div key={p.id} className="birthday-entry" style={{
                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
                 background: C.surface, borderRadius: 8, padding: "8px 12px",
                 border: `1px solid ${isToday ? C.gold : C.border}`,
               }}>
                 <Avatar name={p.full_name} size={30} />
-                <div style={{ flex: 1, minWidth: 140 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>
+                <div className="birthday-person" style={{ flex: 1, minWidth: 140 }}>
+                  <div title={p.full_name} style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>
                     {isToday ? "🎂 " : ""}{p.full_name}
                   </div>
                   <div style={{ fontSize: 11, color: C.textMuted }}>
                     <PhoneLink phone={p.phone} />
                   </div>
                 </div>
-                <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
+                <span className="birthday-date" style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
                   <Gift size={10} />
-                  {isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}
+                  <span title={isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}>
+                    {isToday ? `Today · ${p.turning}` : `${p.dateLabel} · ${p.turning}`}
+                  </span>
                 </span>
                 {waLink && (
                   wished ? (
-                    <span style={badge(C.green, C.greenLight, { fontSize: 12 })}>
+                    <span className="birthday-wished" style={badge(C.green, C.greenLight, { fontSize: 12 })}>
                       <CheckCircle size={11} />Wished
                     </span>
                   ) : (
                     <button
                       onClick={() => sendWish(p, waLink)}
+                      className="birthday-send-wishes"
+                      aria-label={`Send birthday wishes to ${p.full_name}`}
+                      title="Send Wishes"
                       style={{ ...btn("gold", { padding: "6px 12px", fontSize: 12 }), border: "none", cursor: "pointer" }}>
-                      <MessageCircle size={12} />Send Wishes
+                      <MessageCircle size={12} /><span>Send Wishes</span>
                     </button>
                   )
                 )}
@@ -1996,8 +1799,8 @@ function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
   if (upcoming.length === 0 && !showEmpty) return null;
 
   return (
-    <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: upcoming.length ? 12 : 0 }}>
+    <div className="birthday-widget" style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
+      <div className="birthday-heading" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: upcoming.length ? 12 : 0 }}>
         <Gift size={14} color={C.goldDark} />
         <span style={{
           fontSize: 12, fontWeight: 700, fontFamily: F.head,
@@ -2009,7 +1812,7 @@ function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
           <span style={badge(C.goldDark, "#fff", { fontSize: 11 })}>{upcoming.length}</span>
         )}
         {upcoming.length === 0 && (
-          <span style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
+          <span className="birthday-empty" style={{ fontSize: 12, color: C.textMuted, marginLeft: "auto" }}>
             None in the next {daysAhead} days
           </span>
         )}
@@ -2023,13 +1826,13 @@ function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
             const key     = phoneKey(p.phone);
             const wished  = key && wishedSet.has(key);
             return (
-              <div key={p.id} style={{
+              <div key={p.id} className="birthday-entry" style={{
                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
                 background: C.surface, borderRadius: 8, padding: "8px 12px",
                 border: `1px solid ${isToday ? C.gold : C.border}`,
               }}>
                 <Avatar name={p.full_name} size={30} />
-                <div style={{ flex: 1, minWidth: 140 }}>
+                <div className="birthday-person" style={{ flex: 1, minWidth: 140 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, fontFamily: F.head }}>
                     {isToday ? "🎂 " : ""}{p.full_name}
                   </div>
@@ -2037,20 +1840,25 @@ function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
                     <PhoneLink phone={p.phone} />
                   </div>
                 </div>
-                <span style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
+                <span className="birthday-date" style={badge(C.goldDark, C.goldLight, { fontSize: 11 })}>
                   <Gift size={10} />
-                  {isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}
+                  <span title={isToday ? `Today · turns ${p.turning}` : `${p.dateLabel} · turns ${p.turning}`}>
+                    {isToday ? `Today · ${p.turning}` : `${p.dateLabel} · ${p.turning}`}
+                  </span>
                 </span>
                 {waLink && (
                   wished ? (
-                    <span style={badge(C.green, C.greenLight, { fontSize: 12 })}>
+                    <span className="birthday-wished" style={badge(C.green, C.greenLight, { fontSize: 12 })}>
                       <CheckCircle size={11} />Wished
                     </span>
                   ) : (
                     <button
                       onClick={() => sendWish(p, waLink)}
+                      className="birthday-send-wishes"
+                      aria-label={`Send birthday wishes to ${p.full_name}`}
+                      title="Send Wishes"
                       style={{ ...btn("gold", { padding: "6px 12px", fontSize: 12 }), border: "none", cursor: "pointer" }}>
-                      <MessageCircle size={12} />Send Wishes
+                      <MessageCircle size={12} /><span>Send Wishes</span>
                     </button>
                   )
                 )}
@@ -2063,12 +1871,14 @@ function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                             ║
 // ║  Includes: Sidebar, MobileHeader                                           ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose, flagCount = 0 }) {
+  const sidebarRef = useRef(null);
+  const restoreFocusRef = useRef(null);
   const ri = ROLE_META[role] || ROLE_META.expteam;
   const sections  = buildNavSections(role);
   const isGrouped = sections.length > 0 && sections[0].title !== null;
@@ -2080,6 +1890,38 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
 
   // Section containing the active page starts (and stays) expanded.
   const [openSections, setOpenSections] = useState(() => new Set([sectionOf(active)]));
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const sidebar = sidebarRef.current;
+    restoreFocusRef.current = document.activeElement;
+    sidebar?.querySelector("button:not([disabled])")?.focus();
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose?.();
+        return;
+      }
+      if (event.key !== "Tab" || !sidebar) return;
+      const focusable = Array.from(sidebar.querySelectorAll("button:not([disabled])"));
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      restoreFocusRef.current?.focus?.();
+      restoreFocusRef.current = null;
+    };
+  }, [mobileOpen, onClose]);
 
   useEffect(() => {
     const t = sectionOf(active);
@@ -2105,6 +1947,7 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
     const isFlag = item.id === "flagged" || item.id === "sc_flagged";
     return (
       <button key={item.id} onClick={() => { setActive(item.id); onClose?.(); }}
+        className={`sidebar-item${on ? " active" : ""}`}
         style={{
           display: "flex", alignItems: "center", gap: 10, width: "100%",
           padding: isGrouped ? "8px 10px 8px 14px" : "9px 10px",
@@ -2136,6 +1979,10 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 98 }} />
       )}
       <div className={`sidebar${mobileOpen ? " open" : ""}`}
+        ref={sidebarRef}
+        role={mobileOpen ? "dialog" : undefined}
+        aria-modal={mobileOpen ? "true" : undefined}
+        aria-label={mobileOpen ? "Navigation menu" : undefined}
         style={{
           width: "var(--sidebar-w)", background: C.sidebar,
           display: "flex", flexDirection: "column",
@@ -2144,7 +1991,11 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
         }}>
 
         {/* Brand */}
-        <div style={{ padding: "20px 16px 14px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+        <div style={{ position: "relative", padding: "20px 16px 14px", borderBottom: "1px solid rgba(255,255,255,.08)" }}>
+      <button className="mobile-sidebar-close" type="button" onClick={onClose}
+            aria-label="Close navigation menu">
+            <X size={19} />
+          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
             <Logo size={38} />
             <div>
@@ -2186,7 +2037,7 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
 
         {/* Nav */}
         <nav style={{ flex: "1 1 auto", minHeight: 0, padding: "10px 8px", overflowY: "auto" }}>
-          {sections.map((sec, idx) => {
+        {sections.map((sec) => {
             if (sec.title === null) {
               // Flat list — roles without grouping
               return sec.items.map(renderItem);
@@ -2196,8 +2047,8 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
             const sectionFlagCount = sec.items.some(i => i.id === "flagged" || i.id === "sc_flagged")
               ? flagCount : 0;
             return (
-              <div key={sec.title} style={{ marginBottom: idx < sections.length - 1 ? 4 : 0 }}>
-                <button onClick={() => toggleSection(sec.title)}
+              <div key={sec.title} style={{ marginBottom: 0 }}>
+                <button className="sidebar-section-toggle" onClick={() => toggleSection(sec.title)}
                   style={{
                     display: "flex", alignItems: "center", gap: 8, width: "100%",
                     padding: "8px 10px", border: "none", cursor: "pointer",
@@ -2252,17 +2103,18 @@ function Sidebar({ role, active, setActive, user, onLogout, mobileOpen, onClose,
   );
 }
 
-function MobileHeader({ onMenu, title, role, user, setActive }) {
+function MobileHeader({ onMenu, title, role, user, setActive, menuOpen }) {
   return (
-    <div className="mob-header"
+    <div className="mob-header" inert={menuOpen}
       style={{
         position: "sticky", top: 0, zIndex: 50, background: C.sidebar,
         padding: "12px 16px", alignItems: "center", gap: 12,
         borderBottom: "1px solid rgba(255,255,255,.07)",
       }}>
-      <button onClick={onMenu} style={{
+      <button onClick={onMenu} aria-label="Open navigation menu" aria-expanded={menuOpen} style={{
         background: "none", border: "none", color: "#fff",
-        fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1, display: "flex",
+        fontSize: 22, cursor: "pointer", padding: 0, lineHeight: 1,
+        display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44,
       }}>
         <Menu size={22} />
       </button>
@@ -2275,16 +2127,60 @@ function MobileHeader({ onMenu, title, role, user, setActive }) {
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+// Keep the most common actions within thumb reach on small screens. The full
+// role-specific navigation remains available from the menu button.
+const MOBILE_SHORTCUTS = {
+  admin: ["admin_overview", "callqueue", "firsttimers"],
+  dofficer: ["firsttimers", "addmember", "vip_contact"],
+  expteam: ["mycalls", "callqueue", "callbacks"],
+  pasteam: ["report", "allfeedback", "flagged"],
+  soulcare: ["envoys_visitors", "sc_my_calls", "care_priority_list"],
+  soulcareadmin: ["envoys_visitors", "sc_assign_calls", "care_priority_list"],
+  research: ["research_feedback", "general_feedback", "feedback_qr"],
+  testimonyteam: ["testimony_bank", "testimony_qr"],
+  trainingteam: ["training_module"],
+  experienceadmin: ["assign_calls", "callqueue", "allfeedback"],
+  connectcentre: ["connect_centre_prospects"],
+};
+
+function MobileBottomNav({ role, active, setActive, onMenu, menuOpen }) {
+  const allowed = NAV[role] || [];
+  const preferred = MOBILE_SHORTCUTS[role] || allowed.slice(0, 3).map(item => item.id);
+  const shortcuts = preferred
+    .map(id => allowed.find(item => item.id === id))
+    .filter(Boolean)
+    .slice(0, 3);
+  return (
+    <nav className="mobile-bottom-nav" aria-label="Quick navigation" inert={menuOpen}>
+      {shortcuts.map(item => {
+        const Icon = NAV_ICONS[item.id] || FileText;
+        const selected = active === item.id;
+        return (
+          <button key={item.id} type="button" aria-label={item.label} title={item.label} aria-current={selected ? "page" : undefined}
+            onClick={() => setActive(item.id)}>
+            <Icon size={19} strokeWidth={selected ? 2.3 : 1.8} />
+            <span>{item.label}</span>
+          </button>
+        );
+      })}
+      <button type="button" onClick={onMenu} aria-label="Open all sections" title="More">
+        <Menu size={19} />
+        <span>More</span>
+      </button>
+    </nav>
+  );
+}
+
+
 // ║  END MODULE: NAVIGATION — SIDEBAR & MOBILE HEADER                         ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: DATA OFFICER — FIRST-TIMERS REGISTRY                             ║
 // ║  Includes: AREAS constant, BLANK_FT, FirstTimerForm, FirstTimersList,     ║
 // ║            PublicForm (self-registration), QRCodePage, CSVImport          ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 const AREAS = [
   { value: "billionpreneur", label: "Billionpreneur Hub" },
@@ -2496,6 +2392,9 @@ function SoulCareReportingDashboard() {
   const downloadPdfWithCharts = async () => {
     setPdfGenerating(true);
     try {
+      const [{ pdf }, { default: SoulCareReportPDF }, { default: html2canvas }] = await Promise.all([
+        import("@react-pdf/renderer"), import("./SoulCareReportPDF"), import("html2canvas"),
+      ]);
       const captureRef = async (ref) => {
         if (!ref.current) return null;
         const canvas = await html2canvas(ref.current, { backgroundColor: "#ffffff", scale: 2 });
@@ -3039,29 +2938,29 @@ function FirstTimersList({ onEdit }) {
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ position: "relative" }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
-                style={{ ...inputBase, width: 200, paddingLeft: 32 }} />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                style={{ ...inputBase, width: 200, paddingLeft: 32 }}  aria-label="Search records" />
             </div>
             <button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>
           </div>
         } />
 
-      <div style={{
+      <div className="first-timers-date-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.greenXLight, borderRadius: 10, border: `1px solid ${C.greenBorder}`,
       }}>
-        <Calendar size={14} color={C.green} style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+        <Calendar className="date-filter-icon" size={14} color={C.green} style={{ flexShrink: 0 }} />
+        <span className="date-filter-label" style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
           Filter by service date:
         </span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="date-filter-fields" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+          <div className="date-filter-field" style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
               style={{ ...inputBase, width: 148 }} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div className="date-filter-field" style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
               style={{ ...inputBase, width: 148 }} />
@@ -3074,7 +2973,7 @@ function FirstTimersList({ onEdit }) {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
+      <div className="registry-actions" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
         <button onClick={toggleAll} style={{
           padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
           background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}`,
@@ -3089,30 +2988,25 @@ function FirstTimersList({ onEdit }) {
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+        <div className="mc-scroll first-timer-list" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
         <div style={{ display: "grid", gap: 8 }}>
           {filtered.slice(0, visibleCount).map(r => {
             const [col, bg] = dc[r.membership_decision] || [C.textMuted, C.bg];
             return (
-              <div key={r.id} {...lift} style={{
-                ...card, display: "flex", justifyContent: "space-between",
-                alignItems: "center", flexWrap: "wrap", gap: 12, padding: "12px 16px",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleRow(r.id)}
-                    style={{ width: 16, height: 16, cursor: "pointer", flexShrink: 0 }} />
-                  <Avatar name={r.full_name} size={40} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}</div>
-                  </div>
+              <div key={r.id} className="first-timer-card" {...lift}>
+                <input type="checkbox" aria-label={`Select ${r.full_name}`} checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
+                <Avatar name={r.full_name} size={36} />
+                <div className="first-timer-identity">
+                  <div className="first-timer-name" title={r.full_name}>{r.full_name}</div>
+                  <span className="first-timer-decision" style={badge(col, bg)}><span style={dot(col)} />{r.membership_decision || "–"}</span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span style={badge(col, bg)}><span style={dot(col)} />{r.membership_decision || "–"}</span>
-                  <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={() => onEdit(r)}>
-                    <Edit3 size={12} />Edit
-                  </button>
+                <div className="first-timer-contact">
+                  <PhoneLink phone={r.phone} withWhatsApp />
+                  <time>{r.service_date || "—"}</time>
                 </div>
+                <button className="first-timer-edit" aria-label={`Edit ${r.full_name}`} title="Edit" onClick={(e) => { e.stopPropagation(); onEdit(r); }}>
+                  <Edit3 size={16} /><span className="first-timer-edit-label">Edit</span>
+                </button>
               </div>
             );
           })}
@@ -3128,7 +3022,6 @@ function FirstTimersList({ onEdit }) {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> record{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -3534,8 +3427,8 @@ function VipContactView({ currentUser }) {
         ))}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-            style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...inputBase, width: 180, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
         <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
       </div>
@@ -3638,7 +3531,6 @@ function VipContactView({ currentUser }) {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> VIP{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -3668,7 +3560,7 @@ function VipContactView({ currentUser }) {
   }
 `}</style>
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                        ║
 // ║                                                                             ║
 // ║  CHANGES FROM v7.1 (internal naming):                                      ║
@@ -3684,7 +3576,7 @@ function VipContactView({ currentUser }) {
 // ║       • CompletedPipelines table rows                                       ║
 // ║  2. Helper genderTag(row) added — returns " (M)", " (F)", or "".           ║
 // ║     Uses first_timers.gender field (already fetched by useCallData).        ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PASTE THIS ENTIRE BLOCK to replace the section currently bounded by:
@@ -3697,9 +3589,9 @@ function VipContactView({ currentUser }) {
 // remain exactly as they are — only this module is replaced.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                        ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -4080,8 +3972,8 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
         ))}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-            style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...inputBase, width: 180, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
         <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
       </div>
@@ -4186,7 +4078,6 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -4255,54 +4146,33 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader title="Call Queue" subtitle="3-week follow-up pipeline for every first-timer"
         action={
-          <div style={{ position: "relative" }}>
+          <div className="call-queue-search" style={{ position: "relative" }}>
             <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
-              style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              style={{ ...inputBase, width: 180, paddingLeft: 30 }}  aria-label="Search records" />
           </div>
         } />
 
-      <div style={{
-        display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
-        marginBottom: 16, padding: "12px 16px",
-        background: C.greenXLight, borderRadius: 10, border: `1px solid ${C.greenBorder}`,
-      }}>
-        <Calendar size={14} color={C.green} style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
-          Filter by service date:
-        </span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-              style={{ ...inputBase, width: 148 }} />
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-              style={{ ...inputBase, width: 148 }} />
-          </div>
-          {(dateFrom || dateTo) && (
-            <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clearDates}>
-              <X size={12} />Clear dates
-            </button>
-          )}
-        </div>
-      </div>
+      <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by service date:" />
 
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)}
-            style={{
-              padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-              cursor: "pointer", fontFamily: F.body, transition: "all .15s",
-              background: filter === t.k ? t.col : C.bg,
-              color: filter === t.k ? "#fff" : C.textSecondary,
-              border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
-            }}>
-            {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
-          </button>
-        ))}
+      <div className="call-queue-filter-row" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>
+        <div className="call-queue-tabs" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {tabs.map(t => (
+            <button key={t.k} onClick={() => setFilter(t.k)}
+              style={{
+                padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                cursor: "pointer", fontFamily: F.body, transition: "all .15s",
+                background: filter === t.k ? t.col : C.bg,
+                color: filter === t.k ? "#fff" : C.textSecondary,
+                border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
+              }}>
+              {t.label} <span style={{ opacity: .8 }}>({t.count})</span>
+            </button>
+          ))}
+        </div>
+        <select className="call-queue-mobile-status" aria-label="Filter call queue" value={filter} onChange={e => setFilter(e.target.value)}>
+          {tabs.map(t => <option key={t.k} value={t.k}>{t.label} ({t.count})</option>)}
+        </select>
         <button style={{ ...btn("ghost", { padding: "6px 10px", marginLeft: "auto" }) }} onClick={reload}>
           <RefreshCw size={13} />
         </button>
@@ -4489,7 +4359,6 @@ function CallQueue({ onLogFeedback, onEditWeek, currentUserRole = "expteam", cur
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> record{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -4573,7 +4442,6 @@ function CallBackQueue({ onLogFeedback, currentUser = "" }) {
       {!loading && callbacks.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, callbacks.length)}</strong> of <strong>{callbacks.length}</strong> call-back{callbacks.length !== 1 ? "s" : ""}
-          {visibleCount < callbacks.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -4871,7 +4739,6 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> contact{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -5619,7 +5486,7 @@ function EnvoysVisitors() {
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
         <div style={{ position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 220, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 220, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -5634,7 +5501,7 @@ function EnvoysVisitors() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
+          <div className="mc-scroll mobile-data-table envoys-visitors-table" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
             <div style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
@@ -6157,7 +6024,7 @@ function NewConvertsAssignView({ currentUser, role }) {
         ))}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 180, paddingLeft: 30 }} aria-label="Search records" />
         </div>
         <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
       </div>
@@ -6356,33 +6223,33 @@ function MyNewConverts({ currentUser, role, onLogCheckin }) {
             const isComplete = ncComplete(r.fbRows);
             const fullyDone = isComplete && r.envoys_training_completed;
             return (
-              <div key={r.id} style={{ ...card, padding: "14px 16px", borderLeft: `3px solid ${fullyDone ? C.green : C.soul}` }}>
-                <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flex: 1, minWidth: 0 }}>
+              <div key={r.id} className="new-convert-queue-card" style={{ ...card, padding: "12px 14px", borderLeft: `3px solid ${fullyDone ? C.green : C.soul}` }}>
+                <div className="new-convert-queue-head">
+                  <div className="new-convert-queue-person">
                     <Avatar name={r.full_name} />
-                    <div>
+                    <div className="new-convert-queue-copy">
                       <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>
                         {r.full_name}{fullyDone && <span style={{ marginLeft: 6 }}>🎉</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /> · {r.conversion_type}</div>
+                      <div className="new-convert-queue-contact"><PhoneLink phone={r.phone} withWhatsApp /><span>· {r.conversion_type}</span></div>
                       {isAdmin && (
-                        <div style={{ fontSize: 11, color: r.assignment ? C.textMuted : C.gold, marginTop: 2 }}>
+                        <div className="new-convert-assignee" style={{ color: r.assignment ? C.textMuted : C.gold }}>
                           {r.assignment ? <>Assigned to <strong>{r.assignment.assigned_to}</strong></> : "Unassigned"}
                         </div>
                       )}
                     </div>
                   </div>
                   {!isComplete && (
-                    <button style={btn("soul", { padding: "7px 14px", fontSize: 13 })} onClick={() => onLogCheckin(r)}>
+                    <button className="new-convert-queue-action" aria-label={`Log week ${nxt} for ${r.full_name}`} title={`Log week ${nxt}`} style={btn("soul", { padding: "7px 12px", fontSize: 12, width: "auto", minWidth: 0, minHeight: 42, height: 42, flex: "0 0 auto" })} onClick={() => onLogCheckin(r)}>
                       <Phone size={13} />Log Week {nxt}
                     </button>
                   )}
-                  {fullyDone && <span style={badge(C.green, C.greenLight, { fontSize: 12 })}><Star size={11} />Fully Discipled</span>}
+                  {fullyDone && <span className="new-convert-queue-action" style={badge(C.green, C.greenLight, { fontSize: 12 })}><Star size={11} />Fully Discipled</span>}
                 </div>
-                <div style={{ marginTop: 10 }}><NCPipelineBar fbRows={r.fbRows} trainingCompleted={r.envoys_training_completed} /></div>
+                <div className="new-convert-queue-pipeline"><NCPipelineBar fbRows={r.fbRows} trainingCompleted={r.envoys_training_completed} /></div>
                 {isComplete && <NCTrainingBlock nc={r} onSaved={reload} />}
                 {r.fbRows.length > 0 && (
-                  <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
+                  <div className="new-convert-queue-history">
                     {r.fbRows.map(fb => {
                       const fsm = statusMeta(fb.call_status);
                       return (
@@ -6530,8 +6397,8 @@ function NewConvertsRegistry() {
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ position: "relative" }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
-                style={{ ...inputBase, width: 200, paddingLeft: 32 }} />
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                style={{ ...inputBase, width: 200, paddingLeft: 32 }}  aria-label="Search records" />
             </div>
             <button style={btn("ghost")} onClick={load}><RefreshCw size={14} /></button>
           </div>
@@ -6641,7 +6508,6 @@ function NewConvertsRegistry() {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> record{filtered.length !== 1 ? "s" : ""}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -6740,8 +6606,8 @@ function PotentialEnvoysTrainingList() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
         <div style={{ position: "relative" }}>
           <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…"
-            style={{ ...inputBase, width: 200, paddingLeft: 32 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...inputBase, width: 200, paddingLeft: 32 }}  aria-label="Search records" />
         </div>
         <button style={btn("ghost")} onClick={reload}><RefreshCw size={14} /></button>
       </div>
@@ -7103,7 +6969,7 @@ function ConnectCentreProspects({ currentUser }) {
         ))}
         <div style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -7576,11 +7442,11 @@ function CompletedPipelines({ onBack }) {
         <StatCard label="Total Overviews"  value={rows.length}     icon={FileText} accent={C.blue}                                      />
         <StatCard label="Matching Filter"  value={filtered.length} icon={Filter}   accent={C.green}                                     />
         <StatCard label="Selected"         value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.blue : C.textMuted}
-          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+          />
       </div>
 
       {/* Date filter bar */}
-      <div style={{
+      <div className="mobile-compact-filter pipeline-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.blueLight, borderRadius: 10, border: `1px solid ${C.blue}22`,
@@ -7609,8 +7475,7 @@ function CompletedPipelines({ onBack }) {
         <div style={{ position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search name or caller…"
-            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -7644,7 +7509,7 @@ function CompletedPipelines({ onBack }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
+          <div className="mc-scroll mobile-data-table completed-pipelines-table" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           {/* Table header */}
           <div style={{
             display: "grid",
@@ -7780,11 +7645,9 @@ function CompletedPipelines({ onBack }) {
         }}>
           <span>
             Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> overview{filtered.length !== 1 ? "s" : ""} matching your filters (of {rows.length} total)
-            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
           {selectedCount === 0 && filtered.length > 0 && (
             <span style={{ color: C.blue, fontWeight: 600 }}>
-              ☝ Click rows to select, then download as CSV
             </span>
           )}
         </div>
@@ -7793,12 +7656,12 @@ function CompletedPipelines({ onBack }) {
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: EXPERIENCE TEAM — CALL MANAGEMENT  (v5.5)                    ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT  (v6.1)                  ║
 // ║  Includes: AllFeedback, FlaggedRecords, Report                            ║
 // ║                                                                             ║
@@ -7825,7 +7688,7 @@ function CompletedPipelines({ onBack }) {
 // ║  StatCard, SH, FieldInput, AREAS, parseAreas, normaliseStatus,             ║
 // ║  statusMeta, sb, CredsBanner) are assumed already in scope from earlier    ║
 // ║  modules in the same file.                                                 ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PasEmpty — small reusable "no data" placeholder for chart cards
@@ -8174,8 +8037,7 @@ function AllFeedback() {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <div style={{ position: "relative" }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search…" style={{ ...inputBase, width: 160, paddingLeft: 30 }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 160, paddingLeft: 30 }}  aria-label="Search records" />
             </div>
             <select value={filter} onChange={e => setFilter(e.target.value)}
               style={{ ...inputBase, width: 160 }}>
@@ -8306,7 +8168,6 @@ function AllFeedback() {
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> entr{filtered.length !== 1 ? "ies" : "y"}
-          {visibleCount < filtered.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -8538,7 +8399,6 @@ function FlaggedRecords({ currentUser }) {
       {!loading && rows.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, textAlign: "right" }}>
           Showing <strong>{Math.min(visibleCount, rows.length)}</strong> of <strong>{rows.length}</strong> record{rows.length !== 1 ? "s" : ""}
-          {visibleCount < rows.length ? " · scroll for more" : ""}
         </div>
       )}
     </div>
@@ -8929,9 +8789,9 @@ function ExperienceAnalyticsDashboard() {
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: PASTORAL TEAM — FEEDBACK VIEWS & REPORT  (v6.1)              ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8941,26 +8801,26 @@ function ExperienceAnalyticsDashboard() {
 function SCDateFilterBar({ dateFrom, setDateFrom, dateTo, setDateTo, label = "Filter by date:" }) {
   const clear = () => { setDateFrom(""); setDateTo(""); };
   return (
-    <div style={{
+    <div className="sc-date-filter" style={{
       display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
       marginBottom: 16, padding: "12px 16px",
       background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
     }}>
-      <Calendar size={14} color={C.soul} style={{ flexShrink: 0 }} />
-      <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
+      <Calendar className="sc-date-filter-icon" size={14} color={C.soul} style={{ flexShrink: 0 }} />
+      <span className="sc-date-filter-title" style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
         {label}
       </span>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div className="sc-date-range-fields" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flex: 1 }}>
+        <div className="sc-date-field" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>From</span>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          <label className="sc-date-picker" aria-label="Choose start date" title="Choose start date"><Calendar size={16} /><input aria-label="From date" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...inputBase, width: 148 }} />{dateFrom && <span className="sc-date-current">{dateFrom.slice(5).replace("-", "/")}</span>}</label>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="sc-date-field" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 12, color: C.textMuted, whiteSpace: "nowrap" }}>To</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />
+          <label className="sc-date-picker" aria-label="Choose end date" title="Choose end date"><Calendar size={16} /><input aria-label="To date" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...inputBase, width: 148 }} />{dateTo && <span className="sc-date-current">{dateTo.slice(5).replace("-", "/")}</span>}</label>
         </div>
         {(dateFrom || dateTo) && (
-          <button style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clear}>
+          <button className="sc-date-clear" style={btn("ghost", { padding: "6px 12px", fontSize: 12 })} onClick={clear}>
             <X size={12} />Clear dates
           </button>
         )}
@@ -9516,7 +9376,7 @@ function StewardsCSVImport({ currentUser, onDone }) {
         Required column: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>.
         Optional: phone, email, gender, dob, marital_status, life_stage,{" "}
         <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>department</code>,{" "}
-        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>position</code> membership_status, date_joined, house_address, 
+        <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>position</code> membership_status, date_joined, house_address,
         nearest_landmark.
       </p>
       <Alert type="error"   msg={err}     onClose={() => setErr("")} />
@@ -9698,15 +9558,15 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
         <StatCard label="In Leadership Roles" value={leadershipCount} icon={Award}       accent={C.gold} />
       </div>
 
-      <div style={{ ...card, marginBottom: 20 }}>
+      <div className="stewards-quick-add" style={{ ...card, marginBottom: 20 }}>
         <SH title="Quick Add" icon={UserPlus} />
-        <div className="g4" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: "0 16px" }}>
+        <div className="g4 steward-quick-fields" style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: "0 16px" }}>
           <FieldInput label="Full Name" id="qsname" value={quickName} onChange={e => setQuickName(e.target.value)} placeholder="e.g. Ngozi Eze" />
           <FieldInput label="Phone" id="qsphone" value={quickPhone} onChange={e => setQuickPhone(e.target.value)} placeholder="Optional" />
           <FieldInput label="Department" id="qsdept" value={quickDept} onChange={e => setQuickDept(e.target.value)} placeholder="e.g. Ushering" />
           <FieldInput label="Position" id="qsposition" value={quickPosition} onChange={e => setQuickPosition(e.target.value)} placeholder="Steward, Team Lead, etc." />
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="steward-quick-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button style={btn("gold")} onClick={addQuickSteward} disabled={savingQuick}>
             <UserPlus size={14} />{savingQuick ? "Saving\u2026" : "Add Steward"}
           </button>
@@ -9718,32 +9578,32 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
 
       {showImport && <StewardsCSVImport currentUser={currentUser} onDone={() => { reload(); }} />}
 
-      <div style={{
+      <div className="care-filterbar stewards-filterbar" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.goldLight, borderRadius: 10, border: `1px solid ${C.gold}30`,
       }}>
-        <Filter size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
-        <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">Membership Status</option>
+        <Filter className="care-filter-icon" size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
+        <select className="care-filter-select" value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
           <option value="Travelled">Travelled</option>
         </select>
-        <select value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">Marital Status</option>
+        <select className="care-filter-select" value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Marital</option>
           <option value="Single">Single</option>
           <option value="Married">Married</option>
           <option value="Divorced">Divorced</option>
           <option value="Widowed">Widowed</option>
         </select>
-        <select value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+        <select className="care-filter-select" value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
           <option value="">Life Stage</option>
           <option value="Student">Student</option>
           <option value="Employee">Employee</option>
           <option value="Business Owner">Business Owner</option>
         </select>
-        <select value={fPosition} onChange={e => setFPosition(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+        <select className="care-filter-select" value={fPosition} onChange={e => setFPosition(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
           <option value="">All Positions</option>
           <option value="Steward">Steward Only</option>
           {[...new Set(stewards.map(s => s.position).filter(p => p && p !== "Steward"))].sort().map(p => (
@@ -9756,11 +9616,22 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
             <X size={12} />Clear
           </button>
         )}
-        <div style={{ marginLeft: "auto", position: "relative" }}>
+        <div className="care-filter-search" style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name\u2026"
-            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
+      </div>
+
+      <div className="stewards-mobile-sort">
+        <label htmlFor="stewards-mobile-sort-select">Sort by</label>
+        <select id="stewards-mobile-sort-select" value={sortKey || ""} onChange={e => { setSortKey(e.target.value || null); setSortDir("asc"); }}>
+          <option value="">Default order</option>
+          {[["name", "Name"], ["phone", "Phone"], ["email", "Email"], ["gender", "Gender"], ["dob", "Date of birth"], ["status", "Membership status"], ["department", "Department"], ["position", "Position"], ["lastCalled", "Last called"]].map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+        </select>
+        <button type="button" aria-label={`Sort ${sortDir === "asc" ? "descending" : "ascending"}`} title={`Sort ${sortDir === "asc" ? "descending" : "ascending"}`} onClick={() => { if (!sortKey) setSortKey("name"); setSortDir(dir => dir === "asc" ? "desc" : "asc"); }}>
+          <ArrowUpDown size={16} />
+        </button>
       </div>
 
       <Alert type="error"   msg={err} onClose={() => setErr("")} />
@@ -9777,8 +9648,8 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
-            <div style={{
+          <div className="mc-scroll stewards-table-scroll" style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
+            <div className="stewards-table-header" style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
               position: "sticky", top: 0, zIndex: 3, minWidth: 1190,
@@ -9795,12 +9666,12 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
             {sorted.map((m, i) => {
               const stm      = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
               return (
-                <div key={m.id} style={{
+                <div key={m.id} className="stewards-table-row" style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
                   padding: "10px 0", background: C.surface, minWidth: 1190,
                   borderBottom: i < sorted.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
-                  <div style={stickyLeft(C.surface)}>
+                  <div className="stewards-name-cell" style={stickyLeft(C.surface)}>
                     <div onClick={() => onViewProfile && onViewProfile(m)} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, cursor: onViewProfile ? "pointer" : "default" }}>
                       <Avatar name={m.full_name} size={30} />
                       <div style={{
@@ -9811,16 +9682,16 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
+                  <div className="stewards-phone-cell" style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
                   <div style={{ fontSize: 12, color: C.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {m.email || <span style={{ color: C.textMuted }}>—</span>}
                   </div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "\u2014"}</div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
-                  <div>
-                    <button onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
+                  <div className="stewards-status-cell">
+                    <button className="status-toggle" onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
                       style={{ ...badge(stm.color, stm.bg, { fontSize: 10 }), border: "none", cursor: "pointer" }}>
-                      <span style={dot(stm.color)} />{m.membership_status || "Active"}
+                      <span className="status-toggle-pill" style={badge(stm.color, stm.bg, { fontSize: 10 })}><span style={dot(stm.color)} />{m.membership_status || "Active"}</span>
                     </button>
                   </div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{m.department || <span style={{ color: C.textMuted }}>—</span>}</div>
@@ -9834,10 +9705,6 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
           </div>
         </div>
       )}
-
-      <div style={{ marginTop: 10, fontSize: 12, color: C.textMuted }}>
-        Department and Position can be edited from a steward's profile page (click their name).
-      </div>
 
       {!loading && filtered.length > 0 && (
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted }}>
@@ -9997,26 +9864,26 @@ function MembersCare({ currentUser, role, onViewProfile }) {
       </div>
 
       {/* Filters */}
-      <div style={{
+      <div className="care-filterbar members-filterbar" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
       }}>
-        <Filter size={14} color={C.soul} style={{ flexShrink: 0 }} />
-        <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">Membership Status</option>
+        <Filter className="care-filter-icon" size={14} color={C.soul} style={{ flexShrink: 0 }} />
+        <select className="care-filter-select" value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Status</option>
           <option value="Active">Active</option>
           <option value="Inactive">Inactive</option>
           <option value="Travelled">Travelled</option>
         </select>
-        <select value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
-          <option value="">Marital Status</option>
+        <select className="care-filter-select" value={fMarital} onChange={e => setFMarital(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+          <option value="">Marital</option>
           <option value="Single">Single</option>
           <option value="Married">Married</option>
           <option value="Divorced">Divorced</option>
           <option value="Widowed">Widowed</option>
         </select>
-        <select value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
+        <select className="care-filter-select" value={fLife} onChange={e => setFLife(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
           <option value="">Life Stage</option>
           <option value="Student">Student</option>
           <option value="Employee">Employee</option>
@@ -10028,10 +9895,10 @@ function MembersCare({ currentUser, role, onViewProfile }) {
             <X size={12} />Clear
           </button>
         )}
-        <div style={{ marginLeft: "auto", position: "relative" }}>
+        <div className="care-filter-search" style={{ marginLeft: "auto", position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name…"
-            style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -10050,7 +9917,7 @@ function MembersCare({ currentUser, role, onViewProfile }) {
           <div className="mc-scroll" onScroll={onScroll} style={{ overflow: "auto", maxHeight: 600, padding: "0 16px" }}>
 
             {/* Sticky header */}
-            <div style={{
+            <div className="members-table-header" style={{
               display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
               padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`,
               position: "sticky", top: 0, zIndex: 3, minWidth: 1010,
@@ -10068,12 +9935,12 @@ function MembersCare({ currentUser, role, onViewProfile }) {
             {pageRows.map((m, i) => {
               const stm      = MC_STATUS_META[m.membership_status || "Active"] || MC_STATUS_META.Active;
               return (
-                <div key={m.id} style={{
+                <div key={m.id} className="members-table-row" style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
                   padding: "10px 0", background: C.surface, minWidth: 1010,
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
-                  <div style={stickyLeft(C.surface)}>
+                  <div className="members-name-cell" style={stickyLeft(C.surface)}>
                     <div onClick={() => onViewProfile && onViewProfile(m)} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, cursor: onViewProfile ? "pointer" : "default" }}>
                       <Avatar name={m.full_name} size={30} />
                       <div style={{
@@ -10084,23 +9951,23 @@ function MembersCare({ currentUser, role, onViewProfile }) {
                       </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
+                  <div className="members-phone-cell" style={{ fontSize: 12 }}><PhoneLink phone={m.phone} withWhatsApp /></div>
                   <div style={{ fontSize: 12, color: C.textSecondary, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {m.email || <span style={{ color: C.textMuted }}>—</span>}
                   </div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{m.gender || "—"}</div>
                   <div style={{ fontSize: 12, color: C.textSecondary }}>{dobDayMonth(m.dob)}</div>
-                  <div>
+                  <div className="members-category-cell">
                     <span style={badge(
                       m.category === "Steward" ? C.goldDark : C.soul,
                       m.category === "Steward" ? C.goldLight : C.soulLight,
                       { fontSize: 10 }
                     )}>{m.category || "Member"}</span>
                   </div>
-                  <div>
-                    <button onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
+                  <div className="members-status-cell">
+                    <button className="status-toggle" onClick={() => toggleQuickStatus(m)} title="Click to toggle Active / Inactive"
                       style={{ ...badge(stm.color, stm.bg, { fontSize: 10 }), border: "none", cursor: "pointer" }}>
-                      <span style={dot(stm.color)} />{m.membership_status || "Active"}
+                      <span className="status-toggle-pill" style={badge(stm.color, stm.bg, { fontSize: 10 })}><span style={dot(stm.color)} />{m.membership_status || "Active"}</span>
                     </button>
                   </div>
                   <div style={{ fontSize: 12, color: lastCalledByKey[m.id] ? C.textSecondary : C.textMuted }}>
@@ -10117,7 +9984,6 @@ function MembersCare({ currentUser, role, onViewProfile }) {
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
           <span>
             Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> member{filtered.length !== 1 ? "s" : ""} matching your filters (of {members.length} total)
-            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
           {filtered.length > 10 && (
             <span>Name column stays pinned while scrolling</span>
@@ -10170,7 +10036,7 @@ function CarePriorityList({ onViewProfile }) {
         action={
           <div style={{ position: "relative" }}>
             <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
           </div>
         } />
 
@@ -10359,7 +10225,7 @@ function scPersonDetailLine(r) {
 // Soul Care calling pages.
 function CategoryToggle({ value, onChange, counts }) {
   return (
-    <div style={{ display: "inline-flex", borderRadius: 10, border: `1.5px solid ${C.border}`, overflow: "hidden" }}>
+        <div className="sc-category-toggle" style={{ display: "inline-flex", borderRadius: 10, border: `1.5px solid ${C.border}`, overflow: "hidden" }}>
       {["Steward", "Member"].map(cat => (
         <button key={cat} onClick={() => onChange(cat)}
           style={{
@@ -10667,7 +10533,7 @@ function AvailableForVisitation() {
         action={
           <div style={{ position: "relative" }}>
             <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 180, paddingLeft: 30 }}  aria-label="Search records" />
           </div>
         } />
 
@@ -10924,7 +10790,7 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
         </button>
         <div style={{ position: "relative", marginLeft: "auto" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or phone…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -11028,34 +10894,31 @@ function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall, o
   ];
 
   return (
-    <div className="page-enter">
+    <div className="page-enter sc-call-queue">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title={isAdmin ? "Call Queue" : "My Assigned Calls"}
-        subtitle={isAdmin
-          ? "Every Steward and Member, ranked by how long it's been since their last call"
-          : "Your assigned Stewards and Members, longest-neglected first"}
         action={
-          <div style={{ position: "relative" }}>
-            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          <div className="sc-call-search-wrap" style={{ position: "relative" }}>
+            <Search className="sc-call-search-icon" size={16} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
+            <input className="sc-call-search" value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 180, paddingLeft: 30 }}  aria-label="Search records" />
           </div>
         } />
 
-      <div style={{ marginBottom: 20 }}>
+      <div className="sc-category-wrap" style={{ marginBottom: 20 }}>
         <CategoryToggle value={category} onChange={setCategory} counts={{
           Steward: (isAdmin ? data : data.filter(r => r.assignment?.assigned_to === currentUser)).filter(r => r.category === "Steward").length,
           Member:  (isAdmin ? data : data.filter(r => r.assignment?.assigned_to === currentUser)).filter(r => r.category === "Member").length,
         }} />
       </div>
 
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
-        <StatCard label={`Total ${category === "Steward" ? "Stewards" : "Members"}`} value={searched.length} icon={Users}  accent={C.green} />
-        <StatCard label="Never Called"  value={neverCalled} icon={AlertCircle} accent={C.flag}   sub={neverCalled > 0 ? "Highest priority" : ""} />
-        <StatCard label="30+ Days Since Call" value={overdue30} icon={Clock} accent={C.danger} />
+      <div className="g4 sc-call-stats" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+        <StatCard label="Total" value={searched.length} icon={Users}  accent={C.green} />
+        <StatCard label="Never called"  value={neverCalled} icon={AlertCircle} accent={C.flag} />
+        <StatCard label="30+ days" value={overdue30} icon={Clock} accent={C.danger} />
       </div>
 
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+      <div className="sc-call-status-tabs" style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
         {statusTabs.map(t => (
           <button key={t.k} onClick={() => setStatusFilter(t.k)} style={{
             padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
@@ -11063,6 +10926,9 @@ function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall, o
             border: `1.5px solid ${statusFilter === t.k ? C.soul : C.border}`,
           }}>{t.label} ({t.count})</button>
         ))}
+        <select className="sc-call-status-select" aria-label="Filter calls by outcome" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          {statusTabs.map(t => <option key={t.k} value={t.k}>{t.label} ({t.count})</option>)}
+        </select>
       </div>
 
       <Alert type="error" msg={err} onClose={() => {}} />
@@ -11079,15 +10945,15 @@ function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall, o
               const ds = daysSince(r.lastCalled);
               const urgent = ds === null || ds > 30;
               return (
-                <div key={r.id} style={{
+                <div key={r.id} className="sc-call-card" style={{
                   ...card, padding: "12px 16px", display: "flex", justifyContent: "space-between",
                   alignItems: "center", flexWrap: "wrap", gap: 10,
                   borderLeft: `3px solid ${urgent ? C.danger : ds > 14 ? C.amber : C.green}`,
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  <div className="sc-call-person" style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                     <Avatar name={r.full_name} size={38} />
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <div className="sc-call-name-row" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span onClick={() => onViewProfile && onViewProfile(r)} style={{
                           fontWeight: 700, fontSize: 14, fontFamily: F.head, cursor: onViewProfile ? "pointer" : "default",
                           color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
@@ -11096,10 +10962,15 @@ function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall, o
                           <span style={badge(C.amber, C.amberLight, { fontSize: 10 })}>{r.membership_status}</span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /></div>
                       {scPersonDetailLine(r) && (
-                        <div style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{scPersonDetailLine(r)}</div>
+                        <div className="sc-call-demographics" style={{ fontSize: 11, color: C.textMuted, marginTop: 1 }}>{scPersonDetailLine(r)}</div>
                       )}
+                      <div className="sc-call-contact-row" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.textMuted }}>
+                        <PhoneLink phone={r.phone} withWhatsApp />
+                        <button className="sc-log-call" aria-label={`Log call for ${r.full_name}`} title={`Log call for ${r.full_name}`} style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => onLogCall(r)}>
+                          <Phone size={16} /><span className="sc-log-call-label">Log Call</span>
+                        </button>
+                      </div>
                       {isAdmin && r.assignment && (
                         <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>Assigned to <strong>{r.assignment.assigned_to}</strong></div>
                       )}
@@ -11108,14 +10979,11 @@ function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall, o
                       )}
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div className="sc-call-actions" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={badge(ds === null ? C.flag : ds > 30 ? C.danger : C.textMuted, ds === null ? C.flagLight : ds > 30 ? C.dangerLight : C.bg, { fontSize: 11 })}>
                       <Clock size={10} />{ds === null ? "Never called" : `${ds}d ago`}
                     </span>
-                    <span style={{ fontSize: 11, color: C.textMuted }}>{r.callCount} call{r.callCount !== 1 ? "s" : ""} logged</span>
-                    <button style={btn("soul", { padding: "6px 14px", fontSize: 12 })} onClick={() => onLogCall(r)}>
-                      <Phone size={13} />Log Call
-                    </button>
+                    <span className="sc-call-count" style={{ fontSize: 11, color: C.textMuted }}>{r.callCount} call{r.callCount !== 1 ? "s" : ""}</span>
                   </div>
                 </div>
               );
@@ -11890,11 +11758,11 @@ function TestimonyBank({ currentUser }) {
         <StatCard label="Total Testimonies" value={rows.length}     icon={Star}     accent={C.goldDark} />
         <StatCard label="Matching Filter"   value={filtered.length} icon={Filter}   accent={C.green}    />
         <StatCard label="Selected"          value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.goldDark : C.textMuted}
-          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+          />
       </div>
 
       {/* Filter bar — Testimony Type sits IN FRONT of the date filter */}
-      <div style={{
+      <div className="mobile-compact-filter testimony-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.goldLight, borderRadius: 10, border: `1px solid ${C.gold}30`,
@@ -11931,7 +11799,7 @@ function TestimonyBank({ currentUser }) {
         </div>
         <div style={{ position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or testimony…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -11969,7 +11837,7 @@ function TestimonyBank({ currentUser }) {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
+          <div className="mc-scroll mobile-data-table testimony-bank-table" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           <div style={{
             display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr", minWidth: 760,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
@@ -12041,19 +11909,17 @@ function TestimonyBank({ currentUser }) {
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span>
             Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> testimon{filtered.length !== 1 ? "ies" : "y"} matching your filters (of {rows.length} total)
-            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
-          {selectedCount === 0 && <span style={{ color: C.goldDark, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
     </div>
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                          ║
 // ║  Includes: ResearchFeedback                                                ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 function FeedbackQRPage() {
   const feedbackUrl = window.location.origin + "/feedback";
@@ -12203,7 +12069,7 @@ function PublicFeedbackForm() {
             options={FEEDBACK_FOCUS_POINTS} />
           <FieldInput label="Your Feedback" id="pff" type="textarea" required value={form.feedback} onChange={set("feedback")}
             placeholder="Share your experience, suggestions, or thoughts about our services…" />
-          <button 
+          <button
             style={{ ...btn("primary", { background: C.research, border: "none" }), width: "100%", padding: 13, fontSize: 15 }}
             onClick={submit} disabled={loading}>
             {loading ? "Submitting…" : "Submit Feedback"}
@@ -12417,10 +12283,10 @@ function ResearchFeedback() {
         <StatCard label="Total Responses" value={rows.length}     icon={FileText} accent={C.research} />
         <StatCard label="Matching Filter" value={filtered.length} icon={Filter}   accent={C.green}    />
         <StatCard label="Selected"        value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.research : C.textMuted}
-          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+          />
       </div>
 
-      <div style={{
+      <div className="mobile-compact-filter research-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.researchLight, borderRadius: 10, border: `1px solid ${C.researchBorder}`,
@@ -12444,7 +12310,7 @@ function ResearchFeedback() {
         </div>
         <div style={{ position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or feedback…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -12481,7 +12347,7 @@ function ResearchFeedback() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
+          <div className="mc-scroll mobile-data-table research-feedback-table" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           <div style={{
             display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr", minWidth: 820,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
@@ -12557,9 +12423,7 @@ function ResearchFeedback() {
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span>
             Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> response{filtered.length !== 1 ? "s" : ""} matching your filters (of {rows.length} total)
-            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
-          {selectedCount === 0 && <span style={{ color: C.research, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
     </div>
@@ -12680,10 +12544,10 @@ function GeneralFeedback() {
         <StatCard label="Total Responses" value={rows.length}     icon={FileText} accent={C.research} />
         <StatCard label="Matching Filter" value={filtered.length} icon={Filter}   accent={C.green}    />
         <StatCard label="Selected"        value={selectedCount}   icon={Download} accent={selectedCount > 0 ? C.research : C.textMuted}
-          sub={selectedCount > 0 ? "Ready to download" : "Select rows below"} />
+          />
       </div>
 
-      <div style={{
+      <div className="mobile-compact-filter general-feedback-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
         background: C.researchLight, borderRadius: 10, border: `1px solid ${C.researchBorder}`,
@@ -12707,7 +12571,7 @@ function GeneralFeedback() {
         </div>
         <div style={{ position: "relative" }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or feedback…" style={{ ...inputBase, width: 200, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: 200, paddingLeft: 30 }}  aria-label="Search records" />
         </div>
       </div>
 
@@ -12744,7 +12608,7 @@ function GeneralFeedback() {
         </div>
       ) : (
         <div style={{ ...card, padding: 0, overflow: "hidden" }}>
-          <div className="mc-scroll" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
+          <div className="mc-scroll mobile-data-table general-feedback-table" onScroll={onScroll} style={{ overflowX: "auto", overflowY: "auto", maxHeight: 640 }}>
           <div style={{
             display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr", minWidth: 680,
             padding: "10px 16px", background: C.bg, borderBottom: `1px solid ${C.border}`, gap: 10, alignItems: "center",
@@ -12813,23 +12677,21 @@ function GeneralFeedback() {
         <div style={{ marginTop: 12, fontSize: 12, color: C.textMuted, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           <span>
             Showing <strong>{Math.min(visibleCount, filtered.length)}</strong> of <strong>{filtered.length}</strong> response{filtered.length !== 1 ? "s" : ""} matching your filters (of {rows.length} total)
-            {visibleCount < filtered.length ? " · scroll for more" : ""}
           </span>
-          {selectedCount === 0 && <span style={{ color: C.research, fontWeight: 600 }}>☝ Click rows to select, then download as CSV</span>}
         </div>
       )}
     </div>
   );
 }
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: RESEARCH TEAM — SERVICE FEEDBACK VIEWER                      ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: ADMIN — USER MANAGEMENT & OVERVIEW                               ║
 // ║  Includes: AdminOverview, AdminUsers, AdminAddUser                        ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 // ─────────────────────────────────────────────────────────────────────────────
 // v6.3 — MyProfilePage: self-service display name + password changes.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -13004,14 +12866,14 @@ function AdminOverview({ setActive }) {
           </button>
         </div>
       )}
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
+      <div className="g4 admin-overview-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 28 }}>
         <StatCard label="First-Timers"  value={counts.ft}      icon={Users}   accent={C.green}   />
         <StatCard label="Calls Logged"  value={counts.fb}      icon={Phone}   accent={C.greenMid}/>
         <StatCard label="Flagged"       value={counts.flagged}  icon={Flag}    accent={C.flag}    />
         <StatCard label="System Users"  value={counts.users}   icon={Shield}  accent={C.goldDark}/>
       </div>
       <div style={{ marginBottom: 24 }}><BirthdaysWidget /></div>
-        
+
       <div style={{
         marginBottom: 12, fontWeight: 700, fontSize: 13, color: C.textMuted,
         fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em",
@@ -13085,9 +12947,10 @@ function AdminUsers({ onEdit }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setErr("");
     try { setUsers((await sb("app_users?order=created_at.desc")) || []); }
     catch (e) { setErr(e.message); }
-    setLoading(false);
+    finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -13145,7 +13008,7 @@ function AdminUsers({ onEdit }) {
   const { visibleCount, onScroll } = usePagedScroll(`users|${roleFilter}`, sorted.length, 10);
 
   return (
- 
+
     <div className="page-enter">
       <PageHeader title="System Users"
         subtitle={`${sorted.length} of ${users.length} account${users.length !== 1 ? "s" : ""}${pendingCount ? ` · ${pendingCount} pending approval` : ""}`}
@@ -13333,14 +13196,14 @@ function AdminAddUser({ editUser, onSuccess, onCancel }) {
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: ADMIN — USER MANAGEMENT & OVERVIEW                           ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: AUTHENTICATION — LOGIN                                                          ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 const SIGNUP_ROLES = [
   { value: "expteam",       label: "Experience Team" },
@@ -13454,9 +13317,9 @@ function Login({ onLogin }) {
           }}>
             THE <span style={{ color: C.goldMid }}>ENVOYS</span>
           </h1>
-          <p style={{ color: "rgba(255,255,255,.7)", fontSize: 14, margin: 0, letterSpacing: ".04em" }}>
-            Membership Retention
-          </p>
+          <p className="login-kicker">MEMBERSHIP RETENTION PLATFORM</p>
+          <h2 className="login-hero-title">Every connection<br /><span>deserves care.</span></h2>
+          <p className="login-hero-copy">A shared workspace for welcoming people, following up with intention, and helping every person find their place.</p>
           <div className="login-verse" style={{ marginTop: 44, paddingLeft: 14, borderLeft: `3px solid ${C.gold}` }}>
             <p style={{
               color: "rgba(255,255,255,.85)", fontSize: 15, fontStyle: "italic",
@@ -13476,38 +13339,44 @@ function Login({ onLogin }) {
 
       {/* ── Form panel ── */}
       <div className="login-panel">
-        <div style={{ width: "100%", maxWidth: 380 }}>
+        <Card className="login-card">
 
           {mode === "signin" ? (
             <>
-              <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 24 }}>
-                Welcome back
-              </h2>
-              <p style={{ margin: "6px 0 26px", fontSize: 13, color: C.textMuted }}>
-                Sign in to continue to your dashboard
-              </p>
+              <CardHeader className="login-card-header">
+                <CardTitle>Welcome back</CardTitle>
+                <CardDescription>Sign in to continue to your workspace.</CardDescription>
+              </CardHeader>
+              <CardContent className="login-card-content">
               {CREDS_MISSING && <CredsBanner />}
               <Alert type="error" msg={err} onClose={() => setErr("")} />
               <div onKeyDown={e => e.key === "Enter" && !loading && submit()}>
-                <FieldInput label="Username" id="lu" value={u}
-                  onChange={e => setU(e.target.value)} placeholder="e.g. expteam1" />
-                <FieldInput label="Password" id="lp" type="password" value={p}
-                  onChange={e => setP(e.target.value)} placeholder="••••••••" />
-                <button style={{ ...btn("primary"), width: "100%", padding: 13, fontSize: 15, marginTop: 4 }}
+                <div className="login-field">
+                  <UIlabel htmlFor="lu">Username</UIlabel>
+                  <UIinput id="lu" autoComplete="username" value={u}
+                    onChange={e => setU(e.target.value)} placeholder="Your username" />
+                </div>
+                <div className="login-field">
+                  <UIlabel htmlFor="lp">Password</UIlabel>
+                  <UIinput id="lp" autoComplete="current-password" type="password" value={p}
+                    onChange={e => setP(e.target.value)} placeholder="Enter your password" />
+                </div>
+                <UIbutton className="login-submit"
                   onClick={submit} disabled={loading}>
                   {loading ? "Signing in…" : "Sign In"}
-                </button>
+                </UIbutton>
               </div>
-              <p style={{ fontSize: 13, color: C.textMuted, marginTop: 20, textAlign: "center" }}>
+              <p className="login-switch">
                 New team member?{" "}
                 <button onClick={() => switchMode("request")} style={{
                   background: "none", border: "none", color: C.green, fontWeight: 700,
                   cursor: "pointer", fontSize: 13, padding: 0, fontFamily: F.body,
                 }}>Request access</button>
               </p>
+              </CardContent>
             </>
           ) : rDone ? (
-            <div style={{ textAlign: "center" }} className="page-enter">
+            <CardContent className="login-card-content"><div style={{ textAlign: "center" }} className="page-enter">
               <div style={{
                 width: 64, height: 64, borderRadius: "50%", background: C.greenLight,
                 display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
@@ -13524,15 +13393,14 @@ function Login({ onLogin }) {
               <button style={{ ...btn("outline"), marginTop: 16 }} onClick={() => switchMode("signin")}>
                 <ArrowLeft size={14} />Back to Sign In
               </button>
-            </div>
+            </div></CardContent>
           ) : (
             <>
-              <h2 style={{ margin: 0, color: C.textPrimary, fontFamily: F.head, fontWeight: 800, fontSize: 24 }}>
-                Request access
-              </h2>
-              <p style={{ margin: "6px 0 22px", fontSize: 13, color: C.textMuted }}>
-                Create your account — an admin will approve it before you can sign in.
-              </p>
+              <CardHeader className="login-card-header">
+                <CardTitle>Request access</CardTitle>
+                <CardDescription>Create your team account. An admin will approve it before you can sign in.</CardDescription>
+              </CardHeader>
+              <CardContent className="login-card-content">
               <Alert type="error" msg={rErr} onClose={() => setRErr("")} />
               <div onKeyDown={e => e.key === "Enter" && !rBusy && requestAccess()}>
                 <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
@@ -13562,28 +13430,29 @@ function Login({ onLogin }) {
                   cursor: "pointer", fontSize: 13, padding: 0, fontFamily: F.body,
                 }}>Sign in</button>
               </p>
+              </CardContent>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );
 }
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
 // ║  END MODULE: AUTHENTICATION — LOGIN                                        ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: APP SHELL — ROOT COMPONENT & ROUTING                             ║
 // ║  Includes: App (default export) — manages all state, routing, rendering   ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+
 // ║  MODULE: NIGHT OF MERCY (NOM) FIRST-TIMERS                                 ║
 // ║  Fully separate from first_timers — own table, own public form, own QR,   ║
 // ║  own registry. Follow-up is a single Contacted / Not Contacted toggle.    ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 const BLANK_NOM = {
   full_name: "", phone: "", gender: "", marital_status: "",
@@ -13693,7 +13562,7 @@ function PublicNOMForm() {
               { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
               { value: "Business Owner", label: "Business Owner" },
             ]} />
-          <FieldInput label="House Address" id="nomha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
+          <FieldInput label="House Address" id="nomha" value={form.house_address} onChange={set("house_address")} placeholder="Full House Address" />
           <FieldInput label="Nearest Landmark" id="nomnl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
           <button style={{ ...btn("gold"), width: "100%", padding: 13, fontSize: 15 }} onClick={submit} disabled={loading}>
             {loading ? "Submitting…" : "Submit"}
@@ -13736,6 +13605,49 @@ function NOMQRCodePage() {
   );
 }
 
+function RegistryIconFilter({ icon: Icon, label, value, onChange, options }) {
+  const active = value !== "all";
+  return <label className={`registry-icon-filter${active ? " is-active" : ""}`} title={label}>
+    <Icon size={17} aria-hidden="true" />
+    <select aria-label={label} value={value} onChange={e => onChange(e.target.value)}>
+      {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
+  </label>;
+}
+
+function EventRegistryCard({ row, variant = "nom", busy = false, onToggle, lift }) {
+  const [expanded, setExpanded] = useState(false);
+  const convention = variant === "convention";
+  const demographics = [
+    convention && row.membership_status,
+    row.gender,
+    row.marital_status,
+    row.life_stage,
+  ].filter(Boolean).join(" · ");
+  const location = [row.house_address, row.nearest_landmark && `Near ${row.nearest_landmark}`].filter(Boolean).join(" · ");
+  return <article className={`nom-registry-card compact-event-registry-card${expanded ? " is-expanded" : ""}`} style={{ borderLeftColor: row.contacted ? C.green : C.gold }} {...lift}>
+    <div className="compact-event-registry-heading">
+      <Avatar name={row.full_name} size={34} />
+      <strong title={row.full_name}>{row.full_name}</strong>
+      <span className={`compact-event-registry-status${row.contacted ? " is-contacted" : ""}`}><i />{row.contacted ? "Contacted" : "Not contacted"}</span>
+      <button className="compact-event-registry-expand" type="button" aria-label={`${expanded ? "Hide" : "Show"} details for ${row.full_name}`} aria-expanded={expanded} onClick={() => setExpanded(value => !value)} title={expanded ? "Hide details" : "Show details"}><ChevronDown size={15} /></button>
+      <button className="compact-event-registry-action" type="button" aria-label={row.contacted ? `Mark ${row.full_name} not contacted` : `Mark ${row.full_name} contacted`} title={row.contacted ? "Mark not contacted" : "Mark contacted"} onClick={() => onToggle(row)} disabled={busy}>
+        <CheckCircle size={15} />
+      </button>
+    </div>
+    <div className="compact-event-registry-summary">
+      <PhoneLink phone={row.phone} withWhatsApp size={12} bold />
+      <span className="compact-event-registry-meta" title={[row.service_date, row.source === "QR" ? "QR registration" : "Manual entry"].filter(Boolean).join(" · ")}>{row.service_date}</span>
+    </div>
+    {expanded && <div className="compact-event-registry-expanded">
+      <span>{row.source === "QR" ? "QR registration" : "Manual entry"}</span>
+      {demographics && <span>{demographics}</span>}
+      {location && <span>{location}</span>}
+      {row.contacted && row.contacted_by && <span>Contacted by {row.contacted_by}</span>}
+    </div>}
+  </article>;
+}
+
 function NOMFirstTimersList({ currentUser }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -13744,6 +13656,10 @@ function NOMFirstTimersList({ currentUser }) {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [filter, setFilter] = useState("all"); // all | contacted | uncontacted
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [maritalFilter, setMaritalFilter] = useState("all");
+  const [lifeStageFilter, setLifeStageFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
   const [savingId, setSavingId] = useState(null);
 
   const reload = useCallback(async () => {
@@ -13762,11 +13678,16 @@ function NOMFirstTimersList({ currentUser }) {
 
   const filtered = data.filter(r => {
     const matchSearch = !search || r.full_name?.toLowerCase().includes(search.toLowerCase()) || r.phone?.includes(search);
-    if (filter === "contacted")   return matchSearch && r.contacted;
-    if (filter === "uncontacted") return matchSearch && !r.contacted;
-    return matchSearch;
+    if (!matchSearch) return false;
+    if (filter === "contacted" && !r.contacted) return false;
+    if (filter === "uncontacted" && r.contacted) return false;
+    if (genderFilter !== "all" && r.gender !== genderFilter) return false;
+    if (maritalFilter !== "all" && r.marital_status !== maritalFilter) return false;
+    if (lifeStageFilter !== "all" && r.life_stage !== lifeStageFilter) return false;
+    if (sourceFilter !== "all" && (r.source || "Manual") !== sourceFilter) return false;
+    return true;
   });
-  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${dateFrom}|${dateTo}`, filtered.length, 10);
+  const { visibleCount, onScroll } = usePagedScroll(`${search}|${filter}|${genderFilter}|${maritalFilter}|${lifeStageFilter}|${sourceFilter}|${dateFrom}|${dateTo}`, filtered.length, 10);
 
   const contactedCount   = data.filter(r => r.contacted).length;
   const uncontactedCount = data.length - contactedCount;
@@ -13802,7 +13723,7 @@ function NOMFirstTimersList({ currentUser }) {
 
       <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by NOM service date:" />
 
-      <div className="g4" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+      <div className="g4 nom-registry-stats" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
         <StatCard label="Total"          value={data.length}       icon={Moon}       accent={C.goldDark} />
         <StatCard label="Contacted"      value={contactedCount}    icon={CheckCircle} accent={C.green}   />
         <StatCard label="Not Contacted"  value={uncontactedCount}  icon={AlertCircle} accent={C.gold}     />
@@ -13810,53 +13731,34 @@ function NOMFirstTimersList({ currentUser }) {
 
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16, alignItems: "center" }}>
-        {tabs.map(t => (
-          <button key={t.k} onClick={() => setFilter(t.k)} style={{
+      <div className="event-registry-toolbar">
+        <div className="event-registry-tabs">{tabs.map(t => (
+          <button key={t.k} onClick={() => setFilter(t.k)} aria-pressed={filter === t.k} style={{
             padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer",
             background: filter === t.k ? t.col : C.bg, color: filter === t.k ? "#fff" : C.textSecondary,
             border: `1.5px solid ${filter === t.k ? t.col : C.border}`,
           }}>{t.label} ({t.count})</button>
-        ))}
-        <div style={{ marginLeft: "auto", position: "relative" }}>
+        ))}</div>
+        <div className="event-registry-controls">
+        <div className="event-registry-search">
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" style={{ ...inputBase, width: 180, paddingLeft: 30 }} />
+          <input value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputBase, width: "100%", paddingLeft: 30 }} placeholder="Name or phone" aria-label="Search Night of Mercy registrants" />
         </div>
-        <button style={btn("ghost", { padding: "6px 10px" })} onClick={reload}><RefreshCw size={13} /></button>
+        <button className="event-registry-refresh" style={btn("ghost", { padding: "6px 10px" })} onClick={reload} aria-label="Refresh registrations"><RefreshCw size={13} /></button>
+      <div className="event-registry-filter-grid">
+        <RegistryIconFilter icon={Users} label="Gender" value={genderFilter} onChange={setGenderFilter} options={[{ value: "all", label: "Any gender" }, { value: "Female", label: "Female" }, { value: "Male", label: "Male" }]} />
+        <RegistryIconFilter icon={Heart} label="Marital status" value={maritalFilter} onChange={setMaritalFilter} options={[{ value: "all", label: "Any marital status" }, ...["Single", "Married", "Divorced", "Widowed"].map(value => ({ value, label: value }))]} />
+        <RegistryIconFilter icon={Activity} label="Life stage" value={lifeStageFilter} onChange={setLifeStageFilter} options={[{ value: "all", label: "Any life stage" }, ...["Student", "Employee", "Business Owner"].map(value => ({ value, label: value }))]} />
+        <RegistryIconFilter icon={QrCode} label="Registration source" value={sourceFilter} onChange={setSourceFilter} options={[{ value: "all", label: "Any source" }, { value: "QR", label: "QR registration" }, { value: "Manual", label: "Manual entry" }]} />
+      </div>
+        </div>
       </div>
 
       {loading ? <SkeletonList rows={6} /> : (
-        <div className="mc-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
-          <div style={{ display: "grid", gap: 8 }}>
+        <div className="mc-scroll nom-registry-scroll" onScroll={onScroll} style={{ maxHeight: 640, overflowY: "auto", paddingRight: 4 }}>
+          <div className="nom-registry-list">
             {filtered.slice(0, visibleCount).map(r => (
-              <div key={r.id} style={{ ...card, padding: "12px 16px", borderLeft: `3px solid ${r.contacted ? C.green : C.gold}` }} {...lift}>
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", flex: 1, minWidth: 220 }}>
-                    <Avatar name={r.full_name} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, fontFamily: F.head }}>{r.full_name}</div>
-                      <div style={{ fontSize: 12, color: C.textMuted }}>
-                        <PhoneLink phone={r.phone} withWhatsApp /> · {r.service_date}
-                        {r.source === "QR" && <span style={{ marginLeft: 6 }}>· via QR</span>}
-                      </div>
-                      {r.contacted && r.contacted_by && (
-                        <div style={{ fontSize: 11, color: C.green, marginTop: 2 }}>Contacted by {r.contacted_by}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-                    <span style={badge(r.contacted ? C.green : C.gold, r.contacted ? C.greenLight : C.goldLight, { fontSize: 11 })}>
-                      {r.contacted ? "Contacted" : "Not Contacted"}
-                    </span>
-                    <button
-                      style={btn(r.contacted ? "ghost" : "gold", { padding: "6px 12px", fontSize: 12 })}
-                      onClick={() => toggleContacted(r)}
-                      disabled={savingId === r.id}>
-                      {savingId === r.id ? "…" : r.contacted ? "Mark Not Contacted" : "Mark Contacted"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <EventRegistryCard key={r.id} row={r} busy={savingId === r.id} onToggle={toggleContacted} lift={lift} />
             ))}
             {filtered.length === 0 && (
               <div style={{ ...card, textAlign: "center", padding: "3rem", color: C.textMuted }}>
@@ -13871,11 +13773,96 @@ function NOMFirstTimersList({ currentUser }) {
   );
 }
 
-// ╔═════════════════════════════════════════════════════════════════════════════╗
+
+const CONVENTION_TABLE = "mercy_convention_2026_registrations";
+const BLANK_CONVENTION = { full_name: "", phone: "", gender: "", marital_status: "", life_stage: "", membership_status: "", house_address: "", nearest_landmark: "", service_date: new Date().toISOString().slice(0, 10) };
+
+function MercyConvention2026Form() {
+  const [form, setForm] = useState({ ...BLANK_CONVENTION });
+  const [done, setDone] = useState(false); const [loading, setLoading] = useState(false); const [err, setErr] = useState("");
+  const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }));
+  const submit = async () => {
+    if (!form.full_name.trim() || !form.phone.trim() || !form.membership_status) { setErr("Name, phone and membership status are required."); return; }
+    setLoading(true); setErr("");
+    try { await sb(CONVENTION_TABLE, { method: "POST", body: JSON.stringify({ ...form, full_name: form.full_name.trim(), phone: form.phone.trim(), source: "QR" }) }); setDone(true); }
+    catch (e) { setErr(e.message); }
+    setLoading(false);
+  };
+  if (done) return <div className="event-public-page"><div className="event-public-card" role="status"><div className="event-success-mark"><CheckCircle size={28} /></div><h1>Thank you!</h1><p>Your Mercy Convention 2026 registration is complete.</p></div></div>;
+  return <main className="event-public-page"><div className="event-public-wrap">
+    <img className="event-public-banner" src="/mercy-convention-2026-banner.jpg" alt="Mercy Convention 2026 — Unending Open Doors" />
+    <header className="event-public-heading"><div className="event-public-kicker">MERCY CONVENTION 2026</div><h1>Welcome to <span>Mercy Convention 2026</span></h1><p>Unending Open Doors</p></header>
+    <section className="event-public-card"><Alert type="error" msg={err} onClose={() => setErr("")} />
+      <FieldInput label="Full Name" id="mc26name" required value={form.full_name} onChange={set("full_name")} placeholder="Your full name" />
+      <FieldInput label="Phone Number" id="mc26phone" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
+      <FieldInput label="Membership Status" id="mc26membership" type="select" required value={form.membership_status} onChange={set("membership_status")} options={[{ value: "I am an Envoy", label: "I am an Envoy" }, { value: "Non-Envoy", label: "Non-Envoy" }]} />
+      <FieldInput label="Gender" id="mc26gender" type="select" value={form.gender} onChange={set("gender")} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+      <FieldInput label="Marital Status" id="mc26marital" type="select" value={form.marital_status} onChange={set("marital_status")} options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
+      <FieldInput label="Life Stage" id="mc26life" type="select" value={form.life_stage} onChange={set("life_stage")} options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
+      <FieldInput label="House Address" id="mc26address" value={form.house_address} onChange={set("house_address")} placeholder="Full House Address" />
+      <FieldInput label="Nearest Landmark" id="mc26landmark" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="Nearest landmark" />
+      <button className="event-submit" onClick={submit} disabled={loading}>{loading ? "Submitting…" : "Complete Registration"}</button>
+    </section>
+  </div></main>;
+}
+
+function MercyConvention2026QRCodePage() {
+  const eventUrl = `${window.location.origin}/mercy-convention-2026-register`;
+  const [custom, setCustom] = useState(eventUrl); const [display, setDisplay] = useState(eventUrl);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=16&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`;
+  const download = () => { const a = document.createElement("a"); a.href = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=20&color=1A7A3C&bgcolor=ffffff&data=${encodeURIComponent(display)}`; a.download = "mercy-convention-2026-qr.png"; a.target = "_blank"; a.click(); };
+  return <div className="page-enter"><PageHeader title="Mercy Convention 2026 QR Code" subtitle="Share this QR code to collect convention registrations." /><div className="event-qr-layout"><div className="event-qr-preview"><img src={qrSrc} alt="Mercy Convention registration QR code" width={240} height={240} /><div>{display}</div><div className="event-qr-actions"><button style={btn("gold")} onClick={download}><Download size={14} />Download PNG</button><button style={btn("outline")} onClick={() => window.open(display, "_blank")}>Open Link</button></div></div><div className="event-qr-settings"><b>Registration URL</b><FieldInput label="Convention Registration URL" id="mc26url" value={custom} onChange={e => setCustom(e.target.value)} /><button style={{ ...btn("gold"), width: "100%" }} onClick={() => setDisplay(custom)}>Update QR Code</button></div></div></div>;
+}
+
+function MercyConvention2026Registry({ currentUser }) {
+  const [rows, setRows] = useState([]); const [search, setSearch] = useState(""); const [busy, setBusy] = useState(true); const [err, setErr] = useState("");
+  const [memberFilter, setMemberFilter] = useState("all"); const [contactFilter, setContactFilter] = useState("all");
+  const [genderFilter, setGenderFilter] = useState("all"); const [maritalFilter, setMaritalFilter] = useState("all"); const [lifeFilter, setLifeFilter] = useState("all"); const [sourceFilter, setSourceFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState(""); const [dateTo, setDateTo] = useState(""); const [savingId, setSavingId] = useState(null);
+  const reload = useCallback(async () => { setBusy(true); setErr(""); try { let q = `${CONVENTION_TABLE}?select=*&order=created_at.desc&limit=3000`; if (dateFrom) q += `&service_date=gte.${dateFrom}`; if (dateTo) q += `&service_date=lte.${dateTo}`; setRows(await sb(q) || []); } catch (e) { setErr(e.message); } setBusy(false); }, [dateFrom, dateTo]);
+  useEffect(() => { reload(); }, [reload]);
+  const filtered = rows.filter(r => {
+    if (search && !`${r.full_name || ""} ${r.phone || ""}`.toLowerCase().includes(search.toLowerCase())) return false;
+    if (memberFilter !== "all" && r.membership_status !== memberFilter) return false;
+    if (contactFilter === "contacted" && !r.contacted || contactFilter === "uncontacted" && r.contacted) return false;
+    if (genderFilter !== "all" && r.gender !== genderFilter || maritalFilter !== "all" && r.marital_status !== maritalFilter || lifeFilter !== "all" && r.life_stage !== lifeFilter) return false;
+    if (sourceFilter !== "all" && (r.source || "Manual") !== sourceFilter) return false;
+    return true;
+  });
+  const contactedCount = rows.filter(r => r.contacted).length; const uncontactedCount = rows.length - contactedCount;
+  const tabs = [{ k: "all", label: "All", count: rows.length, col: C.textMuted }, { k: "uncontacted", label: "Not Contacted", count: uncontactedCount, col: C.gold }, { k: "contacted", label: "Contacted", count: contactedCount, col: C.green }];
+  const toggleContacted = async row => { setSavingId(row.id); try { const contacted = !row.contacted; await sb(`${CONVENTION_TABLE}?id=eq.${row.id}`, { method: "PATCH", body: JSON.stringify({ contacted, contacted_by: contacted ? (currentUser || null) : null, contacted_at: contacted ? new Date().toISOString() : null }) }); toast.success(contacted ? `${row.full_name} marked as contacted.` : `${row.full_name} marked as not contacted.`); await reload(); } catch (e) { toast.error(e.message); } setSavingId(null); };
+  return <div className="page-enter">
+    <PageHeader title="Mercy Convention 2026" subtitle={`${rows.length} registration${rows.length === 1 ? "" : "s"}`} />
+    <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by convention service date:" />
+    <div className="g4 convention-stats" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12, marginBottom: 16 }}>
+      <StatCard label="Total" value={rows.length} icon={Award} accent={C.goldDark} />
+      <StatCard label="Contacted" value={contactedCount} icon={CheckCircle} accent={C.green} />
+      <StatCard label="Not Contacted" value={uncontactedCount} icon={AlertCircle} accent={C.gold} />
+    </div>
+    <div className="event-registry-toolbar">
+      <div className="event-registry-tabs">{tabs.map(t => <button key={t.k} onClick={() => setContactFilter(t.k)} aria-pressed={contactFilter === t.k} style={{ padding: "6px 14px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", background: contactFilter === t.k ? t.col : C.bg, color: contactFilter === t.k ? "#fff" : C.textSecondary, border: `1.5px solid ${contactFilter === t.k ? t.col : C.border}` }}>{t.label} ({t.count})</button>)}</div>
+      <div className="event-registry-controls">
+      <div className="event-registry-search"><Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textMuted }} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name or phone" aria-label="Search convention registrants" /></div>
+      <button className="event-registry-refresh" style={btn("ghost", { padding: "6px 10px" })} onClick={reload} aria-label="Refresh registrations"><RefreshCw size={13} /></button>
+      <div className="event-registry-filter-grid">
+      <RegistryIconFilter icon={UserCheck} label="Membership status" value={memberFilter} onChange={setMemberFilter} options={[{ value: "all", label: "Any membership" }, { value: "I am an Envoy", label: "I am an Envoy" }, { value: "Non-Envoy", label: "Non-Envoy" }]} />
+      <RegistryIconFilter icon={Users} label="Gender" value={genderFilter} onChange={setGenderFilter} options={[{ value: "all", label: "Any gender" }, { value: "Female", label: "Female" }, { value: "Male", label: "Male" }]} />
+      <RegistryIconFilter icon={Heart} label="Marital status" value={maritalFilter} onChange={setMaritalFilter} options={[{ value: "all", label: "Any marital status" }, ...["Single", "Married", "Divorced", "Widowed"].map(value => ({ value, label: value }))]} />
+      <RegistryIconFilter icon={Activity} label="Life stage" value={lifeFilter} onChange={setLifeFilter} options={[{ value: "all", label: "Any life stage" }, ...["Student", "Employee", "Business Owner"].map(value => ({ value, label: value }))]} />
+      <RegistryIconFilter icon={QrCode} label="Registration source" value={sourceFilter} onChange={setSourceFilter} options={[{ value: "all", label: "Any source" }, { value: "QR", label: "QR registration" }, { value: "Manual", label: "Manual entry" }]} />
+      </div>
+    </div>
+    </div>
+    <Alert type="error" msg={err} onClose={() => setErr("")} />
+    {busy ? <SkeletonList rows={6} /> : <div className="nom-registry-list convention-registry-list">{filtered.map(r => <EventRegistryCard key={r.id} row={r} variant="convention" busy={savingId === r.id} onToggle={toggleContacted} lift={lift} />)}{!filtered.length && <div className="event-registry-empty">No registrations found.</div>}</div>}
+  </div>;
+}
+
 // ║  MODULE: STEWARD APPRAISAL / VOTING SYSTEM                                 ║
 // ║  Team Leads (public link, no login) score Stewards on 10 metrics/month.   ║
 // ║  Admin manages the Team Lead roster; Admin + Pastoral see the leaderboard.║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
 
 const APPRAISAL_METRICS = [
   { key: "compliance_score",  label: "Compliance to Instructions" },
@@ -14273,11 +14260,15 @@ function StewardAppraisalDashboard() {
 }
 
 function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [session, setSession] = useState(() => loadSession());
   const [active, setActive] = useState(() => {
     const s = loadSession();
     if (!s) return null;
     const validIds = (NAV[s.role] || []).map(n => n.id);
+    const routeId = window.location.pathname.match(/^\/app\/([^/]+)\/?$/)?.[1];
+    if (routeId && validIds.includes(routeId)) return routeId;
     const last = loadLastActive();
     if (last && validIds.includes(last)) return last;
     return NAV[s.role]?.[0]?.id ?? null;
@@ -14287,6 +14278,8 @@ function App() {
   const [editUser,       setEditUser]       = useState(null);
   const [showPublic,     setShowPublic]     = useState(false);
   const [mobileOpen,     setMobileOpen]     = useState(false);
+  const openMobileMenu = useCallback(() => setMobileOpen(true), []);
+  const closeMobileMenu = useCallback(() => setMobileOpen(false), []);
   const [flagCount,      setFlagCount]      = useState(0);
   const [editWeekTarget,   setEditWeekTarget]   = useState(null); // { person, week }
   const [editOverviewTarget, setEditOverviewTarget] = useState(null);
@@ -14296,26 +14289,35 @@ function App() {
   const [showTestimony,   setShowTestimony]   = useState(false);
   const [showNewConvert,  setShowNewConvert]  = useState(false);
   const [showNOM,         setShowNOM]         = useState(false);
+  const [showConvention2026, setShowConvention2026] = useState(false);
   const [showAppraisal,   setShowAppraisal]   = useState(false);
 
   useEffect(() => {
-    const onPopState = (e) => {
-      if (e.state && e.state.active) setActive(e.state.active);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-
-  useEffect(() => {
-    const p = window.location.pathname;
+    const p = location.pathname;
     const h = window.location.hash;
     if (p === "/register"  || p === "/register/"  || h === "#register")  setShowPublic(true);
     if (p === "/feedback"  || p === "/feedback/"  || h === "#feedback")  setShowFeedback(true);
     if (p === "/testimony" || p === "/testimony/" || h === "#testimony") setShowTestimony(true);
     if (p === "/new-convert" || p === "/new-convert/" || h === "#new-convert") setShowNewConvert(true);
     if (p === "/nom-register" || p === "/nom-register/" || h === "#nom-register") setShowNOM(true);
+    if (p === "/mercy-convention-2026-register" || p === "/mercy-convention-2026-register/" || h === "#mercy-convention-2026-register") setShowConvention2026(true);
     if (p === "/appraisal" || p === "/appraisal/" || h === "#appraisal") setShowAppraisal(true);
-  }, []);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!session) return;
+    const publicRoutes = ["/register", "/feedback", "/testimony", "/new-convert", "/nom-register", "/mercy-convention-2026-register", "/appraisal"];
+    if (publicRoutes.includes(location.pathname.replace(/\/$/, ""))) return;
+    const validIds = (NAV[session.role] || []).map(item => item.id);
+    const routeId = location.pathname.match(/^\/app\/([^/]+)\/?$/)?.[1];
+    if (routeId && validIds.includes(routeId)) {
+      if (active !== routeId) setActive(routeId);
+      saveLastActive(routeId);
+      return;
+    }
+    const fallback = active && validIds.includes(active) ? active : (validIds[0] || null);
+    if (fallback && location.pathname !== `/app/${fallback}`) navigate(`/app/${fallback}`, { replace: true });
+  }, [session, active, location.pathname, navigate]);
 
   useEffect(() => {
     if (!session) return;
@@ -14336,9 +14338,10 @@ function App() {
 
   const login = (role, user, username) => {
     const s = { role, user, username };
+    const initialPage = NAV[role]?.[0]?.id ?? null;
     setSession(s);
-    setActive(NAV[role][0].id);
-    window.history.replaceState({ active: NAV[role][0].id }, "", window.location.pathname);
+    setActive(initialPage);
+    if (initialPage) navigate(`/app/${initialPage}`, { replace: true });
     saveSession(role, user, username);
   };
 
@@ -14347,18 +14350,21 @@ function App() {
     clearLastActive();
     setSession(null);
     setActive(null);
+    navigate("/", { replace: true });
   };
 
   const navTo = (v) => {
+  const wasMobileMenuOpen = mobileOpen;
   setActive(v);
   setEditTarget(null); setFeedbackTarget(null); setEditUser(null);
   setEditWeekTarget(null); setEditOverviewTarget(null);
   setMemberProfileTarget(null);
   setSoulCallLogTarget(null);
   setMobileOpen(false);
-  if (v !== active) {
-    window.history.pushState({ active: v }, "", window.location.pathname);
+  if (wasMobileMenuOpen) {
+    requestAnimationFrame(() => document.getElementById("main-content")?.focus());
   }
+  if (v !== active || location.pathname !== `/app/${v}`) navigate(`/app/${v}`);
   saveLastActive(v);
 };
 
@@ -14367,6 +14373,7 @@ function App() {
   if (showTestimony)   return <PublicTestimonyForm />;
   if (showNewConvert)  return <PublicNewConvertForm />;
   if (showNOM)         return <PublicNOMForm />;
+  if (showConvention2026) return <MercyConvention2026Form />;
   if (showAppraisal)   return <PublicAppraisalForm />;
   if (!session)        return <Login onLogin={login} />;
 
@@ -14435,6 +14442,8 @@ function App() {
     if (active === "vip_journey_dashboard") return <VipJourneyDashboard />;
     if (active === "nom_registry") return <NOMFirstTimersList currentUser={user} />;
     if (active === "nom_qr") return <NOMQRCodePage />;
+    if (active === "mercy_convention_2026_registry") return <MercyConvention2026Registry currentUser={user} />;
+    if (active === "mercy_convention_2026_qr") return <MercyConvention2026QRCodePage />;
     if (active === "appraisal_qr") return <StewardAppraisalQRPage />;
     if (active === "steward_appraisal_results") return <StewardAppraisalDashboard />;
 
@@ -14633,30 +14642,48 @@ function App() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, color: C.textPrimary }}>
-      <MobileHeader onMenu={() => setMobileOpen(true)} title={pageTitle} role={role} user={user} setActive={navTo} />
+    <div className="app-shell" style={{ minHeight: "100vh", background: C.bg, fontFamily: F.body, color: C.textPrimary }}>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <MobileHeader onMenu={openMobileMenu} title={pageTitle} role={role} user={user} setActive={navTo} menuOpen={mobileOpen} />
       <Sidebar role={role} active={active} setActive={navTo} user={user}
-        onLogout={logout} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)}
+        onLogout={logout} mobileOpen={mobileOpen} onClose={closeMobileMenu}
         flagCount={flagCount} />
-      <div className="main-content">
+      <MobileBottomNav role={role} active={active} setActive={navTo}
+        onMenu={openMobileMenu} menuOpen={mobileOpen} />
+      <main className="main-content" id="main-content" tabIndex={-1} inert={mobileOpen}>
+        <div className="app-topbar">
+          <div className="app-topbar-copy">
+            <span>THE ENVOYS · RETENTION</span>
+            <strong>Welcome back, {(user || "Team").trim().split(/\s+/)[0]}</strong>
+          </div>
+          <div className="app-topbar-profile">
+            <UIbadge variant="outline" className="app-role-chip">{ROLE_META[role]?.label || "Team member"}</UIbadge>
+            <UIavatar className="app-avatar" aria-hidden="true">
+            <UIavatarFallback>{(user || "?").charAt(0).toUpperCase()}</UIavatarFallback>
+          </UIavatar>
+          <NotificationBell role={role} user={user} setActive={navTo} inline />
+        </div>
+        </div>
         <div className="content-inner">
           {renderContent()}
         </div>
-      </div>
+      </main>
       <InstallBanner />
       <ToastHost />
-      <NotificationBell role={role} user={user} setActive={navTo} />
     </div>
   );
 }
 
-function AppRoot() {
+function AppRootContent() {
   const presentSlug = new URLSearchParams(window.location.search).get("present");
   if (presentSlug) return <PresentationViewer slug={presentSlug} />;
   return <App />;
 }
 
+function AppRoot() {
+  return <BrowserRouter><AppRootContent /></BrowserRouter>;
+}
+
 export default AppRoot;
-// ╔═════════════════════════════════════════════════════════════════════════════╗
-// ║  END MODULE: APP SHELL — ROOT COMPONENT & ROUTING                         ║
-// ╚═════════════════════════════════════════════════════════════════════════════╝
+
+// ║  END MODULE: APP SHELL — ROOT COMPONENT & ROUTING
