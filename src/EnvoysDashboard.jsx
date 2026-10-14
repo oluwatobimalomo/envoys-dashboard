@@ -13801,6 +13801,28 @@ function CountryResidenceCombobox({ value, onChange, required }) {
   </div>;
 }
 
+function CountryCodeCombobox({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef(null);
+  const listId = "mc26-phone-country-options";
+  const selected = CONVENTION_COUNTRIES.find(country => country.iso2 === value) || CONVENTION_COUNTRIES.find(country => country.iso2 === "ng");
+  const filtered = CONVENTION_COUNTRIES.filter(country => `${country.name} +${country.dialCode}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const choose = country => { onChange(country.iso2); setQuery(""); setOpen(false); setActiveIndex(0); };
+  const onKeyDown = event => {
+    if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); setActiveIndex(index => Math.min(index + 1, Math.max(0, filtered.length - 1))); }
+    else if (event.key === "ArrowUp") { event.preventDefault(); setOpen(true); setActiveIndex(index => Math.max(0, index - 1)); }
+    else if (event.key === "Escape") { setOpen(false); setQuery(""); }
+    else if (event.key === "Enter" && open && filtered.length) { event.preventDefault(); choose(filtered[Math.min(activeIndex, filtered.length - 1)]); }
+  };
+  return <div className="event-code-combobox">
+    <input ref={inputRef} role="combobox" aria-label={`Phone country code: ${selected.name} +${selected.dialCode}`} aria-autocomplete="list" aria-expanded={open} aria-controls={listId} aria-activedescendant={open && filtered[activeIndex] ? `${listId}-${filtered[activeIndex].iso2}` : undefined} autoComplete="off" required value={open ? query : `${COUNTRY_FLAG(selected.iso2)} +${selected.dialCode}`} onFocus={() => { setQuery(""); setActiveIndex(0); setOpen(true); }} onChange={event => { setQuery(event.target.value); setActiveIndex(0); setOpen(true); }} onKeyDown={onKeyDown} onBlur={() => { setOpen(false); setQuery(""); }} placeholder="Code or country" />
+    <button className="event-country-toggle" type="button" aria-label={open ? "Close calling code list" : "Open calling code list"} aria-expanded={open} onMouseDown={event => event.preventDefault()} onClick={() => { if (open) { setOpen(false); setQuery(""); } else { inputRef.current?.focus(); setOpen(true); } }}><ChevronDown size={16} aria-hidden="true" /></button>
+    {open && <div className="event-country-options" id={listId} role="listbox">{filtered.length ? filtered.map((country, index) => <button id={`${listId}-${country.iso2}`} key={country.iso2} type="button" role="option" aria-label={`${country.name} +${country.dialCode}`} aria-selected={index === activeIndex} className={index === activeIndex ? "is-active" : ""} onMouseDown={event => event.preventDefault()} onClick={() => choose(country)}><span>{COUNTRY_FLAG(country.iso2)}</span><span className="event-code-option-code">+{country.dialCode}</span></button>) : <div className="event-country-empty">No matching country code</div>}</div>}
+  </div>;
+}
+
 function MercyConvention2026Form() {
   const [form, setForm] = useState({ ...BLANK_CONVENTION });
   const [done, setDone] = useState(false); const [loading, setLoading] = useState(false); const [err, setErr] = useState("");
@@ -13817,7 +13839,7 @@ function MercyConvention2026Form() {
     catch (e) { setErr(e.message); }
     setLoading(false);
   };
-  if (done) return <div className="event-public-page"><div className="event-public-wrap"><div className="event-public-card event-confirmation" role="status"><div className="event-success-mark"><CheckCircle size={28} /></div><h1>Thank you for registering!</h1><p>We are delighted to have you at Mercy Convention 2026. May you experience God's abundant mercy and blessings throughout this convention.</p></div></div></div>;
+  if (done) return <main className="event-public-page"><div className="event-public-wrap"><img className="event-public-banner" src="/mercy-convention-2026-banner.jpg" alt="Mercy Convention 2026 — Unending Open Doors" /><div className="event-public-card event-confirmation" role="status"><div className="event-success-mark"><CheckCircle size={28} /></div><h1>Thank you for registering!</h1><p>We are delighted to have you at Mercy Convention 2026. May you experience God's abundant mercy and blessings throughout this convention.</p></div></div></main>;
   return <main className="event-public-page"><div className="event-public-wrap">
     <img className="event-public-banner" src="/mercy-convention-2026-banner.jpg" alt="Mercy Convention 2026 — Unending Open Doors" />
     <header className="event-public-heading"><h1>Welcome to <span>Mercy Convention 2026</span></h1><p>Unending Open Doors</p></header>
@@ -13825,8 +13847,10 @@ function MercyConvention2026Form() {
       <div className="event-form-grid">
         <FieldInput label="First Name" id="mc26firstname" required value={form.first_name} onChange={set("first_name")} placeholder="Your first name" />
         <FieldInput label="Surname" id="mc26surname" required value={form.surname} onChange={set("surname")} placeholder="Your surname" />
-        <div className="input-field event-phone-field"><UIlabel htmlFor="mc26phone" className="input-field-label">Phone Number<span style={{ color: C.danger }}> *</span></UIlabel><div className="event-phone-control"><select aria-label={`Country calling code: ${CONVENTION_COUNTRIES.find(country => country.iso2 === form.phone_country_iso2)?.name || "Nigeria"}`} title={CONVENTION_COUNTRIES.find(country => country.iso2 === form.phone_country_iso2)?.name || "Select country code"} value={form.phone_country_iso2} required onChange={set("phone_country_iso2")}>{CONVENTION_COUNTRIES.map(country => <option key={country.iso2} value={country.iso2}>{COUNTRY_FLAG(country.iso2)} +{country.dialCode}</option>)}</select><input id="mc26phone" type="tel" inputMode="tel" autoComplete="tel-national" required value={form.phone} onChange={set("phone")} placeholder="801 234 5678" /></div></div>
-        <FieldInput label="Gender" id="mc26gender" type="select" required value={form.gender} onChange={set("gender")} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+        <div className="event-phone-gender-row">
+          <div className="input-field event-phone-field"><UIlabel htmlFor="mc26phone" className="input-field-label">Phone Number<span style={{ color: C.danger }}> *</span></UIlabel><div className="event-phone-control"><CountryCodeCombobox value={form.phone_country_iso2} onChange={value => setForm(current => ({ ...current, phone_country_iso2: value }))} /><input id="mc26phone" type="tel" inputMode="tel" autoComplete="tel-national" required value={form.phone} onChange={set("phone")} placeholder="801 234 5678" /></div></div>
+          <FieldInput label="Gender" id="mc26gender" type="select" required value={form.gender} onChange={set("gender")} options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+        </div>
         <FieldInput label="Life Stage" id="mc26life" type="select" required value={form.life_stage} onChange={set("life_stage")} options={[{ value: "Student", label: "Student" }, { value: "Employee", label: "Employee" }, { value: "Business Owner", label: "Business Owner" }]} />
         <FieldInput label="Marital Status" id="mc26marital" type="select" required value={form.marital_status} onChange={set("marital_status")} options={[{ value: "Single", label: "Single" }, { value: "Married", label: "Married" }, { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" }]} />
         <FieldInput label="Church & Denomination" id="mc26church" type="select" required value={form.church_denomination} onChange={set("church_denomination")} options={[{ value: "RCCG The Envoys", label: "RCCG The Envoys" }, { value: "Other RCCG Parish", label: "Other RCCG Parish" }, { value: "Other Denomination", label: "Other Denomination" }]} />
