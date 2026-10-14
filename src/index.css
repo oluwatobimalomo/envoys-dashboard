@@ -1902,7 +1902,7 @@ textarea.field-control { min-height: 100px; }
 .event-submit { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; margin-top: 12px; border: 0; border-radius: 10px; background: #c9953e; color: white; font-size: 14px; font-weight: 700; cursor: pointer; }
 .event-submit:disabled { opacity: .65; cursor: wait; }
 .event-success-mark { display: grid; width: 56px; height: 56px; margin: 0 auto 14px; place-items: center; border-radius: 50%; background: #e7f4ea; color: #177a42; }
-.event-public-card[role="status"] { margin-top: 0; text-align: center; padding: 30px; }
+.event-public-card[role="status"] { margin-top: 16px; text-align: center; padding: 30px; }
 .event-public-card[role="status"] h1 { margin: 0 0 8px; }
 .event-public-card[role="status"] p { color: #708177; }
 .event-qr-layout { display: grid; grid-template-columns: minmax(250px, auto) minmax(260px, 1fr); gap: 16px; align-items: start; }
