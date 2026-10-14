@@ -1871,7 +1871,7 @@ textarea.field-control { min-height: 100px; }
 .event-public-card { padding: 20px; border: 1px solid #dce7df; border-radius: 16px; background: #fff; box-shadow: 0 4px 18px rgba(21, 54, 38, .06); }
 .event-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
 .event-form-grid > .input-field { min-width: 0; margin-bottom: 0 !important; }
-.event-form-grid > .event-phone-gender-row { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 14px; min-width: 0; }
+.event-form-grid > .event-phone-gender-row { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
 .event-phone-gender-row > .input-field { min-width: 0; margin-bottom: 0 !important; }
 .event-form-grid > .input-field:nth-child(n + 6) { grid-column: 1 / -1; }
 .event-phone-control { display: flex; min-width: 0; gap: 6px; }
@@ -2027,7 +2027,7 @@ textarea.field-control { min-height: 100px; }
   .event-public-heading { padding: 18px 4px 12px; }
   .event-public-card { padding: 14px; }
   .event-form-grid { gap: 12px 10px; }
-  .event-phone-gender-row { grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr) !important; gap: 8px !important; }
+  .event-phone-gender-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
   .event-phone-control { gap: 5px; }
   .event-code-combobox { flex-basis: 96px; }
   .event-code-combobox > input { font-size: 13px; }
