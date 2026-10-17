@@ -3653,7 +3653,10 @@ function callerProfileTag(row) {
 
 function weeksLogged(fbRows) {
   const weeks = new Set();
-  (fbRows || []).forEach(r => { if (r.week_number) weeks.add(r.week_number); });
+  (fbRows || []).forEach(r => {
+    const week = Number(r.week_number);
+    if (Number.isInteger(week) && week >= 1 && week <= 3) weeks.add(week);
+  });
   return weeks;
 }
 
@@ -3677,7 +3680,7 @@ function PipelineBar({ fbRows, compact = false }) {
 
   const weekColor = (w) => {
     if (!done.has(w)) return { bg: C.border, text: C.textMuted };
-    const row  = (fbRows || []).find(r => r.week_number === w);
+    const row  = (fbRows || []).find(r => Number(r.week_number) === w);
     const norm = normaliseStatus(row?.call_status);
     if (norm === "Reached")           return { bg: C.green,  text: "#fff" };
     if (norm === "Call Back")         return { bg: C.amber,  text: "#fff" };
@@ -3709,7 +3712,7 @@ function PipelineBar({ fbRows, compact = false }) {
     <div className="pbar" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
       {[1, 2, 3].map(w => {
         const c   = weekColor(w);
-        const row = done.has(w) ? (fbRows || []).find(r => r.week_number === w) : null;
+        const row = done.has(w) ? (fbRows || []).find(r => Number(r.week_number) === w) : null;
         return (
           <div key={w}
             title={row ? `Week ${w}: ${row.call_status} — ${row.caller_name || "—"}` : `Week ${w}: not logged`}
@@ -3745,6 +3748,16 @@ function PipelineBar({ fbRows, compact = false }) {
 // NOTE: gender is already present on first_timers rows — no SQL change needed.
 // ─────────────────────────────────────────────────────────────────────────────
 
+async function fetchAllCallFeedback() {
+  const pageSize = 1000;
+  const rows = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const page = await sb(`call_feedback?select=*&order=created_at.asc,id.asc&limit=${pageSize}&offset=${offset}`);
+    rows.push(...(page || []));
+    if (!page || page.length < pageSize) return rows;
+  }
+}
+
 function useCallData(dateFrom, dateTo) {
   const [data, setData]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3763,7 +3776,7 @@ function useCallData(dateFrom, dateTo) {
 
         const [ftRows, fbRows, asgRows, ovRows] = await Promise.all([
           sb(ftQuery),
-          sb("call_feedback?select=*&order=created_at.asc"),
+          fetchAllCallFeedback(),
           sb("call_assignments?select=*").catch(() => []),
           sb("pipeline_overviews?select=*").catch(() => []),
         ]);
@@ -4753,7 +4766,7 @@ function MyCallsView({ currentUser, onLogFeedback, onEditWeekFeedback, onEditOve
 
 function LogFeedback({ person, onBack, callerName = "", editWeek = null }) {
   const fbRows    = person.fbRows || [];
-  const weekToLog = editWeek !== null ? editWeek : nextWeek(fbRows);
+  const weekToLog = editWeek !== null ? Number(editWeek) : nextWeek(fbRows);
   // ── v5.5: name with gender tag ──
   const displayName = `${person.full_name}${genderTag(person)}`;
 
