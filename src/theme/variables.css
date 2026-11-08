@@ -98,9 +98,24 @@
 }
 
 ion-app {
-  min-height: 100%;
+  min-height: 100vh;
   font-family: var(--ion-font-family);
   color: var(--envoys-ink);
+}
+
+/* This dashboard uses document scrolling rather than ion-content. Ionic marks
+   ion-app as an absolutely positioned .ion-page by default; return the app
+   root to normal flow so long routes can extend and scroll on every device. */
+ion-app.ion-page {
+  position: relative !important;
+  inset: auto !important;
+  display: block !important;
+  width: 100%;
+  height: auto !important;
+  min-height: 100vh;
+  overflow: visible !important;
+  contain: none !important;
+  z-index: auto !important;
 }
 
 ion-input,

@@ -41,8 +41,8 @@ import { Avatar as UIavatar, AvatarFallback as UIavatarFallback } from "@/compon
   s.id = "envoys-globals";
   s.textContent = `
     *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
-    html, body, #root { height: 100%; width: 100%; overflow-x: hidden; }
-    body { -webkit-font-smoothing: antialiased; }
+    html, body, #root { min-height: 100%; height: auto; width: 100%; }
+    body { -webkit-font-smoothing: antialiased; overflow-x: hidden; overflow-y: auto; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #c5d8cb; border-radius: 4px; }
