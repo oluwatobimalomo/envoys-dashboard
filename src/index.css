@@ -333,6 +333,27 @@ button, a, input, select, textarea {
   }
 }
 
+/* Desktop pages also scroll inside the content pane. Ionic owns the outer
+   viewport, while the fixed sidebar keeps its independent menu scroller. */
+@media (min-width: 769px) {
+  .app-shell {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+
+  .app-shell > .main-content {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @media (max-width: 768px) {
   /* Keep the mobile shell viewport-sized and give page content one explicit
      scroll surface. The header and quick navigation are viewport overlays,
@@ -3479,5 +3500,362 @@ textarea.field-control { min-height: 100px; }
     min-height: 44px !important;
     padding-block: 5px !important;
     margin-bottom: 0 !important;
+  }
+}
+
+/* Cross-screen fit and legibility pass. Keep list rows compact without
+   squeezing names, dates, icons, or actions into one another. */
+.app-shell .content-inner {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.app-shell .content-inner :is(h1, h2, h3) {
+  min-width: 0;
+  text-wrap: balance;
+}
+
+.app-shell .content-inner p {
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+.app-shell .content-inner svg,
+.mobile-bottom-nav svg {
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+
+.app-shell .content-inner :is(
+  .statcard,
+  .first-timer-card,
+  .birthday-entry,
+  .due-today-entry,
+  .nom-registry-card,
+  .compact-event-registry-card,
+  .new-convert-queue-card,
+  .sc-call-card
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-shell .content-inner a[href^="tel:"] {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-shell .content-inner .first-timer-name,
+.app-shell .content-inner .nom-registry-heading strong,
+.app-shell .content-inner .compact-event-registry-heading > strong,
+.app-shell .content-inner .compact-event-registry-person > strong,
+.app-shell .content-inner .birthday-person > div:first-child,
+.app-shell .content-inner .due-today-person > div:first-child {
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  text-wrap: pretty;
+  line-height: 1.3;
+}
+
+.app-shell .content-inner .first-timer-contact,
+.app-shell .content-inner .event-registry-row,
+.app-shell .content-inner .nom-registry-heading,
+.app-shell .content-inner .compact-event-registry-heading {
+  min-width: 0;
+}
+
+.app-shell .content-inner .compact-event-registry-demographics,
+.app-shell .content-inner .nom-registry-line,
+.app-shell .content-inner .event-registry-main span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+.app-shell .content-inner .event-registry-filter-grid label {
+  min-width: 0;
+  white-space: normal;
+}
+
+@media (min-width: 769px) {
+  .app-shell .content-inner .first-timer-list > div {
+    width: min(100%, 1120px);
+    margin-inline: auto;
+  }
+
+  .app-shell .content-inner .first-timer-card {
+    display: grid !important;
+    grid-template-columns: 18px 36px minmax(180px, .9fr) minmax(220px, auto) 44px;
+    grid-template-rows: auto;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .app-shell .content-inner .first-timer-card > input[type="checkbox"] {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .app-shell .content-inner .first-timer-identity {
+    grid-column: 3;
+    min-width: 0;
+  }
+
+  .app-shell .content-inner .first-timer-contact {
+    grid-column: 4;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    white-space: normal;
+  }
+
+  .app-shell .content-inner .first-timer-contact > time {
+    white-space: nowrap;
+  }
+
+  .app-shell .content-inner .first-timer-edit {
+    grid-column: 5;
+    grid-row: 1;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1100px) {
+  .app-shell .content-inner .first-timer-card {
+    grid-template-columns: 18px 32px minmax(120px, .8fr) minmax(185px, auto) 40px;
+    gap: 7px;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Birthday cards use two compact rows: name, then phone, with the date and
+     message action in a dedicated trailing column. This prevents fixed phone
+     hit areas from collapsing the name column or making tall, empty cards. */
+  .app-shell .content-inner .birthday-entry {
+    display: grid !important;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: minmax(26px, auto) 32px !important;
+    align-items: center !important;
+    align-content: center;
+    gap: 3px 10px !important;
+    min-height: 0 !important;
+    padding: 8px 10px !important;
+  }
+
+  .app-shell .content-inner .birthday-entry > :first-child {
+    display: none !important;
+  }
+
+  .app-shell .content-inner .birthday-entry .birthday-person {
+    display: contents !important;
+  }
+
+  .app-shell .content-inner .birthday-entry .birthday-person > div:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    display: -webkit-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    text-overflow: clip;
+    white-space: normal;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+
+  .app-shell .content-inner .birthday-entry .birthday-person > div:last-child {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    overflow: visible;
+    line-height: 1;
+  }
+
+  .app-shell .content-inner .birthday-entry .birthday-person > div:last-child a[href^="tel:"] {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 28px !important;
+    align-items: center;
+    padding: 0 !important;
+    white-space: nowrap;
+  }
+
+  .app-shell .content-inner .birthday-entry .birthday-date {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    max-width: min(42vw, 160px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .app-shell .content-inner .birthday-entry .birthday-send-wishes,
+  .app-shell .content-inner .birthday-entry .birthday-wished {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+  }
+
+  /* Give three-up summary cards enough room to keep labels readable. */
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard,
+  .app-shell .content-inner .g4.convention-stats .statcard,
+  .app-shell .content-inner .g4.sc-call-stats .statcard {
+    min-height: 82px !important;
+    padding: 8px !important;
+  }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-content,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-content,
+  .app-shell .content-inner .g4.convention-stats .statcard-content,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-content {
+    display: grid !important;
+    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    gap: 3px 6px !important;
+  }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-icon,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-icon,
+  .app-shell .content-inner .g4.convention-stats .statcard-icon,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-icon {
+    grid-column: 1;
+    grid-row: 1;
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-copy,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-copy,
+  .app-shell .content-inner .g4.convention-stats .statcard-copy,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-copy { display: contents; }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-value,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-value,
+  .app-shell .content-inner .g4.convention-stats .statcard-value,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-value {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 19px !important;
+  }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-label,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-label,
+  .app-shell .content-inner .g4.convention-stats .statcard-label,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-label {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: start;
+    margin-top: 2px !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    overflow-wrap: normal;
+  }
+
+  .app-shell .content-inner .g4:has(> .statcard:nth-child(3):last-child) .statcard-sub,
+  .app-shell .content-inner .g4.nom-registry-stats .statcard-sub,
+  .app-shell .content-inner .g4.convention-stats .statcard-sub,
+  .app-shell .content-inner .g4.sc-call-stats .statcard-sub {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .app-shell .content-inner .event-registry-tabs,
+  .app-shell .content-inner .sc-call-status-tabs {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .app-shell .content-inner .event-registry-tabs button,
+  .app-shell .content-inner .sc-call-status-tabs button {
+    max-width: 100%;
+    white-space: normal !important;
+    line-height: 1.2;
+  }
+
+  .app-shell .content-inner .first-timer-card {
+    grid-template-rows: auto auto !important;
+    align-items: center;
+  }
+
+  .app-shell .content-inner .first-timer-name {
+    font-size: 12px !important;
+  }
+
+  .app-shell .content-inner .first-timer-contact {
+    flex-wrap: wrap;
+    justify-content: flex-start !important;
+    gap: 3px 6px !important;
+    white-space: normal;
+  }
+
+  .app-shell .content-inner .compact-event-registry-demographics,
+  .app-shell .content-inner .sc-call-demographics {
+    display: -webkit-box;
+    min-width: 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-overflow: clip;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    line-height: 1.35;
+  }
+
+  .app-shell .content-inner .compact-event-registry-summary,
+  .app-shell .content-inner .sc-call-contact-row {
+    flex-wrap: wrap !important;
+    min-width: 0;
+    white-space: normal !important;
+    row-gap: 3px !important;
+  }
+
+  .app-shell .content-inner .compact-event-registry-summary .compact-event-registry-meta {
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+
+  .app-shell .content-inner .sc-call-name-row {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+  }
+
+  .app-shell .content-inner .sc-call-name-row > span:first-child {
+    flex: 1 1 100%;
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
   }
 }
