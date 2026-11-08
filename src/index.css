@@ -334,6 +334,35 @@ button, a, input, select, textarea {
 }
 
 @media (max-width: 768px) {
+  /* Keep the mobile shell viewport-sized and give page content one explicit
+     scroll surface. The header and quick navigation are viewport overlays,
+     so neither can steal space from or capture the page's touch scrolling. */
+  .app-shell {
+    position: relative !important;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0 !important;
+    overflow: hidden;
+  }
+  .app-shell > .mob-header {
+    position: fixed !important;
+    inset: 0 0 auto;
+    z-index: 80;
+  }
+  .app-shell > .main-content {
+    position: absolute;
+    inset: 62px 0 0;
+    width: 100% !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .app-topbar {
     display: none;
   }
