@@ -7,8 +7,8 @@ Mobile-first membership retention and follow-up application for RCCG The Envoys.
 - React 19
 - React Router for role-specific deep links and browser history
 - Vite 7 for local development and production builds
-- shadcn/ui Base UI components with Tailwind CSS 4
-- Geist Variable typography and an Envoys forest-green and gold theme
+- Ionic React for the mobile-first app shell and shared form controls, with existing Base UI and Tailwind components retained during the gradual migration
+- Geist Variable typography and a shared Envoys forest-green and gold theme
 - Vitest for the test runner
 - Supabase REST and Storage APIs
 - Recharts and Lucide for dashboards and interface icons
@@ -24,6 +24,10 @@ npm start
 Vite serves the app at `http://localhost:5173`. Create a production bundle with `npm run build`, or inspect it locally with `npm run preview`.
 
 Run `npm test` to execute the Vitest suite. No automated test files have been added yet.
+
+## Interface system
+
+The mobile-first component and interaction baseline is Ionic React. Shared Envoys colors, spacing, control sizes, and radii are in `src/theme/variables.css`; component and adoption guidance is in [`docs/design-system.md`](docs/design-system.md). Existing screens remain in place while shared controls and navigation migrate incrementally.
 
 ## Configuration
 

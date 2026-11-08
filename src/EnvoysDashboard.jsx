@@ -22,13 +22,13 @@ import {
 } from "recharts";
 import { CREDS_MISSING, sb, uploadVisitPhoto, hashPassword, cascadeRename } from "./lib/supabase.js";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
+import { IonApp, IonButton, IonInput, IonSelect, IonSelectOption, IonTextarea } from "@ionic/react";
 import { Button as UIbutton } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input as UIinput } from "@/components/ui/input";
 import { Label as UIlabel } from "@/components/ui/label";
 import { Badge as UIbadge } from "@/components/ui/badge";
 import { Avatar as UIavatar, AvatarFallback as UIavatarFallback } from "@/components/ui/avatar";
-import { Textarea as UItextarea } from "@/components/ui/textarea";
 
 
 
@@ -354,50 +354,52 @@ function usePagedScroll(resetSignal, totalLength, pageSize = 10) {
 
 
 const C = {
-  green:        "#1A7A3C",
-  greenDark:    "#0F5228",
-  greenDeep:    "#1B3A2D",
-  greenMid:     "#22963F",
-  greenLight:   "#E6F2EB",
-  greenXLight:  "#F2FAF5",
-  greenBorder:  "#C8E0D0",
-  gold:         "#D4922A",
-  goldDark:     "#A66D15",
-  goldLight:    "#FEF6E4",
-  goldMid:      "#F0B84A",
-  amber:        "#C97A1A",
-  amberLight:   "#FFF3E0",
-  blue:         "#2563EB",
-  blueLight:    "#EFF6FF",
-  bg:           "#F4F7F5",
-  surface:      "#FFFFFF",
-  border:       "#DDE8E2",
-  sidebar:      "#1B3A2D",
+  green:        "var(--envoys-green)",
+  greenDark:    "var(--envoys-forest-deep)",
+  greenDeep:    "var(--envoys-forest)",
+  greenMid:     "var(--envoys-green-mid)",
+  greenLight:   "var(--envoys-green-soft)",
+  greenXLight:  "var(--envoys-green-xsoft)",
+  greenBorder:  "var(--envoys-green-border)",
+  gold:         "var(--envoys-gold)",
+  goldDark:     "var(--envoys-gold-dark)",
+  goldLight:    "var(--envoys-gold-soft)",
+  goldMid:      "var(--envoys-gold-mid)",
+  amber:        "var(--envoys-amber)",
+  amberLight:   "var(--envoys-amber-soft)",
+  blue:         "var(--envoys-blue)",
+  blueLight:    "var(--envoys-blue-soft)",
+  bg:           "var(--envoys-canvas)",
+  surface:      "var(--envoys-surface)",
+  border:       "var(--envoys-border)",
+  sidebar:      "var(--envoys-forest)",
   sidebarHover: "rgba(255,255,255,.06)",
   sidebarActive:"rgba(212,146,42,.12)",
-  textPrimary:  "#0E2218",
-  textSecondary:"#3D5C4A",
-  textMuted:    "#7A9585",
-  danger:       "#C0392B",
-  dangerLight:  "#FDEDEC",
-  flag:         "#DC2626",
-  flagLight:    "#FEF2F2",
-  soul:         "#5B21B6",
-  soulLight:    "#F5F3FF",
-  research:     "#0E7490",
-  researchLight:"#ECFEFF",
-  researchBorder:"#A5F3FC",
+  textPrimary:  "var(--envoys-ink)",
+  textSecondary:"var(--envoys-text-secondary)",
+  textMuted:    "var(--envoys-muted)",
+  danger:       "var(--envoys-danger)",
+  dangerLight:  "var(--envoys-danger-soft)",
+  flag:         "var(--envoys-flag)",
+  flagLight:    "var(--envoys-flag-soft)",
+  soul:         "var(--envoys-soul)",
+  soulLight:    "var(--envoys-soul-soft)",
+  research:     "var(--envoys-research)",
+  researchLight:"var(--envoys-research-soft)",
+  researchBorder:"var(--envoys-research-border)",
 };
 
+const alpha = (color, opacity) => `color-mix(in srgb, ${color} ${opacity}%, transparent)`;
+
 const F = {
-  head: "'Geist Variable', 'Geist', sans-serif",
-  body: "'Geist Variable', 'Geist', sans-serif",
+  head: "var(--ion-font-family)",
+  body: "var(--ion-font-family)",
 };
 
 const SHADOW = {
-  xs: "0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)",
-  sm: "0 2px 6px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.05)",
-  md: "0 4px 12px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05)",
+  xs: "var(--envoys-shadow-xs)",
+  sm: "var(--envoys-shadow-sm)",
+  md: "var(--envoys-shadow-md)",
 };
 
 const STATUS_META = {
@@ -673,7 +675,7 @@ function buildNavSections(role) {
 }
 
 const inputBase = {
-  width: "100%", padding: "9px 13px", borderRadius: 8,
+  width: "100%", minHeight: "var(--envoys-control-height)", padding: "9px 13px", borderRadius: "var(--envoys-radius-control)",
   border: `1.5px solid ${C.border}`, fontSize: 14, color: C.textPrimary,
   background: C.surface, outline: "none", fontFamily: F.body,
   transition: "border-color .15s, box-shadow .15s", display: "block",
@@ -689,7 +691,7 @@ const BTN_STYLES = {
   ghost:   { background: C.bg, color: C.textSecondary, border: `1.5px solid ${C.border}` },
 };
 const btn = (variant = "primary", extra = {}) => ({
-  padding: "9px 18px", borderRadius: 8, cursor: "pointer",
+  padding: "9px 18px", borderRadius: "var(--envoys-radius-control)", cursor: "pointer",
   fontWeight: 600, fontSize: 14, fontFamily: F.body, lineHeight: 1.4,
   display: "inline-flex", alignItems: "center", gap: 7,
   transition: "opacity .15s, box-shadow .15s",
@@ -699,8 +701,8 @@ const btn = (variant = "primary", extra = {}) => ({
 });
 
 const card = {
-  background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`,
-  padding: "1.4rem 1.5rem", boxShadow: SHADOW.xs,
+  background: C.surface, borderRadius: "var(--envoys-radius-card)", border: `1px solid ${C.border}`,
+  padding: "var(--envoys-space-5)", boxShadow: SHADOW.sm,
   transition: "transform .15s ease, box-shadow .15s ease",
 };
 
@@ -756,16 +758,16 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   );
 
   if (type === "select") return wrap(
-    <select id={id} value={value} onChange={onChange} required={required}
+    <IonSelect id={id} value={value} onIonChange={event => onChange?.({ target: { value: event.detail.value } })}
+      fill="outline" interface="popover" placeholder="Select…" aria-label={label} required={required}
       disabled={disabled} className="field-control">
-      <option value="">Select…</option>
-      {(options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
+      {(options || []).map(o => <IonSelectOption key={o.value} value={o.value}>{o.label}</IonSelectOption>)}
+    </IonSelect>
   );
 
   if (type === "textarea") return wrap(
-    <UItextarea id={id} value={value} onChange={onChange} placeholder={placeholder}
-      rows={3} disabled={disabled} className="field-control" />
+    <IonTextarea id={id} fill="outline" value={value} onIonInput={event => onChange?.({ target: { value: event.detail.value ?? "" } })} placeholder={placeholder}
+      rows={3} disabled={disabled} aria-label={label} className="field-control" />
   );
 
   if (type === "multicheck") {
@@ -850,8 +852,8 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   }
 
   return wrap(
-    <UIinput id={id} type={type} value={value} onChange={onChange}
-      required={required} placeholder={placeholder} disabled={disabled}
+    <IonInput id={id} type={type} fill="outline" value={value} onIonInput={event => onChange?.({ target: { value: event.detail.value ?? "" } })}
+      required={required} placeholder={placeholder} disabled={disabled} aria-label={label}
       className="field-control" />
   );
 }
@@ -1047,7 +1049,7 @@ function StatCard({ label, value, icon: Icon, accent = C.green, sub, onClick }) 
   const content = (
     <>
       <div className="statcard-icon" style={{
-        width: 44, height: 44, borderRadius: 10, background: `${accent}14`,
+        width: 44, height: 44, borderRadius: 10, background: `color-mix(in srgb, ${accent} 9%, white)`,
         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
       }}>
         {Icon && <Icon size={20} color={accent} strokeWidth={1.8} aria-hidden="true" />}
@@ -1523,7 +1525,7 @@ function DueTodayPanel({ entries, actionLabel = "Log Call", actionIcon: ActionIc
   return (
     <div className="due-today-panel" style={{
       ...card, marginBottom: 20, padding: "1rem 1.25rem",
-      background: C.amberLight, border: `1px solid ${C.amber}30`,
+      background: C.amberLight, border: `1px solid ${alpha(C.amber, 18.8)}`,
       borderLeft: `3px solid ${overdueCount > 0 ? C.danger : C.amber}`,
     }}>
       <div className="due-today-heading" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
@@ -1691,7 +1693,7 @@ function BirthdaysWidget({ daysAhead = 7, showEmpty = true }) {
   if (people.length === 0 && !showEmpty) return null;
 
   return (
-    <div className="birthday-widget" style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
+    <div className="birthday-widget" style={{ ...card, background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}`, borderLeft: `3px solid ${C.gold}` }}>
       <div className="birthday-heading" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: people.length ? 12 : 0 }}>
         <Gift size={14} color={C.goldDark} />
         <span style={{
@@ -1800,7 +1802,7 @@ function BirthdaysFromList({ people, daysAhead = 7, showEmpty = true }) {
   if (upcoming.length === 0 && !showEmpty) return null;
 
   return (
-    <div className="birthday-widget" style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}` }}>
+    <div className="birthday-widget" style={{ ...card, background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}`, borderLeft: `3px solid ${C.gold}` }}>
       <div className="birthday-heading" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: upcoming.length ? 12 : 0 }}>
         <Gift size={14} color={C.goldDark} />
         <span style={{
@@ -2157,17 +2159,15 @@ function MobileBottomNav({ role, active, setActive, onMenu, menuOpen }) {
         const Icon = NAV_ICONS[item.id] || FileText;
         const selected = active === item.id;
         return (
-          <button key={item.id} type="button" aria-label={item.label} title={item.label} aria-current={selected ? "page" : undefined}
+          <IonButton key={item.id} type="button" fill="clear" className={`mobile-nav-button${selected ? " is-active" : ""}`} aria-label={item.label} title={item.label} aria-current={selected ? "page" : undefined}
             onClick={() => setActive(item.id)}>
             <Icon size={19} strokeWidth={selected ? 2.3 : 1.8} />
-            <span>{item.label}</span>
-          </button>
+          </IonButton>
         );
       })}
-      <button type="button" onClick={onMenu} aria-label="Open all sections" title="More">
+      <IonButton type="button" fill="clear" className="mobile-nav-button" onClick={onMenu} aria-label="Open all sections" title="More">
         <Menu size={19} />
-        <span>More</span>
-      </button>
+      </IonButton>
     </nav>
   );
 }
@@ -2315,14 +2315,14 @@ function generateSoulCareSummary(funnelStats, ncStats) {
 
 function SoulCareSummaryPanel({ summaryText }) {
   return (
-    <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30` }}>
+    <div style={{ ...card, background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <FileText size={15} color={C.goldDark} />
         <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head, color: C.goldDark }}>Period Summary</span>
       </div>
       <div style={{
         fontSize: 14, color: C.textPrimary, lineHeight: 1.75,
-        background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${C.gold}20`,
+        background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${alpha(C.gold, 12.5)}`,
       }}>
         {summaryText}
       </div>
@@ -2680,7 +2680,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
         {!checkingDupes && dupes.length > 0 && (
           publicMode ? (
             <div style={{
-              background: C.goldLight, border: `1px solid ${C.gold}30`, borderRadius: 8,
+              background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}`, borderRadius: 8,
               padding: "10px 14px", fontSize: 13, color: C.goldDark, marginTop: -6, marginBottom: 14,
               display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.6,
             }}>
@@ -2689,7 +2689,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
             </div>
           ) : (
             <div style={{
-              background: C.amberLight, border: `1px solid ${C.amber}35`,
+              background: C.amberLight, border: `1px solid ${alpha(C.amber, 20.8)}`,
               borderLeft: `3px solid ${C.amber}`, borderRadius: 8,
               padding: "10px 14px", marginTop: -6, marginBottom: 14,
             }}>
@@ -3928,7 +3928,7 @@ function AssignCallsView({ currentUser, onViewCompleted }) {
       {/* Bulk assign panel */}
       <div style={{
         ...card, marginBottom: 20, padding: "1rem 1.25rem",
-        background: C.blueLight, border: `1px solid ${C.blue}22`,
+        background: C.blueLight, border: `1px solid ${alpha(C.blue, 13.3)}`,
       }}>
         <div style={{
           fontSize: 11, fontWeight: 700, color: C.blue, marginBottom: 10,
@@ -5548,7 +5548,7 @@ function EnvoysVisitors() {
                 <div key={r.id} style={{
                   display: "grid", gridTemplateColumns: GRID, gap: 10, alignItems: "center",
                   padding: "10px 16px", minWidth: 1420,
-                  background: isChecked ? `${C.textSecondary}10` : C.surface,
+                  background: isChecked ? `${alpha(C.textSecondary, 6.3)}` : C.surface,
                   borderBottom: i < sorted.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div onClick={() => toggleRow(r.id)} style={{
@@ -5778,7 +5778,7 @@ function PublicNewConvertForm() {
           <FieldInput label="Full Name" id="ncn" required value={form.full_name} onChange={set("full_name")} />
           <FieldInput label="Phone Number" id="ncp" required value={form.phone} onChange={set("phone")} />
           {dupes.length > 0 && (
-            <div style={{ background: C.soulLight, border: `1px solid ${C.soul}30`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.soul, marginBottom: 14, display: "flex", gap: 8 }}>
+            <div style={{ background: C.soulLight, border: `1px solid ${alpha(C.soul, 18.8)}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.soul, marginBottom: 14, display: "flex", gap: 8 }}>
               <Info size={14} style={{ flexShrink: 0, marginTop: 2 }} />
               <span>Looks like we may already have your details — no problem, go ahead and submit and our team will make sure everything's up to date.</span>
             </div>
@@ -5881,7 +5881,7 @@ function AddNewConvertPage({ currentUser, onCancel, onDone }) {
         <FieldInput label="Phone Number" id="ancp" required value={form.phone} onChange={set("phone")} />
       </div>
       {dupes.length > 0 && (
-        <div style={{ background: C.amberLight, border: `1px solid ${C.amber}35`, borderLeft: `3px solid ${C.amber}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
+        <div style={{ background: C.amberLight, border: `1px solid ${alpha(C.amber, 20.8)}`, borderLeft: `3px solid ${C.amber}`, borderRadius: 8, padding: "10px 14px", marginBottom: 14 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: C.amber, marginBottom: 6 }}>Possible duplicate</div>
           {dupes.slice(0, 3).map(d => (
             <div key={d.id} style={{ fontSize: 12, color: C.textSecondary }}>
@@ -6005,7 +6005,7 @@ function NewConvertsAssignView({ currentUser, role }) {
       </div>
 
       {role !== "dofficer" && (
-        <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${C.soul}22` }}>
+        <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.soulLight, border: `1px solid ${alpha(C.soul, 13.3)}` }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: C.soul, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em" }}>Bulk Assignment</div>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 200 }}>
@@ -6157,7 +6157,7 @@ function NCTrainingBlock({ nc, onSaved }) {
   }
 
   return (
-    <div style={{ marginTop: 8, padding: "12px 14px", background: C.goldLight, borderRadius: 8, border: `1px solid ${C.gold}30` }}>
+    <div style={{ marginTop: 8, padding: "12px 14px", background: C.goldLight, borderRadius: 8, border: `1px solid ${alpha(C.gold, 18.8)}` }}>
       <Alert type="error" msg={err} onClose={() => setErr("")} />
       <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
         <FieldInput label="Scheduled Training Date" id={`ncsd-${nc.id}`} type="date" value={scheduled} onChange={e => setScheduled(e.target.value)}
@@ -6421,7 +6421,7 @@ function NewConvertsRegistry() {
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
-        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}22`,
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${alpha(C.soul, 13.3)}`,
       }}>
         <Calendar size={14} color={C.soul} style={{ flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
@@ -6965,7 +6965,7 @@ function ConnectCentreProspects({ currentUser }) {
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
-        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}22`,
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${alpha(C.soul, 13.3)}`,
       }}>
         <select value={fCentre} onChange={e => setFCentre(e.target.value)} style={{ ...inputBase, width: 200, cursor: "pointer" }}>
           <option value="">All Connect Centres</option>
@@ -7024,7 +7024,7 @@ function ConnectCentreProspects({ currentUser }) {
                 <div key={r.id} style={{
                   display: "grid", gridTemplateColumns: "40px minmax(160px,1.2fr) 140px 80px 90px 130px 170px 1fr 160px",
                   gap: 10, alignItems: "center", padding: "10px 16px", minWidth: 1250,
-                  background: isChecked ? `${C.soul}08` : C.surface,
+                  background: isChecked ? `${alpha(C.soul, 3.1)}` : C.surface,
                   borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none",
                 }}>
                   <div onClick={() => toggleRow(r.id)} style={{
@@ -7280,12 +7280,12 @@ function VipJourneyDashboard() {
         </div>
       </div>
 
-      <div style={{ ...card, background: C.goldLight, border: `1px solid ${C.gold}30` }}>
+      <div style={{ ...card, background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <FileText size={15} color={C.goldDark} />
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: F.head, color: C.goldDark }}>Period Summary</span>
         </div>
-        <div style={{ fontSize: 14, color: C.textPrimary, lineHeight: 1.75, background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${C.gold}20` }}>
+        <div style={{ fontSize: 14, color: C.textPrimary, lineHeight: 1.75, background: "#fff", borderRadius: 8, padding: "14px 16px", border: `1px solid ${alpha(C.gold, 12.5)}` }}>
           {summaryText}
         </div>
       </div>
@@ -7463,7 +7463,7 @@ function CompletedPipelines({ onBack }) {
       <div className="mobile-compact-filter pipeline-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
-        background: C.blueLight, borderRadius: 10, border: `1px solid ${C.blue}22`,
+        background: C.blueLight, borderRadius: 10, border: `1px solid ${alpha(C.blue, 13.3)}`,
       }}>
         <Calendar size={14} color={C.blue} style={{ flexShrink: 0 }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
@@ -7499,7 +7499,7 @@ function CompletedPipelines({ onBack }) {
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "10px 16px", marginBottom: 12,
-          background: `${C.blue}10`, borderRadius: 8, border: `1px solid ${C.blue}30`,
+          background: `${alpha(C.blue, 6.3)}`, borderRadius: 8, border: `1px solid ${alpha(C.blue, 18.8)}`,
           fontSize: 13, color: C.blue, fontWeight: 600, flexWrap: "wrap", gap: 10,
         }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -7573,11 +7573,11 @@ function CompletedPipelines({ onBack }) {
                   padding: "12px 16px", gap: 10,
                   alignItems: "flex-start",
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
-                  background: isChecked ? `${C.blue}08` : C.surface,
+                  background: isChecked ? `${alpha(C.blue, 3.1)}` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
-                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.blue}08` : C.surface; }}>
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${alpha(C.blue, 3.1)}` : C.surface; }}>
 
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
                   <div style={{
@@ -7597,7 +7597,7 @@ function CompletedPipelines({ onBack }) {
                     width: 30, height: 30, borderRadius: "50%", background: C.blueLight,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     fontWeight: 800, color: C.blue, fontSize: 12, fontFamily: F.head,
-                    marginBottom: 4, border: `1.5px solid ${C.blue}30`,
+                    marginBottom: 4, border: `1.5px solid ${alpha(C.blue, 18.8)}`,
                   }}>
                     {ft.full_name?.charAt(0) || "?"}
                   </div>
@@ -7953,11 +7953,11 @@ function PasGoldenEnvoys({ rows, dateFrom, dateTo }) {
                   <div key={r.id} style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "8px 10px", borderRadius: 8, background: C.goldLight,
-                    border: `1px solid ${C.gold}22`,
+                    border: `1px solid ${alpha(C.gold, 13.3)}`,
                   }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                      background: "#fff", border: `1.5px solid ${C.gold}50`,
+                      background: "#fff", border: `1.5px solid ${alpha(C.gold, 31.4)}`,
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontWeight: 800, color: C.goldDark, fontSize: 13, fontFamily: F.head,
                     }}>
@@ -8818,7 +8818,7 @@ function SCDateFilterBar({ dateFrom, setDateFrom, dateTo, setDateTo, label = "Fi
     <div className="sc-date-filter" style={{
       display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
       marginBottom: 16, padding: "12px 16px",
-      background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
+      background: C.soulLight, borderRadius: 10, border: `1px solid ${alpha(C.soul, 18.8)}`,
     }}>
       <Calendar className="sc-date-filter-icon" size={14} color={C.soul} style={{ flexShrink: 0 }} />
       <span className="sc-date-filter-title" style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginRight: 4, whiteSpace: "nowrap" }}>
@@ -8985,7 +8985,7 @@ function MembersCareCSVImport({ currentUser, onDone }) {
   };
 
   return (
-    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.soul}30` }}>
+    <div style={{ ...card, marginBottom: 20, border: `1px solid ${alpha(C.soul, 18.8)}` }}>
       <SH title="Bulk CSV Import — Church Members" icon={Upload} />
       <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
         For regular Members only — Stewards now have their own registry and bulk import under{" "}
@@ -9384,7 +9384,7 @@ function StewardsCSVImport({ currentUser, onDone }) {
   };
 
   return (
-    <div style={{ ...card, marginBottom: 20, border: `1px solid ${C.gold}30` }}>
+    <div style={{ ...card, marginBottom: 20, border: `1px solid ${alpha(C.gold, 18.8)}` }}>
       <SH title="Bulk CSV Import \u2014 Stewards" icon={Upload} />
       <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 12, lineHeight: 1.6 }}>
         Required column: <code style={{ background: C.bg, padding: "1px 5px", borderRadius: 4 }}>full_name</code>.
@@ -9595,7 +9595,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
       <div className="care-filterbar stewards-filterbar" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
-        background: C.goldLight, borderRadius: 10, border: `1px solid ${C.gold}30`,
+        background: C.goldLight, borderRadius: 10, border: `1px solid ${alpha(C.gold, 18.8)}`,
       }}>
         <Filter className="care-filter-icon" size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
         <select className="care-filter-select" value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
@@ -9690,7 +9690,7 @@ function StewardsCare({ currentUser, role, onViewProfile }) {
                       <Avatar name={m.full_name} size={30} />
                       <div style={{
                         fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
+                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${alpha(C.soul, 25.1)}`,
                       }}>
                         {m.full_name}
                       </div>
@@ -9881,7 +9881,7 @@ function MembersCare({ currentUser, role, onViewProfile }) {
       <div className="care-filterbar members-filterbar" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
-        background: C.soulLight, borderRadius: 10, border: `1px solid ${C.soul}30`,
+        background: C.soulLight, borderRadius: 10, border: `1px solid ${alpha(C.soul, 18.8)}`,
       }}>
         <Filter className="care-filter-icon" size={14} color={C.soul} style={{ flexShrink: 0 }} />
         <select className="care-filter-select" value={fStatus} onChange={e => setFStatus(e.target.value)} style={{ ...inputBase, width: 170, cursor: "pointer" }}>
@@ -9959,7 +9959,7 @@ function MembersCare({ currentUser, role, onViewProfile }) {
                       <Avatar name={m.full_name} size={30} />
                       <div style={{
                         fontWeight: 600, fontSize: 13, fontFamily: F.head, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
+                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${alpha(C.soul, 25.1)}`,
                       }}>
                         {m.full_name}
                       </div>
@@ -10755,7 +10755,7 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
           sub={unassignedCount > 0 ? "Need assignment" : "All assigned"} />
       </div>
 
-      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.blueLight, border: `1px solid ${C.blue}22` }}>
+      <div style={{ ...card, marginBottom: 20, padding: "1rem 1.25rem", background: C.blueLight, border: `1px solid ${alpha(C.blue, 13.3)}` }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.blue, marginBottom: 10, fontFamily: F.head, textTransform: "uppercase", letterSpacing: ".07em", display: "flex", alignItems: "center", gap: 5 }}>
           <Zap size={11} />Bulk Assignment
         </div>
@@ -10822,7 +10822,7 @@ function AssignSoulCalls({ currentUser, onViewProfile }) {
                     <div style={{ minWidth: 0 }}>
                       <div onClick={() => onViewProfile && onViewProfile(r)} style={{
                         fontWeight: 700, fontSize: 14, fontFamily: F.head, cursor: onViewProfile ? "pointer" : "default",
-                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
+                        color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${alpha(C.soul, 25.1)}`,
                       }}>{r.full_name}</div>
                       <div style={{ fontSize: 12, color: C.textMuted }}><PhoneLink phone={r.phone} withWhatsApp /></div>
                       {scPersonDetailLine(r) && (
@@ -10970,7 +10970,7 @@ function SoulCallQueue({ currentUser, currentUserRole = "soulcare", onLogCall, o
                       <div className="sc-call-name-row" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                         <span onClick={() => onViewProfile && onViewProfile(r)} style={{
                           fontWeight: 700, fontSize: 14, fontFamily: F.head, cursor: onViewProfile ? "pointer" : "default",
-                          color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${C.soul}40`,
+                          color: onViewProfile ? C.soul : C.textPrimary, textDecoration: onViewProfile ? "underline" : "none", textDecorationColor: `${alpha(C.soul, 25.1)}`,
                         }}>{r.full_name}</span>
                         {r.membership_status && r.membership_status !== "Active" && (
                           <span style={badge(C.amber, C.amberLight, { fontSize: 10 })}>{r.membership_status}</span>
@@ -11779,7 +11779,7 @@ function TestimonyBank({ currentUser }) {
       <div className="mobile-compact-filter testimony-filter" style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
         marginBottom: 16, padding: "12px 16px",
-        background: C.goldLight, borderRadius: 10, border: `1px solid ${C.gold}30`,
+        background: C.goldLight, borderRadius: 10, border: `1px solid ${alpha(C.gold, 18.8)}`,
       }}>
         <Star size={14} color={C.goldDark} style={{ flexShrink: 0 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -11823,7 +11823,7 @@ function TestimonyBank({ currentUser }) {
       {selectedCount > 0 && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
-          background: `${C.gold}15`, borderRadius: 8, border: `1px solid ${C.gold}40`,
+          background: `${alpha(C.gold, 8.2)}`, borderRadius: 8, border: `1px solid ${alpha(C.gold, 25.1)}`,
           fontSize: 13, color: C.goldDark, fontWeight: 600, flexWrap: "wrap", gap: 10,
         }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -11883,11 +11883,11 @@ function TestimonyBank({ currentUser }) {
                   display: "grid", gridTemplateColumns: "40px 1fr 170px 110px 1.4fr", minWidth: 760,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
-                  background: isChecked ? `${C.gold}0D` : C.surface,
+                  background: isChecked ? `${alpha(C.gold, 5.1)}` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.goldLight; }}
-                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.gold}0D` : C.surface; }}>
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${alpha(C.gold, 5.1)}` : C.surface; }}>
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
                   <div style={{
                     width: 18, height: 18, borderRadius: 4, flexShrink: 0,
@@ -11901,7 +11901,7 @@ function TestimonyBank({ currentUser }) {
                     width: 30, height: 30, borderRadius: "50%", background: C.goldLight,
                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                     fontWeight: 800, color: C.goldDark, fontSize: 12, fontFamily: F.head,
-                    marginBottom: 3, border: `1.5px solid ${C.gold}40`,
+                    marginBottom: 3, border: `1.5px solid ${alpha(C.gold, 25.1)}`,
                   }}>{(r.display_name.charAt(0) || "?").toUpperCase()}</div>
                   <div style={{ fontWeight: 600, fontSize: 13, fontFamily: F.head, color: C.textPrimary }}>{r.display_name}</div>
                 </div>
@@ -12333,7 +12333,7 @@ function ResearchFeedback() {
       {selectedCount > 0 && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
-          background: `${C.research}12`, borderRadius: 8, border: `1px solid ${C.research}30`,
+          background: `${alpha(C.research, 7.1)}`, borderRadius: 8, border: `1px solid ${alpha(C.research, 18.8)}`,
           fontSize: 13, color: C.research, fontWeight: 600, flexWrap: "wrap", gap: 10,
         }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -12391,11 +12391,11 @@ function ResearchFeedback() {
                   display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 130px 1fr", minWidth: 820,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
-                  background: isChecked ? `${C.research}08` : C.surface,
+                  background: isChecked ? `${alpha(C.research, 3.1)}` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
-                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.research}08` : C.surface; }}>
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${alpha(C.research, 3.1)}` : C.surface; }}>
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
                   <div style={{
                     width: 18, height: 18, borderRadius: 4,
@@ -12594,7 +12594,7 @@ function GeneralFeedback() {
       {selectedCount > 0 && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", marginBottom: 12,
-          background: `${C.research}12`, borderRadius: 8, border: `1px solid ${C.research}30`,
+          background: `${alpha(C.research, 7.1)}`, borderRadius: 8, border: `1px solid ${alpha(C.research, 18.8)}`,
           fontSize: 13, color: C.research, fontWeight: 600, flexWrap: "wrap", gap: 10,
         }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -12652,11 +12652,11 @@ function GeneralFeedback() {
                   display: "grid", gridTemplateColumns: "40px 1fr 100px 80px 1fr", minWidth: 680,
                   padding: "12px 16px", gap: 10, alignItems: "flex-start",
                   borderBottom: i < pageRows.length - 1 ? `1px solid ${C.border}` : "none",
-                  background: isChecked ? `${C.research}08` : C.surface,
+                  background: isChecked ? `${alpha(C.research, 3.1)}` : C.surface,
                   cursor: "pointer", transition: "background .12s",
                 }}
                 onMouseOver={e => { if (!isChecked) e.currentTarget.style.background = C.greenXLight; }}
-                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${C.research}08` : C.surface; }}>
+                onMouseOut={e => { e.currentTarget.style.background = isChecked ? `${alpha(C.research, 3.1)}` : C.surface; }}>
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
                   <div style={{
                     width: 18, height: 18, borderRadius: 4,
@@ -12868,7 +12868,7 @@ function AdminOverview({ setActive }) {
       {counts.pending > 0 && (
         <div style={{
           ...card, marginBottom: 20, padding: "12px 16px",
-          background: C.goldLight, border: `1px solid ${C.gold}30`, borderLeft: `3px solid ${C.gold}`,
+          background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}`, borderLeft: `3px solid ${C.gold}`,
           display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
         }}>
           <UserPlus size={16} color={C.goldDark} />
@@ -13559,7 +13559,7 @@ function PublicNOMForm() {
           <FieldInput label="Full Name" id="nomfn" required value={form.full_name} onChange={set("full_name")} placeholder="e.g. Adaeze Okafor" />
           <FieldInput label="Phone Number" id="nomph" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
           {dupes.length > 0 && (
-            <div style={{ background: C.goldLight, border: `1px solid ${C.gold}30`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.goldDark, marginBottom: 14, display: "flex", gap: 8 }}>
+            <div style={{ background: C.goldLight, border: `1px solid ${alpha(C.gold, 18.8)}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: C.goldDark, marginBottom: 14, display: "flex", gap: 8 }}>
               <Info size={14} style={{ flexShrink: 0, marginTop: 2 }} />
               <span>Looks like we may already have your details — no problem, go ahead and submit.</span>
             </div>
@@ -14232,7 +14232,7 @@ function StewardAppraisalDashboard() {
 
       {!loading && readiness && !setupReady && (
         <div style={{
-          ...card, marginBottom: 20, background: C.amberLight, border: `1px solid ${C.amber}35`,
+          ...card, marginBottom: 20, background: C.amberLight, border: `1px solid ${alpha(C.amber, 20.8)}`,
           display: "flex", gap: 10, alignItems: "flex-start",
         }}>
           <AlertCircle size={16} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -14751,7 +14751,7 @@ function AppRootContent() {
 }
 
 function AppRoot() {
-  return <BrowserRouter><AppRootContent /></BrowserRouter>;
+  return <IonApp><BrowserRouter><AppRootContent /></BrowserRouter></IonApp>;
 }
 
 export default AppRoot;

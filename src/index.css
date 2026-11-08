@@ -2989,6 +2989,118 @@ textarea.field-control { min-height: 100px; }
   }
 }
 
+/* Ionic-backed shared controls: keep the existing Envoys field geometry while
+   routing form behavior through the mobile-first component system. */
+.app-shell .content-inner ion-input.field-control,
+.app-shell .content-inner ion-select.field-control,
+.app-shell .content-inner ion-textarea.field-control,
+.event-public-page ion-input.field-control,
+.event-public-page ion-select.field-control,
+.event-public-page ion-textarea.field-control {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  --background: #fff;
+  --color: var(--envoys-ink);
+  --placeholder-color: #7b8c82;
+  --border-color: var(--envoys-border);
+  --border-radius: 10px;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --min-height: 44px;
+  min-height: 44px !important;
+  font-family: var(--ion-font-family);
+}
+.app-shell .content-inner ion-select.field-control,
+.event-public-page ion-select.field-control {
+  height: 44px;
+  --placeholder-opacity: 1;
+}
+.app-shell .content-inner ion-select.field-control::part(container),
+.event-public-page ion-select.field-control::part(container) {
+  min-height: 42px;
+}
+.app-shell .content-inner ion-select.field-control::part(text),
+.app-shell .content-inner ion-select.field-control::part(placeholder),
+.event-public-page ion-select.field-control::part(text),
+.event-public-page ion-select.field-control::part(placeholder) {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.app-shell .content-inner ion-select.field-control::part(icon),
+.event-public-page ion-select.field-control::part(icon) {
+  width: 16px;
+  height: 16px;
+  opacity: .72;
+}
+.app-shell .content-inner ion-input.field-control::part(native),
+.app-shell .content-inner ion-textarea.field-control::part(native),
+.event-public-page ion-input.field-control::part(native),
+.event-public-page ion-textarea.field-control::part(native) {
+  font-family: var(--ion-font-family);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.app-shell .content-inner ion-textarea.field-control,
+.event-public-page ion-textarea.field-control { --min-height: 100px; }
+.app-shell .content-inner ion-input.field-control:focus-within,
+.app-shell .content-inner ion-select.field-control:focus-within,
+.app-shell .content-inner ion-textarea.field-control:focus-within,
+.event-public-page ion-input.field-control:focus-within,
+.event-public-page ion-select.field-control:focus-within,
+.event-public-page ion-textarea.field-control:focus-within {
+  --border-color: #48845f;
+  --highlight-color-focused: #48845f;
+}
+
+/* Ionic buttons retain the thumb-sized mobile navigation and the app's
+   established floating bar treatment. */
+.mobile-bottom-nav > ion-button.mobile-nav-button {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  --padding-start: 2px;
+  --padding-end: 2px;
+  --padding-top: 4px;
+  --padding-bottom: 4px;
+  --background: transparent;
+  --background-hover: #eaf2ed;
+  --background-activated: #eaf2ed;
+  --color: #63766b;
+  --border-radius: 14px;
+  --box-shadow: none;
+  font-family: var(--ion-font-family);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-transform: none;
+}
+.mobile-bottom-nav > ion-button.mobile-nav-button::part(native) {
+  display: flex;
+  min-height: 50px;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.mobile-bottom-nav > ion-button.mobile-nav-button.is-active {
+  --background: #eaf2ed;
+  --color: var(--envoys-forest);
+}
+@media (max-width: 390px) {
+  .mobile-bottom-nav > ion-button.mobile-nav-button::part(native) { min-height: 48px; }
+}
+
 /* Mobile control type scale and birthday actions: keep controls legible
    without allowing button hit-area defaults to collide with row content. */
 @media (max-width: 768px) {
@@ -3054,6 +3166,42 @@ textarea.field-control { min-height: 100px; }
   .app-shell .content-inner .birthday-entry .birthday-wished svg {
     width: 16px;
     height: 16px;
+  }
+}
+@media (max-width: 640px) {
+  .event-public-page .event-phone-gender-row {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr) !important;
+  }
+  .event-public-page .event-phone-control > ion-input.field-control {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+  }
+  .event-public-page .event-code-combobox { flex-basis: 88px; }
+  .event-public-page ion-input.field-control::part(native),
+  .event-public-page ion-textarea.field-control::part(native) {
+    font-size: 16px;
+  }
+}
+@media (max-width: 360px) {
+  .event-public-page .event-phone-gender-row { grid-template-columns: minmax(0, 1fr) !important; }
+  .event-public-page .event-phone-control > ion-input.field-control { width: auto; }
+}
+@media (max-width: 768px) {
+  .app-shell .content-inner ion-input.field-control::part(native),
+  .app-shell .content-inner ion-textarea.field-control::part(native),
+  .app-shell .content-inner ion-select.field-control::part(text),
+  .app-shell .content-inner ion-select.field-control::part(placeholder),
+  .event-public-page ion-input.field-control::part(native),
+  .event-public-page ion-textarea.field-control::part(native),
+  .event-public-page ion-select.field-control::part(text),
+  .event-public-page ion-select.field-control::part(placeholder) {
+    font-size: 16px;
+  }
+  .event-public-page .event-code-combobox > input,
+  .event-public-page .event-country-combobox > input,
+  .event-public-page .event-phone-control > input {
+    font-size: 16px !important;
   }
 }
 

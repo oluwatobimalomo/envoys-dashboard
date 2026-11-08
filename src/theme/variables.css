@@ -1,0 +1,148 @@
+:root {
+  /* Envoys brand tokens */
+  --envoys-forest: #1b3a2d;
+  --envoys-forest-deep: #143526;
+  --envoys-green: #187641;
+  --envoys-green-soft: #e6f2eb;
+  --envoys-green-border: #c8e0d0;
+  --envoys-gold: #d49224;
+  --envoys-gold-soft: #fef6e4;
+  --envoys-canvas: #f4f7f2;
+  --envoys-ink: #19352a;
+  --envoys-muted: #61766a;
+  --envoys-text-secondary: #3d5c4a;
+  --envoys-border: #dce7df;
+  --envoys-surface: #fff;
+  --envoys-green-mid: #22963f;
+  --envoys-green-xsoft: #f2faf5;
+  --envoys-gold-dark: #a66d15;
+  --envoys-gold-mid: #f0b84a;
+  --envoys-amber: #c97a1a;
+  --envoys-amber-soft: #fff3e0;
+  --envoys-blue: #2563eb;
+  --envoys-blue-soft: #eff6ff;
+  --envoys-danger: #c0392b;
+  --envoys-danger-soft: #fdedec;
+  --envoys-flag: #dc2626;
+  --envoys-flag-soft: #fef2f2;
+  --envoys-soul: #5b21b6;
+  --envoys-soul-soft: #f5f3ff;
+  --envoys-research: #0e7490;
+  --envoys-research-soft: #ecfeff;
+  --envoys-research-border: #a5f3fc;
+  --envoys-shadow-xs: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --envoys-shadow-sm: 0 2px 6px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.05);
+  --envoys-shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.05);
+
+  /* Shared scale for app surfaces and Ionic controls */
+  --envoys-space-1: 4px;
+  --envoys-space-2: 8px;
+  --envoys-space-3: 12px;
+  --envoys-space-4: 16px;
+  --envoys-space-5: 24px;
+  --envoys-radius-control: 10px;
+  --envoys-radius-card: 16px;
+  --envoys-control-height: 44px;
+  --envoys-mobile-gutter: 16px;
+
+  --ion-font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ion-color-primary: #1b4933;
+  --ion-color-primary-rgb: 27, 73, 51;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #183f2d;
+  --ion-color-primary-tint: #32634a;
+  --ion-color-secondary: #d49224;
+  --ion-color-secondary-rgb: 212, 146, 36;
+  --ion-color-secondary-contrast: #1b2c22;
+  --ion-color-secondary-contrast-rgb: 27, 44, 34;
+  --ion-color-secondary-shade: #bb801f;
+  --ion-color-secondary-tint: #d99e3d;
+  --ion-color-success: #187641;
+  --ion-color-success-rgb: 24, 118, 65;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #15683a;
+  --ion-color-success-tint: #308454;
+  --ion-color-warning: #d49224;
+  --ion-color-warning-rgb: 212, 146, 36;
+  --ion-color-warning-contrast: #1b2c22;
+  --ion-color-warning-contrast-rgb: 27, 44, 34;
+  --ion-color-warning-shade: #bb801f;
+  --ion-color-warning-tint: #d99e3d;
+  --ion-color-danger: #c83a32;
+  --ion-color-danger-rgb: 200, 58, 50;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #b0332c;
+  --ion-color-danger-tint: #ce4e47;
+  --ion-color-medium: #708177;
+  --ion-color-medium-rgb: 112, 129, 119;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #637168;
+  --ion-color-medium-tint: #7e8d83;
+  --ion-color-light: #f4f7f2;
+  --ion-color-light-rgb: 244, 247, 242;
+  --ion-color-light-contrast: #19352a;
+  --ion-color-light-contrast-rgb: 25, 53, 42;
+  --ion-color-light-shade: #d7dad5;
+  --ion-color-light-tint: #f5f8f3;
+  --ion-background-color: var(--envoys-canvas);
+  --ion-background-color-rgb: 244, 247, 242;
+  --ion-text-color: var(--envoys-ink);
+  --ion-text-color-rgb: 25, 53, 42;
+  --ion-border-color: var(--envoys-border);
+  --ion-item-background: var(--envoys-surface);
+  --ion-card-background: var(--envoys-surface);
+}
+
+ion-app {
+  min-height: 100%;
+  font-family: var(--ion-font-family);
+  color: var(--envoys-ink);
+}
+
+ion-input,
+ion-textarea,
+ion-select {
+  --background: #fff;
+  --color: var(--envoys-ink);
+  --placeholder-color: #7b8c82;
+  --placeholder-opacity: 1;
+  --border-color: var(--envoys-border);
+  --border-style: solid;
+  --border-width: 1px;
+  --border-radius: var(--envoys-radius-control);
+  --highlight-color-focused: var(--envoys-green);
+  --highlight-color-valid: var(--envoys-green);
+  --highlight-color-invalid: #c83a32;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --min-height: var(--envoys-control-height);
+  font-family: var(--ion-font-family);
+}
+
+ion-input::part(native),
+ion-textarea::part(native),
+ion-select::part(text),
+ion-select::part(placeholder) {
+  font-family: var(--ion-font-family);
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  :root { --envoys-mobile-gutter: 12px; }
+  ion-input::part(native),
+  ion-textarea::part(native),
+  ion-select::part(text),
+  ion-select::part(placeholder) {
+    font-size: 16px;
+  }
+  .app-shell .content-inner ion-select.field-control::part(text),
+  .app-shell .content-inner ion-select.field-control::part(placeholder),
+  .event-public-page ion-select.field-control::part(text),
+  .event-public-page ion-select.field-control::part(placeholder) {
+    font-size: 16px;
+  }
+}
