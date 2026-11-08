@@ -99,6 +99,7 @@
 
 ion-app {
   min-height: 100vh;
+  min-height: 100dvh;
   font-family: var(--ion-font-family);
   color: var(--envoys-ink);
 }
@@ -113,6 +114,7 @@ ion-app.ion-page {
   width: 100%;
   height: auto !important;
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: visible !important;
   contain: none !important;
   z-index: auto !important;
