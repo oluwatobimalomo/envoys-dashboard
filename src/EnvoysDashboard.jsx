@@ -3001,12 +3001,14 @@ function FirstTimersList({ onEdit }) {
                 <input type="checkbox" aria-label={`Select ${r.full_name}`} checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
                 <Avatar name={r.full_name} size={36} />
                 <div className="first-timer-identity">
-                  <div className="first-timer-name" title={r.full_name}>{r.full_name}</div>
-                  <span className="first-timer-decision" style={badge(col, bg)}><span style={dot(col)} />{r.membership_decision || "–"}</span>
-                </div>
-                <div className="first-timer-contact">
-                  <PhoneLink phone={r.phone} withWhatsApp />
-                  <time>{r.service_date || "—"}</time>
+                  <div className="first-timer-heading">
+                    <div className="first-timer-name" title={r.full_name}>{r.full_name}</div>
+                    <span className="first-timer-decision" style={badge(col, bg)}><span style={dot(col)} />{r.membership_decision || "–"}</span>
+                  </div>
+                  <div className="first-timer-contact">
+                    <PhoneLink phone={r.phone} withWhatsApp />
+                    <time>{r.service_date || "—"}</time>
+                  </div>
                 </div>
                 <button className="first-timer-edit" aria-label={`Edit ${r.full_name}`} title="Edit" onClick={(e) => { e.stopPropagation(); onEdit(r); }}>
                   <Edit3 size={16} /><span className="first-timer-edit-label">Edit</span>

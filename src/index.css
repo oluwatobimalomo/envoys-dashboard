@@ -3890,3 +3890,138 @@ textarea.field-control { min-height: 100px; }
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* First-timer rows keep the person's name, decision and contact details in
+   one compact identity block so they scan as a single record on any screen. */
+.app-shell .content-inner .first-timer-card {
+  display: grid !important;
+  grid-template-columns: 18px 38px minmax(0, 1fr) 40px !important;
+  grid-template-rows: auto !important;
+  align-items: center !important;
+  gap: 8px 12px !important;
+  min-height: 76px !important;
+  padding: 11px 14px !important;
+  border: 1px solid #dce7df !important;
+  border-left: 3px solid #9bbba4 !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+}
+
+.app-shell .content-inner .first-timer-card > input[type="checkbox"] {
+  grid-column: 1;
+  grid-row: 1;
+  width: 17px !important;
+  height: 17px !important;
+  margin: 0 !important;
+}
+
+.app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+  grid-column: 2;
+  grid-row: 1;
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.app-shell .content-inner .first-timer-identity {
+  display: grid !important;
+  grid-column: 3;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+.app-shell .content-inner .first-timer-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.app-shell .content-inner .first-timer-name {
+  flex: 0 1 auto;
+  max-width: 100%;
+  color: #19352a;
+  font-size: 14px !important;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.app-shell .content-inner .first-timer-decision {
+  flex: 0 0 auto;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.app-shell .content-inner .first-timer-contact {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-start !important;
+  gap: 4px 12px !important;
+  min-width: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.25;
+}
+
+.app-shell .content-inner .first-timer-contact > time {
+  color: #778b7e;
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+
+.app-shell .content-inner .first-timer-card button.first-timer-edit {
+  grid-column: 4;
+  grid-row: 1;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 !important;
+  border-radius: 11px !important;
+}
+
+.app-shell .content-inner .first-timer-edit-label { display: none !important; }
+
+@media (max-width: 768px) {
+  .app-shell .content-inner .first-timer-card {
+    grid-template-columns: 16px 32px minmax(0, 1fr) 34px !important;
+    gap: 7px !important;
+    min-height: 70px !important;
+    padding: 9px 10px !important;
+    border-radius: 13px !important;
+  }
+
+  .app-shell .content-inner .first-timer-card > input[type="checkbox"] {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .app-shell .content-inner .first-timer-identity { gap: 3px !important; }
+  .app-shell .content-inner .first-timer-heading { gap: 3px 6px; }
+  .app-shell .content-inner .first-timer-name { font-size: 13px !important; }
+  .app-shell .content-inner .first-timer-decision { padding: 3px 6px !important; font-size: 9px !important; }
+  .app-shell .content-inner .first-timer-contact { gap: 3px 8px !important; font-size: 11px !important; }
+  .app-shell .content-inner .first-timer-contact > time { font-size: 10px !important; }
+
+  .app-shell .content-inner .first-timer-card button.first-timer-edit {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+}
