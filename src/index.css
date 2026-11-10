@@ -3891,50 +3891,49 @@ textarea.field-control { min-height: 100px; }
   }
 }
 
-/* First-timer records read as one unit: identity and controls on the first
-   row, then a compact contact line immediately beneath. */
+/* First-timer registry: stable column order on web, compact two-row contact
+   cards on phones. The checkbox precedes the person; edit follows the contact. */
+.app-shell .content-inner .first-timer-list > div {
+  width: min(100%, 1040px);
+  margin-inline: auto;
+}
+
 .app-shell .content-inner .first-timer-card {
   display: grid !important;
-  grid-template-columns: 38px minmax(0, 1fr) !important;
+  grid-template-columns: 24px 36px minmax(200px, 1.1fr) minmax(270px, 1fr) 44px !important;
   grid-template-rows: auto !important;
   align-items: center !important;
-  gap: 10px !important;
-  min-height: 0 !important;
-  padding: 12px 14px !important;
+  gap: 9px 12px !important;
+  min-height: 70px !important;
+  padding: 10px 14px !important;
   border: 1px solid var(--envoys-border, #dce7df) !important;
   border-inline-start: 3px solid #9bbba4 !important;
   border-radius: var(--envoys-radius-card, 16px) !important;
   background: var(--envoys-surface, #fff) !important;
 }
 
-.app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+.app-shell .content-inner .first-timer-card > input[type="checkbox"] {
   grid-column: 1;
+  grid-row: 1;
+  width: 22px !important;
+  height: 22px !important;
+  margin: 0 !important;
+}
+
+.app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+  grid-column: 2;
   grid-row: 1;
   width: 36px !important;
   height: 36px !important;
 }
 
-.app-shell .content-inner .first-timer-card > .first-timer-identity {
-  grid-column: 2;
+.app-shell .content-inner .first-timer-identity {
+  display: flex !important;
+  grid-column: 3;
   grid-row: 1;
-  display: grid !important;
-  gap: 5px !important;
-  min-width: 0;
-}
-
-.app-shell .content-inner .first-timer-heading {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.app-shell .content-inner .first-timer-person {
-  display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 8px;
+  gap: 4px 8px !important;
   min-width: 0;
 }
 
@@ -3945,11 +3944,10 @@ textarea.field-control { min-height: 100px; }
   color: var(--envoys-ink, #19352a);
   font-size: 14px !important;
   font-weight: 700;
-  line-height: 1.3 !important;
-  overflow-wrap: normal;
-  word-break: normal;
-  white-space: normal;
-  text-overflow: clip;
+  line-height: 1.25 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app-shell .content-inner .first-timer-decision {
@@ -3961,20 +3959,29 @@ textarea.field-control { min-height: 100px; }
   white-space: nowrap;
 }
 
-.app-shell .content-inner .first-timer-actions {
-  display: flex;
+.app-shell .content-inner .first-timer-contact {
+  display: flex !important;
+  grid-column: 4;
+  grid-row: 1;
   align-items: center;
-  gap: 7px;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap;
+  gap: 4px 10px !important;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: 12px !important;
 }
 
-.app-shell .content-inner .first-timer-actions input[type="checkbox"] {
-  width: 24px !important;
-  height: 24px !important;
-  margin: 0 !important;
+.app-shell .content-inner .first-timer-contact > time {
+  color: var(--envoys-muted, #61766a);
+  font-size: 11px !important;
+  white-space: nowrap;
 }
 
-.app-shell .content-inner .first-timer-card .first-timer-actions button.first-timer-edit {
+.app-shell .content-inner .first-timer-card > button.first-timer-edit {
   display: inline-flex !important;
+  grid-column: 5;
+  grid-row: 1;
   align-items: center;
   justify-content: center;
   width: 40px !important;
@@ -3990,81 +3997,91 @@ textarea.field-control { min-height: 100px; }
 
 .app-shell .content-inner .first-timer-edit-label { display: none !important; }
 
-.app-shell .content-inner .first-timer-contact {
-  display: flex !important;
-  align-items: center;
-  justify-content: flex-start !important;
-  flex-wrap: wrap;
-  gap: 4px 10px !important;
-  min-width: 0 !important;
-  white-space: normal;
-  font-size: 12px !important;
-}
+@media (max-width: 1100px) and (min-width: 601px) {
+  .app-shell .content-inner .first-timer-card {
+    grid-template-columns: 22px 32px minmax(140px, 1fr) minmax(230px, 1.2fr) 40px !important;
+    gap: 8px !important;
+    padding-inline: 10px !important;
+  }
 
-.app-shell .content-inner .first-timer-contact > time {
-  margin-inline-start: 0 !important;
-  color: var(--envoys-muted, #61766a);
-  font-size: 11px !important;
-  white-space: nowrap;
+  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+    width: 32px !important;
+    height: 32px !important;
+  }
 }
 
 @media (max-width: 600px) {
+  .app-shell .content-inner .first-timer-list > div { gap: 9px !important; }
+
   .app-shell .content-inner .first-timer-card {
-    grid-template-columns: minmax(0, 1fr) !important;
-    gap: 0 !important;
-    padding: 11px 12px !important;
+    grid-template-columns: 24px minmax(0, 1fr) 44px !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    gap: 4px 9px !important;
+    min-height: 0 !important;
+    padding: 10px 11px !important;
+    border-radius: var(--envoys-radius-card, 16px) !important;
+  }
+
+  .app-shell .content-inner .first-timer-card > input[type="checkbox"] {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 24px !important;
+    height: 24px !important;
   }
 
   .app-shell .content-inner .first-timer-card > div:nth-of-type(1) { display: none !important; }
 
-  .app-shell .content-inner .first-timer-card > .first-timer-identity {
-    grid-column: 1;
+  .app-shell .content-inner .first-timer-identity {
+    grid-column: 2;
     grid-row: 1;
-    gap: 7px !important;
-  }
-
-  .app-shell .content-inner .first-timer-heading {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 8px;
-  }
-
-  .app-shell .content-inner .first-timer-person {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: start;
-    align-content: start;
-    gap: 4px;
+    display: flex !important;
+    flex-wrap: nowrap;
+    gap: 6px !important;
+    min-width: 0;
   }
 
   .app-shell .content-inner .first-timer-name {
-    display: block !important;
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: 14px !important;
-    line-height: 1.3 !important;
-    overflow-wrap: break-word;
-    text-wrap: pretty;
+    line-height: 1.25 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .app-shell .content-inner .first-timer-actions { gap: 6px; }
+  .app-shell .content-inner .first-timer-decision {
+    padding: 3px 6px !important;
+    font-size: 9px !important;
+  }
 
-  .app-shell .content-inner .first-timer-card .first-timer-actions button.first-timer-edit {
+  .app-shell .content-inner .first-timer-contact {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-start !important;
+    flex-wrap: wrap;
+    gap: 3px 8px !important;
+    white-space: normal;
+    font-size: 12px !important;
+  }
+
+  .app-shell .content-inner .first-timer-contact > time { font-size: 10px !important; }
+
+  .app-shell .content-inner .first-timer-card > button.first-timer-edit {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: center;
     width: 44px !important;
     min-width: 44px !important;
     height: 44px !important;
     min-height: 44px !important;
   }
 
-  .app-shell .content-inner .first-timer-contact {
-    gap: 4px 8px !important;
-    font-size: 12px !important;
-  }
-
   .app-shell .content-inner .first-timer-contact a[href^="https://wa.me/"] {
-    width: 36px !important;
-    min-width: 36px !important;
-    height: 36px !important;
-    min-height: 36px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
     border-radius: 10px !important;
   }
 }
