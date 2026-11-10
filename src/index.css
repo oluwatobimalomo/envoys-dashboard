@@ -3900,7 +3900,7 @@ textarea.field-control { min-height: 100px; }
 
 .app-shell .content-inner .first-timer-card {
   display: grid !important;
-  grid-template-columns: 24px 36px minmax(200px, 1.1fr) minmax(270px, 1fr) 44px !important;
+  grid-template-columns: 24px 36px minmax(200px, 1.1fr) minmax(270px, 1fr) 32px !important;
   grid-template-rows: auto !important;
   align-items: center !important;
   gap: 9px 12px !important;
@@ -3984,10 +3984,10 @@ textarea.field-control { min-height: 100px; }
   grid-row: 1;
   align-items: center;
   justify-content: center;
-  width: 40px !important;
-  min-width: 40px !important;
-  height: 40px !important;
-  min-height: 40px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
   padding: 0 !important;
   border: 1px solid var(--envoys-border, #dce7df) !important;
   border-radius: var(--envoys-radius-control, 10px) !important;
@@ -3995,11 +3995,28 @@ textarea.field-control { min-height: 100px; }
   color: var(--envoys-text-secondary, #3d5c4a) !important;
 }
 
+.app-shell .content-inner .first-timer-card > button.first-timer-edit svg,
+.app-shell .content-inner .first-timer-contact a[href^="https://wa.me/"] svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.app-shell .content-inner .first-timer-contact a[href^="https://wa.me/"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  border-radius: 9px !important;
+}
+
 .app-shell .content-inner .first-timer-edit-label { display: none !important; }
 
 @media (max-width: 1100px) and (min-width: 601px) {
   .app-shell .content-inner .first-timer-card {
-    grid-template-columns: 22px 32px minmax(140px, 1fr) minmax(230px, 1.2fr) 40px !important;
+    grid-template-columns: 22px 32px minmax(140px, 1fr) minmax(230px, 1.2fr) 32px !important;
     gap: 8px !important;
     padding-inline: 10px !important;
   }
@@ -4014,7 +4031,7 @@ textarea.field-control { min-height: 100px; }
   .app-shell .content-inner .first-timer-list > div { gap: 9px !important; }
 
   .app-shell .content-inner .first-timer-card {
-    grid-template-columns: 24px minmax(0, 1fr) 44px !important;
+    grid-template-columns: 24px minmax(0, 1fr) 32px !important;
     grid-template-rows: auto auto !important;
     align-items: center !important;
     gap: 4px 9px !important;
@@ -4071,17 +4088,17 @@ textarea.field-control { min-height: 100px; }
     grid-column: 3;
     grid-row: 2;
     align-self: center;
-    width: 44px !important;
-    min-width: 44px !important;
-    height: 44px !important;
-    min-height: 44px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
   }
 
   .app-shell .content-inner .first-timer-contact a[href^="https://wa.me/"] {
-    width: 34px !important;
-    min-width: 34px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    border-radius: 10px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    border-radius: 9px !important;
   }
 }
