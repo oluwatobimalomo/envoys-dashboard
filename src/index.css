@@ -3859,3 +3859,34 @@ textarea.field-control { min-height: 100px; }
     line-clamp: 2;
   }
 }
+
+/* Shared scroll contract for every signed-in role and route. Keep one
+   predictable scroll owner in the app shell; page-specific content must not
+   depend on the account role to become scrollable. */
+@media (min-width: 769px) {
+  .app-shell > main#main-content {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell > main#main-content {
+    position: absolute !important;
+    inset: 62px 0 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+}

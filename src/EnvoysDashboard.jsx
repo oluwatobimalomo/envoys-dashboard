@@ -14365,6 +14365,41 @@ function App() {
   const [showConvention2026, setShowConvention2026] = useState(false);
   const [showAppraisal,   setShowAppraisal]   = useState(false);
 
+  // Keep the shared page scroller healthy for every role. If a page-level
+  // style accidentally locks the app content, restore vertical scrolling and
+  // report the regression during development with the role and current route.
+  useEffect(() => {
+    if (!session) return undefined;
+    const scroller = document.getElementById("main-content");
+    if (!scroller) return undefined;
+
+    const auditScroll = () => {
+      const overflowY = window.getComputedStyle(scroller).overflowY;
+      if (overflowY === "hidden" || overflowY === "clip" || overflowY === "visible") {
+        scroller.style.setProperty("overflow-y", "auto", "important");
+        if (import.meta.env.DEV) {
+          console.warn(`[scroll-contract] Restored page scrolling for role "${session.role}" at "${location.pathname}".`);
+        }
+      }
+
+      if (import.meta.env.DEV && scroller.clientHeight === 0 && scroller.scrollHeight > 0) {
+        console.error(`[scroll-contract] Page scroller has no height for role "${session.role}" at "${location.pathname}".`);
+      }
+    };
+
+    const frame = requestAnimationFrame(auditScroll);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(auditScroll);
+    observer?.observe(scroller);
+    const page = scroller.querySelector(".content-inner");
+    if (page) observer?.observe(page);
+    window.addEventListener("resize", auditScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", auditScroll);
+    };
+  }, [session?.role, active, location.pathname]);
+
   useEffect(() => {
     const p = location.pathname;
     const h = window.location.hash;
@@ -14723,7 +14758,7 @@ function App() {
         flagCount={flagCount} />
       <MobileBottomNav role={role} active={active} setActive={navTo}
         onMenu={openMobileMenu} menuOpen={mobileOpen} />
-      <main className="main-content" id="main-content" tabIndex={-1} inert={mobileOpen}>
+      <main className="main-content" id="main-content" data-scroll-region="app-page" aria-label="Page content" tabIndex={-1} inert={mobileOpen}>
         <div className="app-topbar">
           <div className="app-topbar-copy">
             <span>THE ENVOYS · RETENTION</span>
