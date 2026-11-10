@@ -3891,47 +3891,46 @@ textarea.field-control { min-height: 100px; }
   }
 }
 
-/* First-timer rows keep the person's name, decision and contact details in
-   one compact identity block so they scan as a single record on any screen. */
+/* First-timer records read as one unit: identity and controls on the first
+   row, then a compact contact line immediately beneath. */
 .app-shell .content-inner .first-timer-card {
   display: grid !important;
-  grid-template-columns: 18px 38px minmax(0, 1fr) 40px !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
   grid-template-rows: auto !important;
   align-items: center !important;
-  gap: 8px 12px !important;
-  min-height: 76px !important;
-  padding: 11px 14px !important;
-  border: 1px solid #dce7df !important;
-  border-left: 3px solid #9bbba4 !important;
-  border-radius: 14px !important;
-  background: #fff !important;
-}
-
-.app-shell .content-inner .first-timer-card > input[type="checkbox"] {
-  grid-column: 1;
-  grid-row: 1;
-  width: 17px !important;
-  height: 17px !important;
-  margin: 0 !important;
+  gap: 10px !important;
+  min-height: 0 !important;
+  padding: 12px 14px !important;
+  border: 1px solid var(--envoys-border, #dce7df) !important;
+  border-inline-start: 3px solid #9bbba4 !important;
+  border-radius: var(--envoys-radius-card, 16px) !important;
+  background: var(--envoys-surface, #fff) !important;
 }
 
 .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 1;
   width: 36px !important;
   height: 36px !important;
 }
 
-.app-shell .content-inner .first-timer-identity {
-  display: grid !important;
-  grid-column: 3;
+.app-shell .content-inner .first-timer-card > .first-timer-identity {
+  grid-column: 2;
   grid-row: 1;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 4px !important;
-  min-width: 0 !important;
+  display: grid !important;
+  gap: 5px !important;
+  min-width: 0;
 }
 
 .app-shell .content-inner .first-timer-heading {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-shell .content-inner .first-timer-person {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -3941,13 +3940,16 @@ textarea.field-control { min-height: 100px; }
 
 .app-shell .content-inner .first-timer-name {
   flex: 0 1 auto;
+  min-width: 0;
   max-width: 100%;
-  color: #19352a;
+  color: var(--envoys-ink, #19352a);
   font-size: 14px !important;
   font-weight: 700;
-  line-height: 1.25;
-  overflow-wrap: anywhere;
+  line-height: 1.3 !important;
+  overflow-wrap: normal;
+  word-break: normal;
   white-space: normal;
+  text-overflow: clip;
 }
 
 .app-shell .content-inner .first-timer-decision {
@@ -3959,133 +3961,110 @@ textarea.field-control { min-height: 100px; }
   white-space: nowrap;
 }
 
-.app-shell .content-inner .first-timer-contact {
-  display: flex !important;
+.app-shell .content-inner .first-timer-actions {
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-start !important;
-  gap: 4px 12px !important;
-  min-width: 0 !important;
-  font-size: 12px !important;
-  line-height: 1.25;
+  gap: 7px;
 }
 
-.app-shell .content-inner .first-timer-contact > time {
-  color: #778b7e;
-  font-size: 11px !important;
-  white-space: nowrap;
+.app-shell .content-inner .first-timer-actions input[type="checkbox"] {
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0 !important;
 }
 
-.app-shell .content-inner .first-timer-card button.first-timer-edit {
-  grid-column: 4;
-  grid-row: 1;
+.app-shell .content-inner .first-timer-card .first-timer-actions button.first-timer-edit {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 38px !important;
-  min-width: 38px !important;
-  height: 38px !important;
-  min-height: 38px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
   padding: 0 !important;
-  border-radius: 11px !important;
+  border: 1px solid var(--envoys-border, #dce7df) !important;
+  border-radius: var(--envoys-radius-control, 10px) !important;
+  background: #f5f8f5 !important;
+  color: var(--envoys-text-secondary, #3d5c4a) !important;
 }
 
 .app-shell .content-inner .first-timer-edit-label { display: none !important; }
 
-@media (max-width: 768px) {
-  .app-shell .content-inner .first-timer-card {
-    grid-template-columns: 16px 32px minmax(0, 1fr) 34px !important;
-    gap: 7px !important;
-    min-height: 70px !important;
-    padding: 9px 10px !important;
-    border-radius: 13px !important;
-  }
-
-  .app-shell .content-inner .first-timer-card > input[type="checkbox"] {
-    width: 16px !important;
-    height: 16px !important;
-  }
-
-  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
-    width: 30px !important;
-    height: 30px !important;
-  }
-
-  .app-shell .content-inner .first-timer-identity { gap: 3px !important; }
-  .app-shell .content-inner .first-timer-heading { gap: 3px 6px; }
-  .app-shell .content-inner .first-timer-name { font-size: 13px !important; }
-  .app-shell .content-inner .first-timer-decision { padding: 3px 6px !important; font-size: 9px !important; }
-  .app-shell .content-inner .first-timer-contact { gap: 3px 8px !important; font-size: 11px !important; }
-  .app-shell .content-inner .first-timer-contact > time { font-size: 10px !important; }
-
-  .app-shell .content-inner .first-timer-card button.first-timer-edit {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
-  }
+.app-shell .content-inner .first-timer-contact {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start !important;
+  flex-wrap: wrap;
+  gap: 4px 10px !important;
+  min-width: 0 !important;
+  white-space: normal;
+  font-size: 12px !important;
 }
 
-/* On phones, reclaim the avatar column so names and contact details have a
-   useful reading width. The initials are decorative here; the checkbox and
-   edit action already identify the row's controls. */
+.app-shell .content-inner .first-timer-contact > time {
+  margin-inline-start: 0 !important;
+  color: var(--envoys-muted, #61766a);
+  font-size: 11px !important;
+  white-space: nowrap;
+}
+
 @media (max-width: 600px) {
   .app-shell .content-inner .first-timer-card {
-    grid-template-columns: 18px minmax(0, 1fr) 34px !important;
-    align-items: center !important;
-    gap: 8px !important;
-    min-height: 0 !important;
-    padding: 10px 11px !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 0 !important;
+    padding: 11px 12px !important;
   }
 
-  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
-    display: none !important;
-  }
+  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) { display: none !important; }
 
-  .app-shell .content-inner .first-timer-identity {
-    grid-column: 2;
+  .app-shell .content-inner .first-timer-card > .first-timer-identity {
+    grid-column: 1;
     grid-row: 1;
-    gap: 5px !important;
+    gap: 7px !important;
   }
 
   .app-shell .content-inner .first-timer-heading {
-    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .app-shell .content-inner .first-timer-person {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
     justify-items: start;
-    gap: 4px !important;
+    align-content: start;
+    gap: 4px;
   }
 
   .app-shell .content-inner .first-timer-name {
-    display: -webkit-box !important;
+    display: block !important;
     width: 100%;
-    max-width: 100%;
     font-size: 14px !important;
-    line-height: 1.25 !important;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    overflow: hidden;
-    overflow-wrap: anywhere;
+    line-height: 1.3 !important;
+    overflow-wrap: break-word;
+    text-wrap: pretty;
   }
 
-  .app-shell .content-inner .first-timer-decision {
-    justify-self: start;
+  .app-shell .content-inner .first-timer-actions { gap: 6px; }
+
+  .app-shell .content-inner .first-timer-card .first-timer-actions button.first-timer-edit {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
   }
 
   .app-shell .content-inner .first-timer-contact {
-    display: flex !important;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: space-between !important;
-    gap: 4px 10px !important;
+    gap: 4px 8px !important;
+    font-size: 12px !important;
   }
 
-  .app-shell .content-inner .first-timer-card button.first-timer-edit {
-    grid-column: 3;
-    grid-row: 1;
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+  .app-shell .content-inner .first-timer-contact a[href^="https://wa.me/"] {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    border-radius: 10px !important;
   }
 }
