@@ -4025,3 +4025,67 @@ textarea.field-control { min-height: 100px; }
     min-height: 32px !important;
   }
 }
+
+/* On phones, reclaim the avatar column so names and contact details have a
+   useful reading width. The initials are decorative here; the checkbox and
+   edit action already identify the row's controls. */
+@media (max-width: 600px) {
+  .app-shell .content-inner .first-timer-card {
+    grid-template-columns: 18px minmax(0, 1fr) 34px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    min-height: 0 !important;
+    padding: 10px 11px !important;
+  }
+
+  .app-shell .content-inner .first-timer-card > div:nth-of-type(1) {
+    display: none !important;
+  }
+
+  .app-shell .content-inner .first-timer-identity {
+    grid-column: 2;
+    grid-row: 1;
+    gap: 5px !important;
+  }
+
+  .app-shell .content-inner .first-timer-heading {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: 4px !important;
+  }
+
+  .app-shell .content-inner .first-timer-name {
+    display: -webkit-box !important;
+    width: 100%;
+    max-width: 100%;
+    font-size: 14px !important;
+    line-height: 1.25 !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+
+  .app-shell .content-inner .first-timer-decision {
+    justify-self: start;
+  }
+
+  .app-shell .content-inner .first-timer-contact {
+    display: flex !important;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between !important;
+    gap: 4px 10px !important;
+  }
+
+  .app-shell .content-inner .first-timer-card button.first-timer-edit {
+    grid-column: 3;
+    grid-row: 1;
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+  }
+}
