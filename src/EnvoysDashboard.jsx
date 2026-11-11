@@ -2663,7 +2663,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
   };
 
   return (
-    <div style={card} className="page-enter">
+    <div style={card} className="page-enter first-timer-form">
       {CREDS_MISSING && <CredsBanner />}
       <PageHeader
         title={editData ? "Edit Record" : "New First-Timer"}
@@ -2676,11 +2676,20 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
       />
       <Alert type="error" msg={err} onClose={() => setErr("")} />
 
-      <div style={{ marginBottom: 24 }}>
+      <section className="first-timer-form-section">
         <SH title="Personal Information" icon={Users} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <div className="first-timer-form-grid">
           <FieldInput label="Full Name" id="fn" required value={form.full_name} onChange={set("full_name")} placeholder="e.g. Adaeze Okafor" />
           <FieldInput label="Phone Number" id="ph" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
+          <FieldInput label="Gender" id="gd" type="select" required value={form.gender} onChange={set("gender")}
+            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
+          <FieldInput label="Email Address" id="em" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" />
+          <FieldInput label="Date of Birth" id="db" type="date" value={form.dob} onChange={set("dob")} />
+          <FieldInput label="Marital Status" id="ms" type="select" value={form.marital_status} onChange={set("marital_status")}
+            options={[
+              { value: "Single", label: "Single" }, { value: "Married", label: "Married" },
+              { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" },
+            ]} />
         </div>
 
         {checkingDupes && (
@@ -2728,26 +2737,15 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
             </div>
           )
         )}
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Gender" id="gd" type="select" required value={form.gender} onChange={set("gender")}
-            options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
-          <FieldInput label="Email Address" id="em" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" />
+        <div className="first-timer-form-grid first-timer-form-grid-address">
+          <FieldInput label="House Address" id="ha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
+          <FieldInput label="Nearest Landmark" id="nl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
         </div>
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
-          <FieldInput label="Date of Birth" id="db" type="date" value={form.dob} onChange={set("dob")} />
-          <FieldInput label="Marital Status" id="ms" type="select" value={form.marital_status} onChange={set("marital_status")}
-            options={[
-              { value: "Single", label: "Single" }, { value: "Married", label: "Married" },
-              { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" },
-            ]} />
-        </div>
-        <FieldInput label="House Address" id="ha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
-        <FieldInput label="Nearest Landmark" id="nl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
-      </div>
+      </section>
 
-      <div style={{ marginBottom: 24 }}>
+      <section className="first-timer-form-section">
         <SH title="Visit Details" icon={Star} />
-        <div className="g2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 16px" }}>
+        <div className="first-timer-form-grid">
           <FieldInput label="Membership Decision" id="md" type="select" required value={form.membership_decision} onChange={set("membership_decision")}
             options={[
               { value: "Member", label: "Member" }, { value: "Visitor", label: "Visitor" },
@@ -2758,11 +2756,11 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
               { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
               { value: "Business Owner", label: "Business Owner" },
             ]} />
+          <div className="first-timer-form-span"><FieldInput label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" /></div>
+          <div className="first-timer-form-span"><FieldInput label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} /></div>
+          <div className="first-timer-form-span"><FieldInput label="Service Feedback" id="sf" type="textarea" value={form.service_feedback} onChange={set("service_feedback")} placeholder="What was your experience like today?" /></div>
         </div>
-        <FieldInput label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" />
-        <FieldInput label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} />
-        <FieldInput label="Service Feedback" id="sf" type="textarea" value={form.service_feedback} onChange={set("service_feedback")} placeholder="What was your experience like today?" />
-      </div>
+      </section>
 
       <button
         style={{

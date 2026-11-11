@@ -959,6 +959,41 @@ select.field-control {
 
 textarea.field-control { min-height: 100px; }
 
+/* First-Timer form layout: constrain the desktop measure, align every field
+   to the same grid, and collapse the grid cleanly on small screens. */
+.first-timer-form {
+  width: min(100%, 860px);
+  margin-inline: auto;
+  padding: clamp(18px, 2.4vw, 28px) !important;
+  display: grid;
+  gap: 22px;
+}
+
+.first-timer-form > .page-header { margin: 0 !important; }
+.first-timer-form > .input-field { margin: 0 !important; }
+.first-timer-form-section { display: grid; gap: 12px; min-width: 0; }
+.first-timer-form-section > .section-heading { margin: 0 !important; }
+.first-timer-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  min-width: 0;
+}
+.first-timer-form-grid > *,
+.first-timer-form-grid .input-field { min-width: 0; margin: 0 !important; }
+.first-timer-form-span { grid-column: 1 / -1; min-width: 0; }
+.first-timer-form .input-field { display: flex; flex-direction: column; gap: 6px; }
+.first-timer-form .input-field-label { margin: 0 !important; }
+.first-timer-form .first-timer-form-span > .input-field { margin: 0 !important; }
+.first-timer-form > button:last-child { min-height: 48px; margin-top: 2px; }
+
+@media (max-width: 768px) {
+  .first-timer-form { gap: 18px; padding: 16px !important; }
+  .first-timer-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .first-timer-form-span { grid-column: auto; }
+  .first-timer-form .input-field-label { font-size: 12px !important; }
+}
+
 .app-shell .content-inner button:not(.sidebar-item):not(.sidebar-section-toggle):not(.mobile-bottom-nav button) {
   border-radius: 10px;
 }
