@@ -748,6 +748,9 @@ function parseAreas(raw) {
 
 function FieldInput({ label, id, type = "text", required, value, onChange,
   placeholder, options, hint, disabled }) {
+  const selectInterface = typeof window !== "undefined" && window.matchMedia?.("(max-width: 768px)").matches
+    ? "alert"
+    : "popover";
   const wrap = (children) => (
     <div className="input-field" style={{ marginBottom: 16 }}>
       {label && (
@@ -762,7 +765,7 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
 
   if (type === "select") return wrap(
     <IonSelect id={id} value={value} onIonChange={event => onChange?.({ target: { value: event.detail.value } })}
-      fill="outline" interface="popover" placeholder="Select…" aria-label={label} required={required}
+      fill="outline" interface={selectInterface} interfaceOptions={{ alignment: "start" }} placeholder="Select…" aria-label={label} required={required}
       disabled={disabled} className="field-control">
       {(options || []).map(o => <IonSelectOption key={o.value} value={o.value}>{o.label}</IonSelectOption>)}
     </IonSelect>
