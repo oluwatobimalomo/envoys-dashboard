@@ -22,7 +22,7 @@ import {
 } from "recharts";
 import { CREDS_MISSING, sb, uploadVisitPhoto, hashPassword, cascadeRename } from "./lib/supabase.js";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
-import { IonApp, IonButton, IonInput, IonSelect, IonSelectOption, IonTextarea } from "@ionic/react";
+import { IonApp, IonButton, IonInput, IonTextarea } from "@ionic/react";
 import { Button as UIbutton } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input as UIinput } from "@/components/ui/input";
@@ -748,9 +748,6 @@ function parseAreas(raw) {
 
 function FieldInput({ label, id, type = "text", required, value, onChange,
   placeholder, options, hint, disabled }) {
-  const selectInterface = typeof window !== "undefined" && window.matchMedia?.("(max-width: 768px)").matches
-    ? "alert"
-    : "popover";
   const wrap = (children) => (
     <div className="input-field" style={{ marginBottom: 16 }}>
       {label && (
@@ -764,11 +761,19 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   );
 
   if (type === "select") return wrap(
-    <IonSelect id={id} value={value} onIonChange={event => onChange?.({ target: { value: event.detail.value } })}
-      fill="outline" interface={selectInterface} interfaceOptions={{ alignment: "start" }} placeholder="Select…" aria-label={label} required={required}
-      disabled={disabled} className="field-control">
-      {(options || []).map(o => <IonSelectOption key={o.value} value={o.value}>{o.label}</IonSelectOption>)}
-    </IonSelect>
+    <select id={id} value={value ?? ""} onChange={onChange} aria-label={label}
+      required={required} disabled={disabled} className="field-control">
+      <option value="">Select…</option>
+      {(options || []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  );
+
+  if (type === "date") return wrap(
+    <div className={`field-date-control${value ? " has-value" : " is-empty"}`}>
+      <input id={id} type="date" value={value ?? ""} onChange={onChange}
+        aria-label={label} required={required} disabled={disabled} className="field-control" />
+      {!value && <span className="field-date-placeholder" aria-hidden="true">Select date</span>}
+    </div>
   );
 
   if (type === "textarea") return wrap(

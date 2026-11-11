@@ -875,7 +875,7 @@ body { background: var(--envoys-canvas); }
 .app-shell .content-inner select,
 .app-shell .content-inner textarea {
   min-height: 44px;
-  border: 1px solid #dbe5dd !important;
+  border: 1px solid #b9c9bf !important;
   border-radius: 11px !important;
   background-color: #fff !important;
   box-shadow: 0 1px 2px rgba(23,59,44,.025);
@@ -898,16 +898,57 @@ body { background: var(--envoys-canvas); }
 }
 
 .field-control {
+  box-sizing: border-box;
   width: 100%;
   min-height: 44px;
-  padding: 10px 13px;
-  border: 1px solid #dbe5dd !important;
+  padding: 10px 14px;
+  border: 1px solid #b9c9bf !important;
   border-radius: 11px !important;
   background: #fff !important;
   color: #19352a;
   font-family: 'Geist Variable', sans-serif;
   font-size: 14px;
   line-height: 1.45;
+}
+
+select.field-control {
+  display: block;
+  padding: 0 12px;
+  color: var(--envoys-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.field-date-control {
+  position: relative;
+  width: 100%;
+}
+
+.field-date-control input[type="date"] {
+  display: block;
+  padding-inline: 14px 42px;
+  color-scheme: light;
+}
+
+.field-date-control.is-empty input[type="date"]::-webkit-datetime-edit {
+  color: transparent;
+}
+
+.field-date-control input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-inline-end: 8px;
+  opacity: .72;
+  cursor: pointer;
+}
+
+.field-date-placeholder {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718278;
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .field-control:focus-visible {
@@ -3042,7 +3083,6 @@ textarea.field-control { min-height: 100px; }
 /* Ionic-backed shared controls: keep the existing Envoys field geometry while
    routing form behavior through the mobile-first component system. */
 ion-input.field-control,
-ion-select.field-control,
 ion-textarea.field-control {
   display: block;
   width: 100%;
@@ -3056,7 +3096,7 @@ ion-textarea.field-control {
   --background: #fff;
   --color: var(--envoys-ink);
   --placeholder-color: #7b8c82;
-  --border-color: var(--envoys-border);
+  --border-color: #b9c9bf;
   --border-radius: 10px;
   --padding-start: 14px;
   --padding-end: 14px;
@@ -3066,25 +3106,6 @@ ion-textarea.field-control {
   min-height: 44px !important;
   font-family: 'Geist Variable', Geist, sans-serif;
 }
-ion-select.field-control {
-  height: 44px;
-  --placeholder-opacity: 1;
-}
-.app-shell .content-inner ion-select.field-control::part(container),
-ion-select.field-control::part(container) {
-  min-height: 42px;
-}
-ion-select.field-control::part(text),
-ion-select.field-control::part(placeholder) {
-  font: inherit;
-  font-size: 14px;
-  line-height: 1.35;
-}
-ion-select.field-control::part(icon) {
-  width: 16px;
-  height: 16px;
-  opacity: .72;
-}
 ion-input.field-control::part(native),
 ion-textarea.field-control::part(native) {
   font-family: 'Geist Variable', Geist, sans-serif;
@@ -3093,7 +3114,6 @@ ion-textarea.field-control::part(native) {
 }
 ion-textarea.field-control { --min-height: 100px; }
 ion-input.field-control:focus-within,
-ion-select.field-control:focus-within,
 ion-textarea.field-control:focus-within {
   --border-color: #48845f;
   --highlight-color-focused: #48845f;
@@ -3225,10 +3245,10 @@ ion-textarea.field-control:focus-within {
   .event-public-page .event-phone-control > ion-input.field-control { width: auto; }
 }
 @media (max-width: 768px) {
+  .field-control { font-size: 16px !important; }
   ion-input.field-control::part(native),
   ion-textarea.field-control::part(native),
-  ion-select.field-control::part(text),
-  ion-select.field-control::part(placeholder) {
+  .field-date-placeholder {
     font-size: 16px;
   }
   .event-public-page .event-code-combobox > input,
