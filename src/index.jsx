@@ -9,7 +9,10 @@ import './theme/variables.css';
 import './index.css';
 import App from './EnvoysDashboard';
 
-setupIonicReact();
+// Use one Ionic component mode across browsers and devices. Ionic defaults to
+// iOS mode on iPhones, where `fill="outline"` is not available, making shared
+// form controls lose their borders compared with desktop/Android rendering.
+setupIonicReact({ mode: 'md' });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
