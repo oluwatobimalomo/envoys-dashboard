@@ -104,9 +104,41 @@ ion-app {
   color: var(--envoys-ink);
 }
 
-/* This dashboard uses document scrolling rather than ion-content. Ionic marks
-   ion-app as an absolutely positioned .ion-page by default; return the app
-   root to normal flow so long routes can extend and scroll on every device. */
+/* Ionic's structure stylesheet fixes body to the viewport and hides overflow.
+   That silently disables document scrolling on public forms, which render
+   outside the signed-in app shell. Restore normal document flow as the public
+   route scroll surface; signed-in routes keep their dedicated main scroller. */
+html {
+  height: auto !important;
+  min-height: 100%;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  position: static !important;
+  inset: auto !important;
+  width: 100%;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 100%;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  transform: none !important;
+  touch-action: auto;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Keep Ionic's application root in normal flow; public pages may be taller
+   than the viewport and must expand the document instead of being clipped. */
 ion-app.ion-page {
   position: relative !important;
   inset: auto !important;
