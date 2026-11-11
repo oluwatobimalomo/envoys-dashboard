@@ -120,14 +120,9 @@ ion-app.ion-page {
   z-index: auto !important;
 }
 
-@media (max-width: 768px) {
-  ion-app.ion-page {
-    height: 100vh !important;
-    height: 100dvh !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-  }
-}
+/* Keep the document as the scroll owner for public routes (including
+   /register). Signed-in routes create their own scroll surface inside
+   .app-shell, so the Ionic root must never clamp the mobile viewport. */
 
 ion-input,
 ion-textarea,

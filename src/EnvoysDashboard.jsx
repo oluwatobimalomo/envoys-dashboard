@@ -44,7 +44,7 @@ import { Avatar as UIavatar, AvatarFallback as UIavatarFallback } from "@/compon
     html, body, #root { min-height: 100%; height: auto; width: 100%; }
     body { -webkit-font-smoothing: antialiased; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     @media (max-width: 768px) {
-      html, body, #root { min-height: 100%; height: 100%; overflow: hidden; }
+      html, body, #root { min-height: 100%; height: auto; overflow-x: hidden; overflow-y: auto; }
     }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
