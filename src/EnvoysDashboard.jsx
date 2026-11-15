@@ -13985,11 +13985,43 @@ function MercyConvention2026Registry({ currentUser }) {
     if (sourceFilter !== "all" && (r.source || "Manual") !== sourceFilter) return false;
     return true;
   });
+  const downloadCSV = () => {
+    if (!filtered.length) return;
+    const headers = [
+      "First Name", "Surname", "Full Name", "Phone Number", "Gender", "Marital Status",
+      "Life Stage", "Church & Denomination", "Other Denomination", "Membership Status",
+      "Country of Residence", "House Address", "Nearest Landmark", "Service Date", "Registration Source",
+      "Contact Status", "Contacted By", "Contacted At", "Registration Submitted At",
+    ];
+    const cell = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const csvRows = [
+      headers,
+      ...filtered.map(row => [
+        row.first_name, row.surname, row.full_name, row.phone, row.gender, row.marital_status,
+        row.life_stage, row.church_denomination || "", row.other_denomination, row.membership_status,
+        row.country_of_residence, row.house_address, row.nearest_landmark, row.service_date, row.source,
+        row.contacted ? "Contacted" : "Not Contacted", row.contacted_by, row.contacted_at, row.created_at,
+      ]),
+    ].map(line => line.map(cell).join(",")).join("\r\n");
+    const blob = new Blob([`\uFEFF${csvRows}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `mercy_convention_2026_registrations_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const contactedCount = rows.filter(r => r.contacted).length; const uncontactedCount = rows.length - contactedCount;
   const tabs = [{ k: "all", label: "All", count: rows.length, col: C.textMuted }, { k: "uncontacted", label: "Not Contacted", count: uncontactedCount, col: C.gold }, { k: "contacted", label: "Contacted", count: contactedCount, col: C.green }];
   const toggleContacted = async row => { setSavingId(row.id); try { const contacted = !row.contacted; await sb(`${CONVENTION_TABLE}?id=eq.${row.id}`, { method: "PATCH", body: JSON.stringify({ contacted, contacted_by: contacted ? (currentUser || null) : null, contacted_at: contacted ? new Date().toISOString() : null }) }); toast.success(contacted ? `${row.full_name} marked as contacted.` : `${row.full_name} marked as not contacted.`); await reload(); } catch (e) { toast.error(e.message); } setSavingId(null); };
   return <div className="page-enter">
-    <PageHeader title="Mercy Convention 2026" subtitle={`${rows.length} registration${rows.length === 1 ? "" : "s"}`} />
+    <PageHeader title="Mercy Convention 2026" subtitle={`${rows.length} registration${rows.length === 1 ? "" : "s"}`}
+      action={<button style={btn("gold")} onClick={downloadCSV} disabled={busy || filtered.length === 0}
+        title={`Download ${filtered.length} filtered registration${filtered.length === 1 ? "" : "s"} as CSV`}>
+        <Download size={14} />Download CSV{filtered.length ? ` (${filtered.length})` : ""}
+      </button>} />
     <SCDateFilterBar dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} label="Filter by convention service date:" />
     <div className="g4 convention-stats" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12, marginBottom: 16 }}>
       <StatCard label="Total" value={rows.length} icon={Award} accent={C.goldDark} />
