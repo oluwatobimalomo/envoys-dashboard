@@ -2961,10 +2961,19 @@ function FirstTimersList({ onEdit }) {
   const load = useCallback(async () => {
     setLoading(true); setErr("");
     try {
-      let q = "first_timers?order=created_at.desc&limit=300";
-      if (dateFrom) q += `&service_date=gte.${dateFrom}`;
-      if (dateTo)   q += `&service_date=lte.${dateTo}`;
-      setData((await sb(q)) || []);
+      const pageSize = 1000;
+      let offset = 0;
+      const allRows = [];
+      while (true) {
+        let q = `first_timers?order=created_at.desc&limit=${pageSize}&offset=${offset}`;
+        if (dateFrom) q += `&service_date=gte.${dateFrom}`;
+        if (dateTo)   q += `&service_date=lte.${dateTo}`;
+        const page = (await sb(q)) || [];
+        allRows.push(...page);
+        if (page.length < pageSize) break;
+        offset += page.length;
+      }
+      setData(allRows);
     }
     catch (e) { setErr(e.message); }
     setLoading(false);
