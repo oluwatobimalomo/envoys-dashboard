@@ -2578,16 +2578,58 @@ const BLANK_FT = {
   full_name: "", phone: "", gender: "", email: "", dob: "",
   marital_status: "", house_address: "", nearest_landmark: "",
   membership_decision: "", life_stage: "", heard_from: "",
-  areas_of_interest: [], service_feedback: "",
+  areas_of_interest: [], feedback_for_lead_pastor: "", feedback_items: [], service_feedback: "",
   service_date: new Date().toISOString().slice(0, 10),
 };
 
+function parseFirstTimerFeedback(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return { leadPastor: "", items: [] };
+  const sectionPattern = /(?:^|\n\n)Feedback Focus Point: ([^\n]+)\nYour Feedback:\n([\s\S]*?)(?=\n\nFeedback Focus Point: |$)/g;
+  const items = [...raw.matchAll(sectionPattern)].map(match => ({
+    focus_point: match[1].trim(),
+    feedback: match[2].trim(),
+  }));
+  const pastorMatch = raw.match(/^Feedback for Lead Pastor:\n([\s\S]*?)(?=\n\nFeedback Focus Point: |$)/);
+  if (!items.length) return { leadPastor: (pastorMatch?.[1] ?? raw).trim(), items: [] };
+  return { leadPastor: (pastorMatch?.[1] || "").trim(), items };
+}
+
+function formatFirstTimerFeedback(leadPastor, items) {
+  const blocks = [];
+  const pastorText = String(leadPastor || "").trim();
+  if (pastorText) blocks.push(`Feedback for Lead Pastor:\n${pastorText}`);
+  (items || []).forEach(item => {
+    const focus = String(item.focus_point || "").trim();
+    const feedback = String(item.feedback || "").trim();
+    if (focus && feedback) blocks.push(`Feedback Focus Point: ${focus}\nYour Feedback:\n${feedback}`);
+  });
+  return blocks.join("\n\n") || null;
+}
+
+function feedbackPlaceholder(focusPoint) {
+  if (!focusPoint) return "Select a feedback focus point to guide your response.";
+  if (focusPoint === "Spiritual Growth & Discipleship") {
+    return "Share your feedback around spiritual growth & discipleship.";
+  }
+  if (focusPoint === "Worship Experience") {
+    return "Share feedback about your worship experience.";
+  }
+  return `Share your feedback about ${focusPoint.toLowerCase()}.`;
+}
+
 function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
-  const [form, setForm] = useState(() =>
-    editData
-      ? { ...editData, areas_of_interest: parseAreas(editData.areas_of_interest) }
-      : { ...BLANK_FT }
-  );
+  const [form, setForm] = useState(() => {
+    if (!editData) return { ...BLANK_FT, feedback_items: [{ focus_point: "", feedback: "" }] };
+    const parsedFeedback = parseFirstTimerFeedback(editData.service_feedback);
+    return {
+      ...BLANK_FT,
+      ...editData,
+      areas_of_interest: parseAreas(editData.areas_of_interest),
+      feedback_for_lead_pastor: parsedFeedback.leadPastor,
+      feedback_items: parsedFeedback.items,
+    };
+  });
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const settersRef = useRef({});
@@ -2647,7 +2689,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
         life_stage:          nullIfEmpty(form.life_stage),
         heard_from:          nullIfEmpty(form.heard_from),
         areas_of_interest:   JSON.stringify(form.areas_of_interest || []),
-        service_feedback:    nullIfEmpty(form.service_feedback),
+        service_feedback:    formatFirstTimerFeedback(form.feedback_for_lead_pastor, form.feedback_items),
         service_date:        form.service_date || new Date().toISOString().slice(0, 10),
       };
       if (editData?.id) {
@@ -2758,7 +2800,52 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
             ]} />
           <div className="first-timer-form-span"><FieldInput label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" /></div>
           <div className="first-timer-form-span"><FieldInput label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} /></div>
-          <div className="first-timer-form-span"><FieldInput label="Service Feedback" id="sf" type="textarea" value={form.service_feedback} onChange={set("service_feedback")} placeholder="What was your experience like today?" /></div>
+          <div className="first-timer-form-span">
+            <FieldInput label="Feedback for Lead Pastor" id="feedback-lead-pastor" type="textarea"
+              value={form.feedback_for_lead_pastor} onChange={set("feedback_for_lead_pastor")}
+              placeholder="Share a message or feedback for the Lead Pastor." />
+          </div>
+          <div className="first-timer-form-span first-timer-feedback-list">
+            <div className="first-timer-feedback-heading">
+              <div>
+                <div className="input-field-label">Feedback Focus Point</div>
+                <p>Choose a different focus for each piece of feedback.</p>
+              </div>
+              <span>{form.feedback_items.filter(item => item.focus_point).length} / {FEEDBACK_FOCUS_POINTS.length}</span>
+            </div>
+            {form.feedback_items.map((item, index) => {
+              const usedByOthers = new Set(form.feedback_items.filter((_, itemIndex) => itemIndex !== index).map(entry => entry.focus_point).filter(Boolean));
+              const focusOptions = FEEDBACK_FOCUS_POINTS.filter(option => !usedByOthers.has(option.value));
+              const updateItem = (key, value) => setForm(current => ({
+                ...current,
+                feedback_items: current.feedback_items.map((entry, itemIndex) => itemIndex === index ? { ...entry, [key]: value } : entry),
+              }));
+              return (
+                <div className="first-timer-feedback-item" key={`feedback-${index}`}>
+                  <div className="first-timer-feedback-item-header">
+                    <strong>Feedback {index + 1}</strong>
+                    {form.feedback_items.length > 1 && (
+                      <button type="button" className="first-timer-feedback-remove" onClick={() => setForm(current => ({
+                        ...current,
+                        feedback_items: current.feedback_items.filter((_, itemIndex) => itemIndex !== index),
+                      }))} aria-label={`Remove feedback ${index + 1}`}><X size={14} /> Remove</button>
+                    )}
+                  </div>
+                  <FieldInput label={`Feedback Focus Point ${index + 1}`} id={`feedback-focus-${index}`} type="select"
+                    value={item.focus_point} onChange={event => updateItem("focus_point", event.target.value)}
+                    options={focusOptions} />
+                  <FieldInput label="Your Feedback" id={`feedback-text-${index}`} type="textarea"
+                    value={item.feedback} onChange={event => updateItem("feedback", event.target.value)}
+                    placeholder={feedbackPlaceholder(item.focus_point)} />
+                </div>
+              );
+            })}
+            <button type="button" className="first-timer-feedback-add"
+              disabled={form.feedback_items.length >= FEEDBACK_FOCUS_POINTS.length || !form.feedback_items.at(-1)?.focus_point || !form.feedback_items.at(-1)?.feedback.trim()}
+              onClick={() => setForm(current => ({ ...current, feedback_items: [...current.feedback_items, { focus_point: "", feedback: "" }] }))}>
+              <UserPlus size={15} /> Add another feedback
+            </button>
+          </div>
         </div>
       </section>
 
