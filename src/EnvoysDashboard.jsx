@@ -747,9 +747,9 @@ function parseAreas(raw) {
 
 
 function FieldInput({ label, id, type = "text", required, value, onChange,
-  placeholder, options, hint, disabled }) {
+  placeholder, options, hint, disabled, className = "" }) {
   const wrap = (children) => (
-    <div className="input-field" style={{ marginBottom: 16 }}>
+    <div className={`input-field ${className}`.trim()} style={{ marginBottom: 16 }}>
       {label && (
         <UIlabel htmlFor={id} className="input-field-label">
           {label}{required && <span style={{ color: C.danger }}> *</span>}
@@ -2721,17 +2721,17 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
       <section className="first-timer-form-section">
         <SH title="Personal Information" icon={Users} />
         <div className="first-timer-form-grid">
-          <FieldInput label="Full Name" id="fn" required value={form.full_name} onChange={set("full_name")} placeholder="e.g. Adaeze Okafor" />
-          <FieldInput label="Phone Number" id="ph" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
-          <FieldInput label="Gender" id="gd" type="select" required value={form.gender} onChange={set("gender")}
+          <FieldInput className="ft-field-full" label="Full Name" id="fn" required value={form.full_name} onChange={set("full_name")} placeholder="e.g. Adaeze Okafor" />
+          <FieldInput className="ft-field-full" label="Phone Number" id="ph" required value={form.phone} onChange={set("phone")} placeholder="+234 xxx xxx xxxx" />
+          <FieldInput className="ft-field-half" label="Gender" id="gd" type="select" required value={form.gender} onChange={set("gender")}
             options={[{ value: "Male", label: "Male" }, { value: "Female", label: "Female" }]} />
-          <FieldInput label="Email Address" id="em" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" />
-          <FieldInput label="Date of Birth" id="db" type="date" value={form.dob} onChange={set("dob")} />
-          <FieldInput label="Marital Status" id="ms" type="select" value={form.marital_status} onChange={set("marital_status")}
+          <FieldInput className="ft-field-half" label="Marital Status" id="ms" type="select" value={form.marital_status} onChange={set("marital_status")}
             options={[
               { value: "Single", label: "Single" }, { value: "Married", label: "Married" },
               { value: "Divorced", label: "Divorced" }, { value: "Widowed", label: "Widowed" },
             ]} />
+          <FieldInput className="ft-field-half" label="Email Address" id="em" type="email" value={form.email} onChange={set("email")} placeholder="you@example.com" />
+          <FieldInput className="ft-field-half" label="Date of Birth" id="db" type="date" value={form.dob} onChange={set("dob")} />
         </div>
 
         {checkingDupes && (
@@ -2780,39 +2780,32 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
           )
         )}
         <div className="first-timer-form-grid first-timer-form-grid-address">
-          <FieldInput label="House Address" id="ha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
-          <FieldInput label="Nearest Landmark" id="nl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
+          <FieldInput className="ft-field-full" label="House Address" id="ha" value={form.house_address} onChange={set("house_address")} placeholder="Street, City" />
+          <FieldInput className="ft-field-full" label="Nearest Landmark" id="nl" value={form.nearest_landmark} onChange={set("nearest_landmark")} placeholder="e.g. Near Chevron Roundabout" />
         </div>
       </section>
 
       <section className="first-timer-form-section">
         <SH title="Visit Details" icon={Star} />
         <div className="first-timer-form-grid">
-          <FieldInput label="Membership Decision" id="md" type="select" required value={form.membership_decision} onChange={set("membership_decision")}
+          <FieldInput className="ft-field-half" label="Membership Decision" id="md" type="select" required value={form.membership_decision} onChange={set("membership_decision")}
             options={[
               { value: "Member", label: "Member" }, { value: "Visitor", label: "Visitor" },
               { value: "Undecided", label: "Undecided" },
             ]} />
-          <FieldInput label="Life Stage" id="ls" type="select" value={form.life_stage} onChange={set("life_stage")}
+          <FieldInput className="ft-field-half" label="Life Stage" id="ls" type="select" value={form.life_stage} onChange={set("life_stage")}
             options={[
               { value: "Student", label: "Student" }, { value: "Employee", label: "Employee" },
               { value: "Business Owner", label: "Business Owner" },
             ]} />
-          <div className="first-timer-form-span"><FieldInput label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" /></div>
-          <div className="first-timer-form-span"><FieldInput label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} /></div>
+          <div className="first-timer-form-span"><FieldInput className="ft-field-full" label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" /></div>
+          <div className="first-timer-form-span"><FieldInput className="ft-interest-field" label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} /></div>
           <div className="first-timer-form-span">
             <FieldInput label="Feedback for Lead Pastor" id="feedback-lead-pastor" type="textarea"
               value={form.feedback_for_lead_pastor} onChange={set("feedback_for_lead_pastor")}
               placeholder="Share a message or feedback for the Lead Pastor." />
           </div>
           <div className="first-timer-form-span first-timer-feedback-list">
-            <div className="first-timer-feedback-heading">
-              <div>
-                <div className="input-field-label">Feedback Focus Point</div>
-                <p>Choose a different focus for each piece of feedback.</p>
-              </div>
-              <span>{form.feedback_items.filter(item => item.focus_point).length} / {FEEDBACK_FOCUS_POINTS.length}</span>
-            </div>
             {form.feedback_items.map((item, index) => {
               const usedByOthers = new Set(form.feedback_items.filter((_, itemIndex) => itemIndex !== index).map(entry => entry.focus_point).filter(Boolean));
               const focusOptions = FEEDBACK_FOCUS_POINTS.filter(option => !usedByOthers.has(option.value));
@@ -2823,7 +2816,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
               return (
                 <div className="first-timer-feedback-item" key={`feedback-${index}`}>
                   <div className="first-timer-feedback-item-header">
-                    <strong>Feedback {index + 1}</strong>
+                    {index > 0 && <strong>Additional feedback</strong>}
                     {form.feedback_items.length > 1 && (
                       <button type="button" className="first-timer-feedback-remove" onClick={() => setForm(current => ({
                         ...current,
@@ -2831,7 +2824,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
                       }))} aria-label={`Remove feedback ${index + 1}`}><X size={14} /> Remove</button>
                     )}
                   </div>
-                  <FieldInput label={`Feedback Focus Point ${index + 1}`} id={`feedback-focus-${index}`} type="select"
+                  <FieldInput label="Feedback Focus Point" id={`feedback-focus-${index}`} type="select"
                     value={item.focus_point} onChange={event => updateItem("focus_point", event.target.value)}
                     options={focusOptions} />
                   <FieldInput label="Your Feedback" id={`feedback-text-${index}`} type="textarea"
@@ -2850,9 +2843,10 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
       </section>
 
       <button
+        className="first-timer-submit"
         style={{
           ...btn(saveAnyway && dupes.length > 0 ? "amber" : "primary"),
-          width: "100%", padding: "12px", fontSize: 15,
+          padding: "12px 24px", fontSize: 15,
         }}
         onClick={submit}
         disabled={loading}>

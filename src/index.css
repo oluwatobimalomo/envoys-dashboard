@@ -1019,9 +1019,10 @@ textarea.field-control { min-height: 100px; }
 
 @media (max-width: 768px) {
   .first-timer-form { gap: 18px; padding: 16px !important; }
-  .first-timer-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .first-timer-form-span { grid-column: auto; }
-  .first-timer-form .input-field-label { font-size: 12px !important; }
+  .first-timer-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .first-timer-form-grid > .first-timer-form-span { grid-column: 1 / -1; }
+  .first-timer-form-grid .ft-field-full { grid-column: 1 / -1; }
+  .first-timer-form-grid .ft-field-half { grid-column: span 1; }
 }
 
 .app-shell .content-inner button:not(.sidebar-item):not(.sidebar-section-toggle):not(.mobile-bottom-nav button) {
@@ -3340,28 +3341,6 @@ ion-textarea.field-control:focus-within {
   gap: 12px;
   min-width: 0;
 }
-.first-timer-feedback-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.first-timer-feedback-heading p {
-  margin: 3px 0 0;
-  color: #718278;
-  font-size: 12px;
-  line-height: 1.45;
-}
-.first-timer-feedback-heading > span {
-  flex: 0 0 auto;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #edf5ef;
-  color: #496a55;
-  font-size: 11px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
 .first-timer-feedback-item {
   display: grid;
   gap: 10px;
@@ -3398,14 +3377,63 @@ ion-textarea.field-control:focus-within {
   font-weight: 650;
   cursor: pointer;
 }
-.first-timer-feedback-remove { min-height: 32px; padding: 5px 8px; color: #7b5a51; font-size: 11px; }
+.first-timer-feedback-remove { min-height: 32px; padding: 5px 8px; color: #7b5a51; font-size: 13px; }
 .first-timer-feedback-add { color: #1b6c3c; }
 .first-timer-feedback-add:disabled { opacity: .48; cursor: not-allowed; }
+.first-timer-submit {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 132px;
+  justify-self: center;
+  white-space: normal;
+  text-align: center;
+}
 
 @media (max-width: 768px) {
   .first-timer-feedback-item { gap: 9px; padding: 11px; }
-  .first-timer-feedback-heading p { max-width: 30ch; font-size: 11px; }
   .first-timer-feedback-add { width: 100%; min-height: 44px; }
+}
+
+/* First-Timer controls share one type voice on every platform. Keep touch
+   inputs at 16px on phones to avoid Safari's automatic focus zoom. */
+.first-timer-form .input-field-label {
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+.first-timer-form .field-control,
+.first-timer-form .field-control::placeholder,
+.first-timer-form input.field-control::placeholder,
+.first-timer-form textarea.field-control::placeholder,
+.first-timer-form select.field-control,
+.first-timer-form .field-date-placeholder,
+.first-timer-form .field-control option {
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+}
+.first-timer-form ion-input.field-control,
+.first-timer-form ion-textarea.field-control {
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 16px !important;
+}
+.first-timer-form ion-input.field-control::part(native),
+.first-timer-form ion-textarea.field-control::part(native),
+.first-timer-form ion-input.field-control::part(native)::placeholder,
+.first-timer-form ion-textarea.field-control::part(native)::placeholder {
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+}
+.first-timer-form ion-textarea.field-control {
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+}
+.first-timer-form .ft-interest-field button {
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 16px !important;
 }
 
 /* Metric cards keep their semantic icon and a stable value/label hierarchy
