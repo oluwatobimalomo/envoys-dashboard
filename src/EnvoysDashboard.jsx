@@ -777,7 +777,7 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   );
 
   if (type === "textarea") return wrap(
-    <IonTextarea id={id} fill="outline" value={value} onIonInput={event => onChange?.({ target: { value: event.detail.value ?? "" } })} placeholder={placeholder}
+    <IonTextarea id={id} fill="outline" shape="round" value={value} onIonInput={event => onChange?.({ target: { value: event.detail.value ?? "" } })} placeholder={placeholder}
       rows={3} disabled={disabled} aria-label={label} className="field-control" />
   );
 
@@ -863,7 +863,7 @@ function FieldInput({ label, id, type = "text", required, value, onChange,
   }
 
   return wrap(
-    <IonInput id={id} type={type} fill="outline" value={value} onIonInput={event => onChange?.({ target: { value: event.detail.value ?? "" } })}
+    <IonInput id={id} type={type} fill="outline" shape="round" value={value} onIonInput={event => onChange?.({ target: { value: event.detail.value ?? "" } })}
       required={required} placeholder={placeholder} disabled={disabled} aria-label={label}
       className="field-control" />
   );
@@ -2800,12 +2800,8 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
             ]} />
           <div className="first-timer-form-span"><FieldInput className="ft-field-full" label="How did you hear about us?" id="hf" value={form.heard_from} onChange={set("heard_from")} placeholder="e.g. Friend, Social media, Flyer…" /></div>
           <div className="first-timer-form-span"><FieldInput className="ft-interest-field" label="Area of Interest" id="ai" type="multicheck" value={form.areas_of_interest} onChange={set("areas_of_interest")} options={AREAS} /></div>
-          <div className="first-timer-form-span">
-            <FieldInput label="Feedback for Lead Pastor" id="feedback-lead-pastor" type="textarea"
-              value={form.feedback_for_lead_pastor} onChange={set("feedback_for_lead_pastor")}
-              placeholder="Share a message or feedback for the Lead Pastor." />
-          </div>
           <div className="first-timer-form-span first-timer-feedback-list">
+            <div className="first-timer-feedback-title">Feedback for Lead Pastor</div>
             {form.feedback_items.map((item, index) => {
               const usedByOthers = new Set(form.feedback_items.filter((_, itemIndex) => itemIndex !== index).map(entry => entry.focus_point).filter(Boolean));
               const focusOptions = FEEDBACK_FOCUS_POINTS.filter(option => !usedByOthers.has(option.value));
@@ -2846,7 +2842,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
         className="first-timer-submit"
         style={{
           ...btn(saveAnyway && dupes.length > 0 ? "amber" : "primary"),
-          padding: "12px 24px", fontSize: 15,
+          padding: "12px 24px",
         }}
         onClick={submit}
         disabled={loading}>

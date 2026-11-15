@@ -3163,7 +3163,7 @@ ion-textarea.field-control {
   --color: var(--envoys-ink);
   --placeholder-color: #7b8c82;
   --border-color: #b9c9bf;
-  --border-radius: 10px;
+  --border-radius: 12px;
   --padding-start: 14px;
   --padding-end: 14px;
   --padding-top: 0;
@@ -3359,6 +3359,15 @@ ion-textarea.field-control:focus-within {
   color: #35533f;
   font-size: 12px;
 }
+.first-timer-feedback-title {
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid #dce7df;
+  color: #334b3b;
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  font-weight: 620;
+  line-height: 1.4;
+}
 .first-timer-feedback-remove,
 .first-timer-feedback-add {
   display: inline-flex;
@@ -3394,12 +3403,21 @@ ion-textarea.field-control:focus-within {
   .first-timer-feedback-add { width: 100%; min-height: 44px; }
 }
 
-/* First-Timer controls share one type voice on every platform. Keep touch
-   inputs at 16px on phones to avoid Safari's automatic focus zoom. */
+/* Keep all First-Timer field copy on the same Geist 13px scale as its labels. */
 .first-timer-form .input-field-label {
   font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   font-size: 13px !important;
   line-height: 1.4 !important;
+}
+.first-timer-form .section-heading,
+.first-timer-form .first-timer-feedback-title,
+.first-timer-form .input-field-hint,
+.first-timer-form .first-timer-feedback-item-header,
+.first-timer-form .first-timer-feedback-add,
+.first-timer-form .first-timer-feedback-remove,
+.first-timer-form .first-timer-submit {
+  font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 13px !important;
 }
 .first-timer-form .field-control,
 .first-timer-form .field-control::placeholder,
@@ -3409,21 +3427,22 @@ ion-textarea.field-control:focus-within {
 .first-timer-form .field-date-placeholder,
 .first-timer-form .field-control option {
   font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-  font-size: 16px !important;
+  font-size: 13px !important;
   font-weight: 400 !important;
   line-height: 1.4 !important;
 }
 .first-timer-form ion-input.field-control,
 .first-timer-form ion-textarea.field-control {
   font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-  font-size: 16px !important;
+  font-size: 13px !important;
+  --border-radius: 12px !important;
 }
 .first-timer-form ion-input.field-control::part(native),
 .first-timer-form ion-textarea.field-control::part(native),
 .first-timer-form ion-input.field-control::part(native)::placeholder,
 .first-timer-form ion-textarea.field-control::part(native)::placeholder {
   font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-  font-size: 16px !important;
+  font-size: 13px !important;
   font-weight: 400 !important;
   line-height: 1.4 !important;
 }
@@ -3433,7 +3452,7 @@ ion-textarea.field-control:focus-within {
 }
 .first-timer-form .ft-interest-field button {
   font-family: 'Geist Variable', Geist, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-  font-size: 16px !important;
+  font-size: 13px !important;
 }
 
 /* Metric cards keep their semantic icon and a stable value/label hierarchy
