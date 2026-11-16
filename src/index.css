@@ -3390,10 +3390,11 @@ ion-textarea.field-control:focus-within {
 .first-timer-feedback-add { color: #1b6c3c; }
 .first-timer-feedback-add:disabled { opacity: .48; cursor: not-allowed; }
 .first-timer-submit {
-  width: fit-content;
+  width: max-content;
   max-width: 100%;
-  min-width: 132px;
-  justify-self: center;
+  min-width: 0;
+  min-height: 48px;
+  justify-self: start;
   white-space: normal;
   text-align: center;
 }

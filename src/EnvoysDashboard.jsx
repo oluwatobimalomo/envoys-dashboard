@@ -2842,7 +2842,7 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
         className="first-timer-submit"
         style={{
           ...btn(saveAnyway && dupes.length > 0 ? "amber" : "primary"),
-          padding: "12px 24px",
+          padding: "10px 18px",
         }}
         onClick={submit}
         disabled={loading}>
