@@ -1,12 +1,12 @@
 import { Fragment, useMemo, useState } from "react";
 import { CalendarClock, Phone, RefreshCw, Search, Users, PhoneCall, CircleCheck, PhoneOff, ClipboardPenLine, CircleUserRound, CircleDot, Ban, UserRoundX } from "lucide-react";
-import { CallPageFrame, CALL_OUTCOMES, callStatusLabel, Field, invokeCallCampaign, normalizeNigerianPhone } from "./callCampaignUtils.jsx";
+import { CallPageFrame, CALL_OUTCOMES, callStatusLabel, Field, invokeCallCampaign, normalizeCallerPhone, normalizeNigerianPhone } from "./callCampaignUtils.jsx";
 
 const statusIcons = { pending: CircleDot, reachable: CircleCheck, call_back_later: CalendarClock, unavailable: PhoneOff, invalid_number: Ban, wrong_contact: UserRoundX };
 
 export default function MembersFollowupPage() {
   const [lastName, setLastName] = useState("");
-  const [enteredName, setEnteredName] = useState("");
+  const [enteredPhone, setEnteredPhone] = useState("");
   const [workspace, setWorkspace] = useState(null);
   const [search, setSearch] = useState("");
   const [openContact, setOpenContact] = useState(null);
@@ -25,13 +25,15 @@ export default function MembersFollowupPage() {
 
   const openList = async event => {
     event?.preventDefault();
-    const normalized = enteredName.trim().toLowerCase();
-    if (!normalized) { setError("View call list"); return; }
+    const normalizedPhone = normalizeCallerPhone(enteredPhone);
+    const normalized = normalizedPhone || enteredPhone.trim().toLowerCase();
+    if (!normalized) { setError("Enter your caller phone number."); return; }
+    if (normalizedPhone && normalizedPhone.length < 7) { setError("Enter a complete caller phone number."); return; }
     setBusy(true); setError(""); setNotice(""); setWorkspace(null); setOpenContact(null);
     try {
       const result = await invokeCallCampaign("get_outbound_call_workspace", { p_last_name: normalized });
       setLastName(normalized); setWorkspace(result);
-    } catch (err) { setError(err.message || "Unable to open your assigned list. Check your last name and try again."); }
+    } catch (err) { setError(err.message || "Unable to open your assigned list. Check the phone number and try again."); }
     finally { setBusy(false); }
   };
 
@@ -65,9 +67,9 @@ export default function MembersFollowupPage() {
 
   if (!workspace) return <CallPageFrame eyebrow="Members follow-up" title="Call Entry Channel" subtitle="View allocated calls and log call status.">
     <section className="outbound-panel caller-entry-panel">
-      <div className="outbound-section-heading"><span className="outbound-icon"><Phone size={19} /></span><div><h2>User access</h2><p>Enter last name to access assigned contacts.</p></div></div>
+      <div className="outbound-section-heading"><span className="outbound-icon"><Phone size={19} /></span><div><h2>Caller access</h2><p>Use the phone number supplied to the campaign manager.</p></div></div>
       <form className="campaign-caller-login" onSubmit={openList}>
-        <Field label="Last name"><input value={enteredName} onChange={event => setEnteredName(event.target.value.toLowerCase())} autoComplete="family-name" placeholder="Enter your last name" autoCapitalize="none" required /></Field>
+        <Field label="Phone number" hint=""><input type="text" value={enteredPhone} onChange={event => setEnteredPhone(event.target.value)} autoComplete="tel" placeholder="Enter your phone number" required /></Field>
         {error && <p className="campaign-error" role="alert">{error}</p>}
         <button className="campaign-button" type="submit" disabled={busy}>{busy ? "Opening your list…" : "Open my call list"}</button>
       </form>

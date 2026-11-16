@@ -58,6 +58,10 @@ export function normalizeNigerianPhone(phone) {
   return source.startsWith("+") ? `+${digits}` : digits;
 }
 
+export function normalizeCallerPhone(phone) {
+  return normalizeNigerianPhone(phone).replace(/\D/g, "");
+}
+
 export function Field({ label, hint, children }) {
   return <label className="campaign-field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label>;
 }
