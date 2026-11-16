@@ -29,6 +29,9 @@ import { Input as UIinput } from "@/components/ui/input";
 import { Label as UIlabel } from "@/components/ui/label";
 import { Badge as UIbadge } from "@/components/ui/badge";
 import { Avatar as UIavatar, AvatarFallback as UIavatarFallback } from "@/components/ui/avatar";
+import CallCampaignPage from "./CallCampaignPage.jsx";
+import CallAllocationPage from "./CallAllocationPage.jsx";
+import MembersFollowupPage from "./MembersFollowupPage.jsx";
 
 
 
@@ -2706,17 +2709,6 @@ function FirstTimerForm({ onSuccess, editData, onCancel, publicMode = false }) {
 
   return (
     <div style={card} className="page-enter first-timer-form">
-      {CREDS_MISSING && <CredsBanner />}
-      <PageHeader
-        title={editData ? "Edit Record" : "New First-Timer"}
-        subtitle={`Service date: ${form.service_date}`}
-        action={onCancel && (
-          <button style={btn("ghost")} onClick={onCancel}>
-            <ArrowLeft size={14} />Back
-          </button>
-        )}
-      />
-      <Alert type="error" msg={err} onClose={() => setErr("")} />
 
       <section className="first-timer-form-section">
         <SH title="Personal Information" icon={Users} />
@@ -2888,7 +2880,7 @@ function PublicForm() {
             Welcome to <span style={{ color: C.green }}>The Envoys</span>
           </h1>
           <p style={{ color: C.textMuted, fontSize: 13, marginTop: 8, lineHeight: 1.6 }}>
-            Fill in your details so we can stay connected with you
+            <h3>You're our VIP! Let's get to know you.</h3>
           </p>
         </div>
         <FirstTimerForm onSuccess={() => setDone(true)} publicMode />
@@ -14488,6 +14480,9 @@ function App() {
   const [showNOM,         setShowNOM]         = useState(false);
   const [showConvention2026, setShowConvention2026] = useState(false);
   const [showAppraisal,   setShowAppraisal]   = useState(false);
+  const showCalls = location.pathname.replace(/\/$/, "") === "/calls";
+  const showCallAllocation = location.pathname.replace(/\/$/, "") === "/calls/allocate";
+  const showMembersFollowup = location.pathname.replace(/\/$/, "") === "/members-followup";
 
   // Keep the shared page scroller healthy for every role. If a page-level
   // style accidentally locks the app content, restore vertical scrolling and
@@ -14538,7 +14533,7 @@ function App() {
 
   useEffect(() => {
     if (!session) return;
-    const publicRoutes = ["/register", "/feedback", "/testimony", "/new-convert", "/nom-register", "/mercy-convention-2026-register", "/appraisal"];
+    const publicRoutes = ["/register", "/feedback", "/testimony", "/new-convert", "/nom-register", "/mercy-convention-2026-register", "/appraisal", "/calls", "/calls/allocate", "/members-followup"];
     if (publicRoutes.includes(location.pathname.replace(/\/$/, ""))) return;
     const validIds = (NAV[session.role] || []).map(item => item.id);
     const routeId = location.pathname.match(/^\/app\/([^/]+)\/?$/)?.[1];
@@ -14600,6 +14595,9 @@ function App() {
   saveLastActive(v);
 };
 
+  if (showCalls)     return <CallCampaignPage session={session} />;
+  if (showCallAllocation) return <CallAllocationPage session={session} />;
+  if (showMembersFollowup) return <MembersFollowupPage />;
   if (showPublic)    return <PublicForm />;
   if (showFeedback)  return <PublicFeedbackForm />;
   if (showTestimony)   return <PublicTestimonyForm />;
