@@ -4378,11 +4378,13 @@ ion-textarea.field-control:focus-within {
 .campaign-search-field input { min-height: 42px; padding-inline: 0; border: 0; outline: none; }
 .campaign-search-field:focus-within { outline: 2px solid #147747; outline-offset: 2px; }
 .campaign-manager-table-wrap, .campaign-caller-table-wrap { width: 100%; overflow-x: auto; border: 1px solid #dce8e1; border-radius: 12px; }
+.campaign-caller-table-wrap { overflow: visible; }
 .campaign-manager-table, .campaign-caller-table { width: 100%; border-collapse: collapse; background: #fff; }
 .campaign-caller-table { table-layout: fixed; }
 .campaign-manager-table th, .campaign-manager-table td, .campaign-caller-table th, .campaign-caller-table td { padding: 12px; border-bottom: 1px solid #e6eee9; text-align: start; vertical-align: middle; font-size: 13px; }
 .campaign-manager-table th, .campaign-caller-table th { color: #536b5d; background: #f6f9f7; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .campaign-caller-table th { white-space: normal; line-height: 1.25; }
+.campaign-caller-table th { position: sticky; top: 0; z-index: 2; box-shadow: 0 1px 0 #dce8e1; }
 .campaign-caller-table th:nth-child(1) { width: 5%; }
 .campaign-caller-table th:nth-child(2) { width: 25%; }
 .campaign-caller-table th:nth-child(3) { width: 22%; }
