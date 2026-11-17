@@ -4,6 +4,18 @@ import { CallPageFrame, CALL_OUTCOMES, callStatusLabel, Field, invokeCallCampaig
 
 const statusIcons = { pending: CircleDot, reachable: CircleCheck, call_back_later: CalendarClock, unavailable: PhoneOff, invalid_number: Ban, wrong_contact: UserRoundX };
 
+function compactContactName(fullName) {
+  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 3) return `${parts[0]} ${parts[1]} ${parts[2].charAt(0)}.`;
+  if (parts.length > 3) return `${parts.slice(0, 2).join(" ")} ${parts.slice(2).map(part => `${part.charAt(0)}.`).join(" ")}`;
+  if (parts.length === 2) {
+    const [first, last] = parts;
+    if (first.length >= 16 && last.length >= 4) return `${first} ${last.charAt(0)}.`;
+    if (last.length >= 16 && first.length >= 4) return `${first.charAt(0)}. ${last}`;
+  }
+  return parts.join(" ");
+}
+
 export default function MembersFollowupPage() {
   const [lastName, setLastName] = useState("");
   const [enteredPhone, setEnteredPhone] = useState("");
@@ -92,7 +104,7 @@ export default function MembersFollowupPage() {
         {visibleContacts.map((contact, index) => <Fragment key={contact.id}>
           <tr className="campaign-caller-row">
             <td data-label="No.">{index + 1}</td>
-            <td data-label="Name"><span className="campaign-caller-name"><span className="campaign-mobile-contact-num">#{index + 1}</span><span className="campaign-contact-avatar" aria-hidden="true">{contact.full_name.trim().charAt(0).toUpperCase()}</span><strong>{contact.full_name}</strong></span></td>
+            <td data-label="Name"><span className="campaign-caller-name"><span className="campaign-mobile-contact-num">#{index + 1}</span><span className="campaign-contact-avatar" aria-hidden="true">{contact.full_name.trim().charAt(0).toUpperCase()}</span><strong title={contact.full_name} aria-label={contact.full_name}>{compactContactName(contact.full_name)}</strong></span></td>
             <td data-label="Phone number">{(() => { const phone = normalizeNigerianPhone(contact.phone); return <a className="campaign-phone" href={`tel:${phone}`}><Phone size={15} aria-hidden="true" />{phone}</a>; })()}</td>
             <td data-label="Membership status">{contact.membership_status || "—"}</td>
             <td data-label="Call status">{(() => { const StatusIcon = statusIcons[contact.status] || CircleDot; return <span className={`campaign-status status-${contact.status || "pending"}`}><StatusIcon size={14} aria-hidden="true" />{callStatusLabel(contact.status)}</span>; })()}{contact.status === "call_back_later" && contact.callback_at && <small className="campaign-callback-hint"><CalendarClock size={13} aria-hidden="true" />{new Date(contact.callback_at).toLocaleString()}</small>}</td>

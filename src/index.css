@@ -4364,7 +4364,8 @@ ion-textarea.field-control:focus-within {
 .campaign-manager-list-analytics article > strong { flex: 0 0 150px; }
 .campaign-manager-list-analytics article > strong { display: inline-flex; align-items: center; gap: 7px; }
 .campaign-manager-list-analytics article > span { line-height: 1.45; }
-.campaign-manager-list-analytics article > strong { flex: 0 1 36%; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 400; }
+.campaign-manager-list-analytics { max-height: min(44vh, 420px); overflow-y: auto; overscroll-behavior: contain; padding: 2px 8px 2px 2px; scrollbar-gutter: stable; }
+.campaign-manager-list-analytics article > strong { flex: 0 1 36%; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: inherit; font-size: 15px; font-weight: 400; line-height: 1.5; }
 .campaign-manager-list-analytics article > strong > svg { flex: 0 0 auto; }
 .campaign-caller-performance-heading { align-items: center; }
 .campaign-caller-performance-heading > .campaign-button { flex: 0 0 auto; margin-inline-start: auto; white-space: nowrap; }
@@ -4414,10 +4415,13 @@ ion-textarea.field-control:focus-within {
 .campaign-contact-avatar { display: grid; flex: 0 0 36px; width: 36px; height: 36px; place-items: center; border: 1px solid #d7e4dc; border-radius: 50%; color: #167743; background: #eaf4ed; font-size: 14px; font-weight: 700; }
 .campaign-caller-name strong { min-width: 0; overflow-wrap: anywhere; }
 .campaign-caller-table td { color: #344f41; }
+.campaign-caller-table td { white-space: nowrap; }
+.campaign-caller-table td[data-label="Name"] { white-space: normal; }
 .campaign-caller-table td strong { color: #183b2e; font-size: 14px; }
+.campaign-caller-table td[data-label="Name"] strong { min-width: 0; overflow: hidden; overflow-wrap: normal; word-break: normal; text-overflow: ellipsis; white-space: nowrap; }
 .campaign-caller-table td[data-label="Phone number"],
 .campaign-caller-table td[data-label="Phone number"] .campaign-phone { white-space: nowrap; }
-.campaign-callback-hint { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: #8a5b0b; font-size: 11px; }
+.campaign-callback-hint { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: #8a5b0b; font-size: 11px; white-space: nowrap; }
 .campaign-log-button { min-width: 104px; white-space: nowrap; flex-wrap: nowrap; }
 .campaign-inline-log > td { padding: 0; background: #f6faf7; }
 .campaign-inline-log-form { display: grid; gap: 12px; padding: 18px; border-top: 1px solid #dce8e1; }
@@ -4456,7 +4460,8 @@ ion-textarea.field-control:focus-within {
   .campaign-manager-filters { grid-template-columns: 1fr; }
   .campaign-table-heading { align-items: flex-start; flex-direction: column; }
   .campaign-manager-list-analytics article { flex-direction: column; gap: 5px; }
-  .campaign-manager-list-analytics article > strong { flex-basis: auto; }
+  .campaign-manager-list-analytics { max-height: min(48dvh, 420px); }
+  .campaign-manager-list-analytics article > strong { flex: 0 1 auto; width: 100%; }
   .campaign-manager-list-analytics article > span { text-align: start; }
   .campaign-manager-table-wrap, .campaign-caller-table-wrap { overflow: visible; border: 0; }
   .campaign-manager-table, .campaign-caller-table { display: block; }
