@@ -4329,6 +4329,7 @@ ion-textarea.field-control:focus-within {
   .campaign-contact-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .campaign-contact-actions > * { width: 100%; }
   .campaign-map-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .campaign-inline-log-form .campaign-map-grid { grid-template-columns: minmax(0, 1fr); }
   .campaign-code-row { grid-template-columns: minmax(0, 1fr) auto; }
   .campaign-code-row strong { grid-column: 1 / -1; }
   .campaign-code-row code { min-width: 0; }
@@ -4378,8 +4379,16 @@ ion-textarea.field-control:focus-within {
 .campaign-search-field:focus-within { outline: 2px solid #147747; outline-offset: 2px; }
 .campaign-manager-table-wrap, .campaign-caller-table-wrap { width: 100%; overflow-x: auto; border: 1px solid #dce8e1; border-radius: 12px; }
 .campaign-manager-table, .campaign-caller-table { width: 100%; border-collapse: collapse; background: #fff; }
+.campaign-caller-table { table-layout: fixed; }
 .campaign-manager-table th, .campaign-manager-table td, .campaign-caller-table th, .campaign-caller-table td { padding: 12px; border-bottom: 1px solid #e6eee9; text-align: start; vertical-align: middle; font-size: 13px; }
 .campaign-manager-table th, .campaign-caller-table th { color: #536b5d; background: #f6f9f7; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.campaign-caller-table th { white-space: normal; line-height: 1.25; }
+.campaign-caller-table th:nth-child(1) { width: 5%; }
+.campaign-caller-table th:nth-child(2) { width: 25%; }
+.campaign-caller-table th:nth-child(3) { width: 22%; }
+.campaign-caller-table th:nth-child(4) { width: 16%; }
+.campaign-caller-table th:nth-child(5) { width: 16%; }
+.campaign-caller-table th:nth-child(6) { width: 16%; }
 .campaign-manager-table td { color: #344f41; }
 .campaign-manager-table td a { color: #167743; font-weight: 600; text-decoration: none; }
 .campaign-manager-table tr:last-child td, .campaign-caller-table tr:last-child td { border-bottom: 0; }
@@ -4421,6 +4430,8 @@ ion-textarea.field-control:focus-within {
 .campaign-caller-table td[data-label="Name"] strong { min-width: 0; overflow: hidden; overflow-wrap: normal; word-break: normal; text-overflow: ellipsis; white-space: nowrap; }
 .campaign-caller-table td[data-label="Phone number"],
 .campaign-caller-table td[data-label="Phone number"] .campaign-phone { white-space: nowrap; }
+.campaign-caller-table td[data-label="Call status"] .campaign-status { white-space: nowrap; }
+.campaign-caller-search { position: relative; z-index: 1; margin-bottom: 14px; }
 .campaign-callback-hint { display: flex; align-items: center; gap: 5px; margin-top: 5px; color: #8a5b0b; font-size: 11px; white-space: nowrap; }
 .campaign-log-button { min-width: 104px; white-space: nowrap; flex-wrap: nowrap; }
 .campaign-inline-log > td { padding: 0; background: #f6faf7; }
@@ -4477,6 +4488,7 @@ ion-textarea.field-control:focus-within {
   .campaign-caller-table td[data-label="No."]::before { content: "Contact"; }
   .campaign-caller-table td[data-label="Phone number"] .campaign-phone { min-height: 36px; font-size: 14px; }
   .campaign-caller-table td[data-label="Call action"] .campaign-button { width: 100%; }
+  .campaign-inline-log-form .campaign-map-grid { grid-template-columns: minmax(0, 1fr); }
   .campaign-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .campaign-dialog-actions > .campaign-button { min-width: 0; width: 100%; }
   .campaign-caller-table tr.campaign-inline-log { display: block; padding: 0; overflow: hidden; border: 1px solid #dce8e1; border-radius: 13px; background: #f6faf7; }
