@@ -4411,6 +4411,17 @@ ion-textarea.field-control:focus-within {
 .campaign-allocation-capacity > .is-unavailable { color: #8a5b0b; background: #fff4dd; }
 .campaign-allocation-form { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(220px, 1fr) auto; align-items: end; gap: 12px; }
 .campaign-allocation-form > .campaign-button { min-width: 154px; }
+.campaign-individual-select-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #61766a; font-size: 13px; }
+.campaign-individual-select-actions > div { display: flex; gap: 8px; }
+.campaign-individual-select-actions .campaign-button { min-height: 38px; padding: 7px 12px; font-size: 13px; }
+.campaign-individual-caller-list { display: grid; max-height: min(36vh, 320px); gap: 7px; overflow-y: auto; padding: 2px 7px 2px 2px; border: 1px solid #dce8e1; border-radius: 12px; background: #f8fbf9; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.campaign-individual-caller { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px; border: 1px solid #e0eae3; border-radius: 10px; color: #344f41; background: #fff; cursor: pointer; }
+.campaign-individual-caller input { width: 18px; height: 18px; margin: 0; accent-color: #167743; }
+.campaign-individual-caller > span { overflow: hidden; font-size: 14px; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.campaign-individual-caller > small { color: #71877a; font-size: 12px; white-space: nowrap; }
+.campaign-individual-allocation-form { display: grid; grid-template-columns: minmax(220px, .8fr) minmax(180px, 1fr) auto; align-items: end; gap: 12px; margin-top: 14px; }
+.campaign-individual-capacity { margin: 0; color: #61766a; font-size: 13px; line-height: 1.4; }
+.campaign-individual-allocation-form > .campaign-button { white-space: nowrap; }
 .campaign-roster-preview { display: grid; gap: 8px; padding: 12px; border: 1px solid #dce8e1; border-radius: 12px; background: #f8fbf9; }
 .campaign-roster-preview > strong { color: #536b5d; font-size: 13px; }
 .campaign-roster-preview > span { display: flex; justify-content: space-between; gap: 12px; color: #344f41; font-size: 13px; }
@@ -4450,6 +4461,8 @@ ion-textarea.field-control:focus-within {
   .campaign-stats-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .campaign-allocation-form { grid-template-columns: minmax(0, 1fr); }
   .campaign-allocation-form > .campaign-button { grid-column: 1 / -1; width: 100%; }
+  .campaign-individual-allocation-form { grid-template-columns: minmax(0, 1fr); }
+  .campaign-individual-allocation-form > .campaign-button { width: 100%; }
   .campaign-outcome-grid { gap: 14px; }
 }
 @media (min-width: 761px) and (max-width: 1040px) {

@@ -37,12 +37,17 @@ export default function CallAllocationPage({ session }) {
   const [adminPassword, setAdminPassword] = useState("");
   const [allocationSize, setAllocationSize] = useState("10");
   const [customSize, setCustomSize] = useState("");
+  const [selectedCallerIds, setSelectedCallerIds] = useState([]);
+  const [selectedAllocationSize, setSelectedAllocationSize] = useState("10");
+  const [selectedCustomSize, setSelectedCustomSize] = useState("");
   const [created, setCreated] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [additionalCallerError, setAdditionalCallerError] = useState("");
   const [additionalCallerMessage, setAdditionalCallerMessage] = useState("");
+  const [selectedAllocationError, setSelectedAllocationError] = useState("");
+  const [selectedAllocationMessage, setSelectedAllocationMessage] = useState("");
 
   const callers = useMemo(() => callerRows.map(row => {
     const name = (row[callerNameColumn] || "").trim();
@@ -67,12 +72,26 @@ export default function CallAllocationPage({ session }) {
   const remaining = Number(data?.unassigned || 0);
   const quantity = allocationSize === "custom" ? Number(customSize) : Number(allocationSize);
   const perCallerCapacity = data?.callers?.length ? Math.floor(remaining / data.callers.length) : 0;
+  const unallocatedCallers = useMemo(() => (data?.callers || []).filter(caller => Number(caller.total || 0) === 0), [data?.callers]);
+  const selectedCallers = useMemo(() => unallocatedCallers.filter(caller => selectedCallerIds.includes(caller.id)), [unallocatedCallers, selectedCallerIds]);
+  const selectedPerCallerCapacity = selectedCallers.length ? Math.floor(remaining / selectedCallers.length) : 0;
+  const selectedQuantity = selectedAllocationSize === "custom" ? Number(selectedCustomSize) : Number(selectedAllocationSize);
 
   useEffect(() => {
     if (allocationSize === "custom" && customSize && Number(customSize) > perCallerCapacity) {
       setCustomSize(perCallerCapacity ? String(perCallerCapacity) : "");
     }
   }, [allocationSize, customSize, perCallerCapacity]);
+
+  useEffect(() => {
+    if (!selectedCallers.length || !selectedPerCallerCapacity) return;
+    if (selectedAllocationSize !== "custom" && Number(selectedAllocationSize) > selectedPerCallerCapacity) {
+      setSelectedAllocationSize("custom");
+      setSelectedCustomSize(String(selectedPerCallerCapacity));
+    } else if (selectedAllocationSize === "custom" && selectedCustomSize && Number(selectedCustomSize) > selectedPerCallerCapacity) {
+      setSelectedCustomSize(String(selectedPerCallerCapacity));
+    }
+  }, [selectedCallers.length, selectedPerCallerCapacity, selectedAllocationSize, selectedCustomSize]);
 
   const refresh = async (code = managerCode) => {
     const result = await invokeCallCampaign("get_outbound_call_campaign_manager", { p_manager_code: code });
@@ -189,6 +208,26 @@ export default function CallAllocationPage({ session }) {
     finally { setBusy(false); }
   };
 
+  const allocateToSelectedCallers = async event => {
+    event.preventDefault(); setSelectedAllocationError(""); setSelectedAllocationMessage("");
+    if (!selectedCallers.length) return setSelectedAllocationError("Select at least one caller who has no contacts assigned yet.");
+    if (!Number.isInteger(selectedQuantity) || selectedQuantity < 1) return setSelectedAllocationError("Enter a whole number greater than zero.");
+    if (selectedQuantity > selectedPerCallerCapacity) return setSelectedAllocationError(`Only ${selectedPerCallerCapacity} contacts per selected caller can be allocated with the ${remaining} contacts currently unassigned.`);
+    setBusy(true);
+    try {
+      const result = await invokeCallCampaign("allocate_outbound_call_contacts_to_selected_callers", {
+        p_manager_code: managerCode.trim(),
+        p_caller_ids: selectedCallers.map(caller => caller.id),
+        p_count_per_caller: selectedQuantity,
+      });
+      await refresh();
+      setSelectedCallerIds([]);
+      setSelectedAllocationSize("10"); setSelectedCustomSize("");
+      setSelectedAllocationMessage(`${result.per_caller} contacts assigned to each of ${result.callers} selected callers (${result.allocated} total). ${result.remaining} remain unassigned.`);
+    } catch (err) { setSelectedAllocationError(err.message || "Unable to allocate contacts to the selected callers."); }
+    finally { setBusy(false); }
+  };
+
   const addCallers = async event => {
     event.preventDefault(); setAdditionalCallerError(""); setAdditionalCallerMessage("");
     if (!additionalCallers.length) return setAdditionalCallerError("Upload a caller CSV and map its name and phone number columns.");
@@ -297,6 +336,22 @@ export default function CallAllocationPage({ session }) {
           <button className="campaign-button" type="submit" disabled={busy || !perCallerCapacity || !data.callers.length}>{busy ? "Allocating…" : perCallerCapacity ? "Allocate to all callers" : "Not enough contacts"}</button>
         </form>
         {error && <p className="campaign-error" role="alert">{error}</p>}{message && <p className="campaign-notice" role="status">{message}</p>}
+      </section>
+      <section className="outbound-panel campaign-individual-allocation">
+        <div className="outbound-section-heading"><span className="outbound-icon"><UserRoundPlus size={19} aria-hidden="true" /></span><div><h2>Allocate to selected callers</h2><p>Select callers who don’t have contacts yet, then choose how many contacts each should receive.</p></div></div>
+        {unallocatedCallers.length === 0 ? <div className="campaign-empty"><h3>No callers are waiting for an allocation</h3><p>New callers will appear here until they receive their first contacts.</p></div> : <>
+          <div className="campaign-individual-select-actions"><span>{selectedCallers.length} of {unallocatedCallers.length} selected</span><div><button className="campaign-button secondary" type="button" onClick={() => { setSelectedCallerIds(unallocatedCallers.map(caller => caller.id)); setSelectedAllocationError(""); }}>Select all</button><button className="campaign-button secondary" type="button" onClick={() => { setSelectedCallerIds([]); setSelectedAllocationError(""); }} disabled={!selectedCallerIds.length}>Clear</button></div></div>
+          <div className="campaign-individual-caller-list" aria-label="Callers without allocations">
+            {unallocatedCallers.map(caller => <label className="campaign-individual-caller" key={caller.id}><input type="checkbox" checked={selectedCallerIds.includes(caller.id)} onChange={event => { setSelectedCallerIds(current => event.target.checked ? [...new Set([...current, caller.id])] : current.filter(id => id !== caller.id)); setSelectedAllocationError(""); }} /><span>{caller.name}</span><small>0 contacts</small></label>)}
+          </div>
+          <form className="campaign-individual-allocation-form" onSubmit={allocateToSelectedCallers}>
+            <Field label="Contacts per selected caller"><select value={selectedAllocationSize} onChange={event => setSelectedAllocationSize(event.target.value)} disabled={!selectedCallers.length}><option value="10" disabled={selectedPerCallerCapacity < 10}>10 contacts each</option><option value="20" disabled={selectedPerCallerCapacity < 20}>20 contacts each</option><option value="custom" disabled={!selectedPerCallerCapacity}>Custom amount</option></select></Field>
+            {selectedAllocationSize === "custom" && <Field label="Custom amount per caller"><input type="number" min="1" max={selectedPerCallerCapacity} step="1" value={selectedCustomSize} onChange={event => setSelectedCustomSize(event.target.value)} disabled={!selectedCallers.length} required /></Field>}
+            <p className="campaign-individual-capacity">{selectedCallers.length ? `${selectedCallers.length} selected · up to ${selectedPerCallerCapacity} each` : "Select callers to see available batch size."}</p>
+            <button className="campaign-button" type="submit" disabled={busy || !selectedCallers.length || !selectedPerCallerCapacity || !Number.isInteger(selectedQuantity) || selectedQuantity < 1 || selectedQuantity > selectedPerCallerCapacity}>{busy ? "Allocating…" : "Allocate to selected callers"}</button>
+          </form>
+        </>}
+        {selectedAllocationError && <p className="campaign-error" role="alert">{selectedAllocationError}</p>}{selectedAllocationMessage && <p className="campaign-notice" role="status">{selectedAllocationMessage}</p>}
       </section>
       <div className="campaign-manager-footer"><button className="campaign-button secondary" type="button" onClick={() => navigate("/calls")}>Open campaign analytics</button></div>
     </>}
