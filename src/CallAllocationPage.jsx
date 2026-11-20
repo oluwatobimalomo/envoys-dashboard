@@ -350,9 +350,10 @@ export default function CallAllocationPage({ session }) {
           <h3>Add one caller</h3>
           <form className="campaign-single-caller-form" onSubmit={addSingleCaller}>
             <Field label="Caller name"><input value={singleCallerName} onChange={event => setSingleCallerName(event.target.value)} placeholder="e.g. Tola Adeyemi" autoComplete="name" required /></Field>
-            <Field label="Caller phone number" hint="This phone number is used for caller access."><input type="tel" value={singleCallerPhone} onChange={event => setSingleCallerPhone(event.target.value)} placeholder="e.g. +234 803 123 4567" autoComplete="tel" inputMode="tel" required /></Field>
+            <Field label="Caller phone number"><input type="tel" value={singleCallerPhone} onChange={event => setSingleCallerPhone(event.target.value)} placeholder="e.g. +234 803 123 4567" autoComplete="tel" inputMode="tel" required /></Field>
             <button className="campaign-button" type="submit" disabled={busy || data.callers.length >= 100}>{busy ? "Adding caller…" : "Add caller"}</button>
           </form>
+          <p className="campaign-single-caller-hint">The caller’s phone number is used for access to their assigned contacts.</p>
           {singleCallerError && <p className="campaign-error" role="alert">{singleCallerError}</p>}
           {singleCallerMessage && <p className="campaign-notice" role="status">{singleCallerMessage}</p>}
         </div>

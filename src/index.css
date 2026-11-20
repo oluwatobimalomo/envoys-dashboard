@@ -4453,6 +4453,7 @@ ion-textarea.field-control:focus-within {
 .campaign-single-caller-section h3 { margin: 0; color: #355847; font-size: 16px; font-weight: 600; }
 .campaign-single-caller-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 12px; }
 .campaign-single-caller-form > .campaign-button { min-width: 132px; }
+.campaign-single-caller-hint { margin: -4px 0 0; color: #6b8075; font-size: 12px; line-height: 1.45; }
 .campaign-csv-divider { display: flex; align-items: center; gap: 12px; margin: 6px 0 18px; color: #6b8075; font-size: 13px; }
 .campaign-csv-divider::before, .campaign-csv-divider::after { content: ""; height: 1px; flex: 1; background: #dce8e1; }
 .campaign-individual-select-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #61766a; font-size: 13px; }
