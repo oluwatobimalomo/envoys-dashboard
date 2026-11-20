@@ -32,6 +32,7 @@ import { Avatar as UIavatar, AvatarFallback as UIavatarFallback } from "@/compon
 import CallCampaignPage from "./CallCampaignPage.jsx";
 import CallAllocationPage from "./CallAllocationPage.jsx";
 import MembersFollowupPage from "./MembersFollowupPage.jsx";
+import PublicCallDashboardPage from "./PublicCallDashboardPage.jsx";
 
 
 
@@ -14480,6 +14481,7 @@ function App() {
   const [showNOM,         setShowNOM]         = useState(false);
   const [showConvention2026, setShowConvention2026] = useState(false);
   const [showAppraisal,   setShowAppraisal]   = useState(false);
+  const showCallsDashboard = location.pathname.replace(/\/$/, "") === "/calls-dashboard";
   const showCalls = location.pathname.replace(/\/$/, "") === "/calls";
   const showCallAllocation = location.pathname.replace(/\/$/, "") === "/calls/allocate";
   const showMembersFollowup = location.pathname.replace(/\/$/, "") === "/members-followup";
@@ -14533,7 +14535,7 @@ function App() {
 
   useEffect(() => {
     if (!session) return;
-    const publicRoutes = ["/register", "/feedback", "/testimony", "/new-convert", "/nom-register", "/mercy-convention-2026-register", "/appraisal", "/calls", "/calls/allocate", "/members-followup"];
+    const publicRoutes = ["/register", "/feedback", "/testimony", "/new-convert", "/nom-register", "/mercy-convention-2026-register", "/appraisal", "/calls-dashboard", "/calls", "/calls/allocate", "/members-followup"];
     if (publicRoutes.includes(location.pathname.replace(/\/$/, ""))) return;
     const validIds = (NAV[session.role] || []).map(item => item.id);
     const routeId = location.pathname.match(/^\/app\/([^/]+)\/?$/)?.[1];
@@ -14595,6 +14597,7 @@ function App() {
   saveLastActive(v);
 };
 
+  if (showCallsDashboard) return <PublicCallDashboardPage />;
   if (showCalls)     return <CallCampaignPage session={session} />;
   if (showCallAllocation) return <CallAllocationPage session={session} />;
   if (showMembersFollowup) return <MembersFollowupPage />;

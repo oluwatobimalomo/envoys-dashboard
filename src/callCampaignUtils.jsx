@@ -66,8 +66,8 @@ export function Field({ label, hint, children }) {
   return <label className="campaign-field"><span>{label}</span>{children}{hint && <small>{hint}</small>}</label>;
 }
 
-export function CallPageFrame({ eyebrow, title, subtitle, children }) {
-  return <main className="outbound-calls"><div className="outbound-shell">
+export function CallPageFrame({ eyebrow, title, subtitle, children, wide = false }) {
+  return <main className={`outbound-calls${wide ? " outbound-calls-wide" : ""}`}><div className={`outbound-shell${wide ? " outbound-shell-wide" : ""}`}>
     <header className="outbound-header">
       <span className="outbound-kicker">{eyebrow}</span>
       <h1>{title}</h1>
