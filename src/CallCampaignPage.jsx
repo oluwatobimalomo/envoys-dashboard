@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BarChart3, Download, RefreshCw, Search, Users, UserRoundPlus, PhoneCall, CircleCheck, ContactRound } from "lucide-react";
+import { ArrowRightLeft, BarChart3, Download, RefreshCw, Search, Users, UserRoundPlus, PhoneCall, CircleCheck, ContactRound } from "lucide-react";
 import { CallPageFrame, callStatusLabel, downloadCallCSV, Field, invokeCallCampaign, normalizeNigerianPhone } from "./callCampaignUtils.jsx";
 
 function managerExportRows(data) {
@@ -32,6 +32,10 @@ export default function CallCampaignPage({ session }) {
   const [data, setData] = useState(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedContactIds, setSelectedContactIds] = useState([]);
+  const [reassignCallerId, setReassignCallerId] = useState("");
+  const [reassigning, setReassigning] = useState(false);
+  const [reallocationMessage, setReallocationMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [recoveringKey, setRecoveringKey] = useState(false);
@@ -86,11 +90,47 @@ export default function CallCampaignPage({ session }) {
     finally { setLoading(false); }
   };
 
+  const toggleContactSelection = contactId => {
+    setSelectedContactIds(current => current.includes(contactId)
+      ? current.filter(id => id !== contactId)
+      : [...current, contactId]);
+  };
+
+  const reassignSelectedContacts = async () => {
+    if (!selectedContactIds.length || !reassignCallerId) return;
+    setReassigning(true);
+    setError("");
+    setReallocationMessage("");
+    try {
+      const result = await invokeCallCampaign("reassign_outbound_call_campaign_contacts", {
+        p_manager_code: managerCode.trim(),
+        p_contact_ids: selectedContactIds,
+        p_caller_id: reassignCallerId,
+      });
+      const movedCount = Number(result?.reassigned || selectedContactIds.length);
+      setSelectedContactIds([]);
+      setReassignCallerId("");
+      setReallocationMessage(`${movedCount.toLocaleString()} contact${movedCount === 1 ? "" : "s"} reassigned. Existing call records were kept.`);
+      await load();
+    } catch (err) {
+      setError(err.message || "Unable to reassign the selected contacts.");
+    } finally {
+      setReassigning(false);
+    }
+  };
+
   const metrics = data ? analytics(data) : null;
   const visible = useMemo(() => (data?.contacts || []).filter(contact => {
     const haystack = `${contact.full_name} ${normalizeNigerianPhone(contact.phone)} ${contact.caller_name || ""}`.toLowerCase();
     return (!query || haystack.includes(query.toLowerCase())) && (statusFilter === "all" || contact.status === statusFilter);
   }), [data, query, statusFilter]);
+  const visibleAssignedIds = visible.filter(contact => contact.caller_id).map(contact => contact.id);
+  const allVisibleSelected = visibleAssignedIds.length > 0 && visibleAssignedIds.every(id => selectedContactIds.includes(id));
+  const toggleVisibleSelection = () => {
+    setSelectedContactIds(current => allVisibleSelected
+      ? current.filter(id => !visibleAssignedIds.includes(id))
+      : [...new Set([...current, ...visibleAssignedIds])]);
+  };
   const outcomes = metrics ? [
     ["Not called", Math.max(0, data.contacts.length - metrics.called)],
     ["Reachable", metrics.reached], ["Call Back Later", metrics.callbacks], ["Unavailable", metrics.unavailable],
@@ -149,7 +189,14 @@ export default function CallCampaignPage({ session }) {
       <section className="outbound-panel campaign-analytics-panel">
         <div className="campaign-table-heading"><div><h2>Call records</h2><p>{visible.length.toLocaleString()} of {data.contacts.length.toLocaleString()} contacts</p></div><button className="campaign-button secondary" type="button" onClick={() => downloadCallCSV(`${data.campaign.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-campaign-responses.csv`, managerExportRows(data))}><Download size={17} /> Download responses</button></div>
         <div className="campaign-queue-controls campaign-manager-filters"><Field label="Search records"><span className="campaign-search-field"><Search size={17} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Name, phone or caller" /></span></Field><Field label="Filter by call status"><select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Not called</option><option value="reachable">Reachable</option><option value="call_back_later">Call Back Later</option><option value="unavailable">Unavailable</option><option value="invalid_number">Invalid Number</option><option value="wrong_contact">Wrong Contact</option></select></Field></div>
-        <div className="campaign-manager-table-wrap"><table className="campaign-manager-table"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Membership</th><th scope="col">Caller</th><th scope="col">Status</th><th scope="col">Latest feedback & history</th></tr></thead><tbody>{visible.map(contact => { const phone = normalizeNigerianPhone(contact.phone); return <tr key={contact.id}><td data-label="Name">{contact.full_name}</td><td data-label="Phone"><a href={`tel:${phone}`}>{phone}</a></td><td data-label="Membership">{contact.membership_status || "—"}</td><td data-label="Caller">{contact.caller_name || "Unassigned"}</td><td data-label="Status"><span className={`campaign-status status-${contact.status || "pending"}`}>{callStatusLabel(contact.status)}</span></td><td data-label="Latest feedback" className="campaign-latest-feedback">{contact.logs?.[0]?.feedback || "—"}{contact.logs?.[0]?.callback_at && <small>Callback: {new Date(contact.logs[0].callback_at).toLocaleString()}</small>}{contact.logs?.length > 0 && <details className="campaign-call-history"><summary>View all {contact.logs.length} call{contact.logs.length === 1 ? "" : "s"}</summary><div>{contact.logs.map((log, index) => <article key={`${contact.id}-${index}`}><strong>{callStatusLabel(log.outcome)} · {new Date(log.created_at).toLocaleString()}</strong><p>{log.feedback || "No feedback entered."}</p>{log.callback_at && <small>Callback: {new Date(log.callback_at).toLocaleString()}</small>}</article>)}</div></details>}</td></tr>; })}</tbody></table></div>
+        <div className="campaign-reassign-toolbar">
+          <div className="campaign-reassign-selection"><strong>{selectedContactIds.length.toLocaleString()} selected</strong><button type="button" className="campaign-button secondary" onClick={toggleVisibleSelection}>{allVisibleSelected ? "Deselect visible" : "Select visible"}</button><button type="button" className="campaign-text-button" onClick={() => setSelectedContactIds([])} disabled={!selectedContactIds.length}>Clear</button></div>
+          <div className="campaign-reassign-actions"><Field label="Reassign to caller"><select value={reassignCallerId} onChange={event => setReassignCallerId(event.target.value)}><option value="">Choose caller</option>{data.callers.map(caller => <option key={caller.id} value={caller.id}>{caller.name}</option>)}</select></Field><button type="button" className="campaign-button" onClick={reassignSelectedContacts} disabled={!selectedContactIds.length || !reassignCallerId || reassigning}><ArrowRightLeft size={17} aria-hidden="true" />{reassigning ? "Reassigning…" : "Reassign contacts"}</button></div>
+          <p className="campaign-reassign-hint">Select allocated contacts from the list below. Their call history stays with each contact.</p>
+        </div>
+        {reallocationMessage && <p className="campaign-notice" role="status">{reallocationMessage}</p>}
+        {error && data && <p className="campaign-error" role="alert">{error}</p>}
+        <div className="campaign-manager-table-wrap"><table className="campaign-manager-table"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Membership</th><th scope="col">Caller</th><th scope="col">Status</th><th scope="col">Latest feedback & history</th></tr></thead><tbody>{visible.map(contact => { const phone = normalizeNigerianPhone(contact.phone); return <tr key={contact.id}><td data-label="Name"><label className="campaign-reassign-contact"><input type="checkbox" aria-label={`Select ${contact.full_name} for reassignment`} checked={selectedContactIds.includes(contact.id)} onChange={() => toggleContactSelection(contact.id)} disabled={!contact.caller_id} /><span>{contact.full_name}</span></label></td><td data-label="Phone"><a href={`tel:${phone}`}>{phone}</a></td><td data-label="Membership">{contact.membership_status || "—"}</td><td data-label="Caller">{contact.caller_name || "Unassigned"}</td><td data-label="Status"><span className={`campaign-status status-${contact.status || "pending"}`}>{callStatusLabel(contact.status)}</span></td><td data-label="Latest feedback" className="campaign-latest-feedback">{contact.logs?.[0]?.feedback || "—"}{contact.logs?.[0]?.callback_at && <small>Callback: {new Date(contact.logs[0].callback_at).toLocaleString()}</small>}{contact.logs?.length > 0 && <details className="campaign-call-history"><summary>View all {contact.logs.length} call{contact.logs.length === 1 ? "" : "s"}</summary><div>{contact.logs.map((log, index) => <article key={`${contact.id}-${index}`}><strong>{callStatusLabel(log.outcome)} · {new Date(log.created_at).toLocaleString()}</strong><p>{log.feedback || "No feedback entered."}</p>{log.callback_at && <small>Callback: {new Date(log.callback_at).toLocaleString()}</small>}</article>)}</div></details>}</td></tr>; })}</tbody></table></div>
         {visible.length === 0 && <div className="campaign-empty"><h3>No records match these filters</h3><p>Change the search or call status filter to see more records.</p><button className="campaign-button secondary" type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Clear filters</button></div>}
       </section>
       <div className="campaign-manager-footer"><button className="campaign-button secondary" type="button" onClick={() => { sessionStorage.removeItem("outbound_call_manager_code"); setManagerCode(""); setData(null); }}>Close campaign dashboard</button></div>
