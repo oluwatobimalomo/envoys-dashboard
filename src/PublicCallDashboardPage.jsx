@@ -83,6 +83,10 @@ export default function PublicCallDashboardPage() {
         <div className="outbound-section-heading"><span className="outbound-icon"><BarChart3 size={19} aria-hidden="true" /></span><div><h2>Call outcomes</h2><p>Current outcome for each contact, including follow-up and unreachable categories.</p></div></div>
         <div className="campaign-outcome-grid">{outcomes.map(([label, count]) => <div className="campaign-outcome" key={label}><div><span>{label}</span><strong>{count.toLocaleString()}</strong></div><div className="campaign-bar-track"><span style={{ width: `${Math.round(count / maxOutcome * 100)}%` }} /></div></div>)}</div>
       </section>
+      <section className="outbound-panel public-call-caller-performance">
+        <div className="outbound-section-heading"><span className="outbound-icon"><Users size={19} aria-hidden="true" /></span><div><h2>Caller performance</h2><p>Allocation and outcomes for each caller.</p></div></div>
+        <div className="campaign-manager-list campaign-manager-list-analytics">{(data.callers || []).map((caller, index) => <article key={`${caller.name}-${index}`}><strong title={caller.name}><Users size={16} aria-hidden="true" />{caller.name}</strong><span>{Number(caller.total || 0).toLocaleString()} assigned · {Number(caller.called || 0).toLocaleString()} called · {Number(caller.reached || 0).toLocaleString()} reached · {Number(caller.callbacks || 0).toLocaleString()} callbacks · {Number(caller.not_reached || 0).toLocaleString()} not reached</span></article>)}</div>
+      </section>
       <p className="public-call-dashboard-updated">Dashboard data refreshes when this page is opened or refreshed.</p>
     </>}
   </CallPageFrame>;
