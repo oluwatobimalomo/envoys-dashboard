@@ -4449,6 +4449,12 @@ ion-textarea.field-control:focus-within {
 .campaign-allocation-capacity > .is-unavailable { color: #8a5b0b; background: #fff4dd; }
 .campaign-allocation-form { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(220px, 1fr) auto; align-items: end; gap: 12px; }
 .campaign-allocation-form > .campaign-button { min-width: 154px; }
+.campaign-single-caller-section { display: grid; gap: 12px; margin-bottom: 22px; }
+.campaign-single-caller-section h3 { margin: 0; color: #355847; font-size: 16px; font-weight: 600; }
+.campaign-single-caller-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.campaign-single-caller-form > .campaign-button { min-width: 132px; }
+.campaign-csv-divider { display: flex; align-items: center; gap: 12px; margin: 6px 0 18px; color: #6b8075; font-size: 13px; }
+.campaign-csv-divider::before, .campaign-csv-divider::after { content: ""; height: 1px; flex: 1; background: #dce8e1; }
 .campaign-individual-select-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #61766a; font-size: 13px; }
 .campaign-individual-select-actions > div { display: flex; gap: 8px; }
 .campaign-individual-select-actions .campaign-button { min-height: 38px; padding: 7px 12px; font-size: 13px; }
@@ -4522,6 +4528,8 @@ ion-textarea.field-control:focus-within {
   .campaign-nav-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .campaign-nav-actions > .campaign-button { min-width: 0; width: 100%; }
   .campaign-manager-filters { grid-template-columns: 1fr; }
+  .campaign-single-caller-form { grid-template-columns: minmax(0, 1fr); }
+  .campaign-single-caller-form > .campaign-button { width: 100%; }
   .campaign-reassign-actions { grid-template-columns: minmax(0, 1fr); }
   .campaign-reassign-actions > .campaign-button { width: 100%; }
   .campaign-reassign-selection { align-items: stretch; }

@@ -26,6 +26,10 @@ export default function CallAllocationPage({ session }) {
   const [additionalCallerHeaders, setAdditionalCallerHeaders] = useState([]);
   const [additionalCallerNameColumn, setAdditionalCallerNameColumn] = useState("");
   const [additionalCallerPhoneColumn, setAdditionalCallerPhoneColumn] = useState("");
+  const [singleCallerName, setSingleCallerName] = useState("");
+  const [singleCallerPhone, setSingleCallerPhone] = useState("");
+  const [singleCallerError, setSingleCallerError] = useState("");
+  const [singleCallerMessage, setSingleCallerMessage] = useState("");
   const [csvRows, setCsvRows] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [nameColumn, setNameColumn] = useState("");
@@ -249,6 +253,34 @@ export default function CallAllocationPage({ session }) {
     finally { setBusy(false); }
   };
 
+  const addSingleCaller = async event => {
+    event.preventDefault();
+    setSingleCallerError("");
+    setSingleCallerMessage("");
+    const name = singleCallerName.trim();
+    const phone = normalizeCallerPhone(singleCallerPhone);
+    if (!name) return setSingleCallerError("Enter the caller’s name.");
+    if (phone.length < 7) return setSingleCallerError("Enter a valid caller phone number.");
+    if ((data?.callers?.length || 0) >= 100) return setSingleCallerError("A campaign can have no more than 100 callers.");
+    const existingPhones = new Set((data?.callers || []).map(caller => normalizeCallerPhone(caller.last_name)).filter(Boolean));
+    if (existingPhones.has(phone)) return setSingleCallerError("A caller with this phone number is already registered in this campaign.");
+    setBusy(true);
+    try {
+      const result = await invokeCallCampaign("add_outbound_call_campaign_callers", {
+        p_manager_code: managerCode.trim(),
+        p_callers: [{ name, phone }],
+      });
+      await refresh();
+      setSingleCallerName("");
+      setSingleCallerPhone("");
+      setSingleCallerMessage(`${Number(result.added || 1).toLocaleString()} caller added. They can now receive contact allocations.`);
+    } catch (err) {
+      setSingleCallerError(err.message || "Unable to add this caller to the campaign.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startNewCampaign = () => {
     setReturnManagerCode(managerCode || sessionStorage.getItem("outbound_call_manager_code") || "");
     sessionStorage.setItem("outbound_call_new_campaign_mode", "true");
@@ -259,6 +291,7 @@ export default function CallAllocationPage({ session }) {
     setCampaignName(""); setNewManagerKey(""); setConfirmManagerKey("");
     setCallerRows([]); setCallerHeaders([]); setCallerNameColumn(""); setCallerPhoneColumn("");
     setAdditionalCallerRows([]); setAdditionalCallerHeaders([]); setAdditionalCallerNameColumn(""); setAdditionalCallerPhoneColumn("");
+    setSingleCallerName(""); setSingleCallerPhone(""); setSingleCallerError(""); setSingleCallerMessage("");
     setCsvRows([]); setHeaders([]); setNameColumn(""); setFirstNameColumn(""); setSurnameColumn(""); setPhoneColumn(""); setMembershipColumn("");
     setAllocationSize("10"); setCustomSize("");
     setError(""); setMessage(""); setAdditionalCallerError(""); setAdditionalCallerMessage("");
@@ -312,7 +345,18 @@ export default function CallAllocationPage({ session }) {
         <button type="button" className="campaign-button secondary" onClick={() => downloadCallCSV("call-campaign-caller-access.csv", [["Caller name", "Caller access phone or legacy surname"], ...data.callers.map(caller => [caller.name, callerAccessValue(caller.last_name)])])}><Download size={17} /> Download caller access list</button>
       </section>
       <section className="outbound-panel campaign-add-callers-panel">
-        <div className="outbound-section-heading"><span className="outbound-icon"><UserRoundPlus size={19} aria-hidden="true" /></span><div><h2>Add callers</h2><p>Add callers to this campaign at any time. Upload a CSV with their names and phone numbers; they’ll become available in the allocation list.</p></div></div>
+        <div className="outbound-section-heading"><span className="outbound-icon"><UserRoundPlus size={19} aria-hidden="true" /></span><div><h2>Add callers</h2><p>Add one caller directly or import a CSV to add a group. New callers become available in the allocation list.</p></div></div>
+        <div className="campaign-single-caller-section">
+          <h3>Add one caller</h3>
+          <form className="campaign-single-caller-form" onSubmit={addSingleCaller}>
+            <Field label="Caller name"><input value={singleCallerName} onChange={event => setSingleCallerName(event.target.value)} placeholder="e.g. Tola Adeyemi" autoComplete="name" required /></Field>
+            <Field label="Caller phone number" hint="This phone number is used for caller access."><input type="tel" value={singleCallerPhone} onChange={event => setSingleCallerPhone(event.target.value)} placeholder="e.g. +234 803 123 4567" autoComplete="tel" inputMode="tel" required /></Field>
+            <button className="campaign-button" type="submit" disabled={busy || data.callers.length >= 100}>{busy ? "Adding caller…" : "Add caller"}</button>
+          </form>
+          {singleCallerError && <p className="campaign-error" role="alert">{singleCallerError}</p>}
+          {singleCallerMessage && <p className="campaign-notice" role="status">{singleCallerMessage}</p>}
+        </div>
+        <div className="campaign-csv-divider"><span>Bulk import with CSV</span></div>
         <form className="campaign-form" onSubmit={addCallers}>
           <Field label="Caller details CSV" hint={`${data.callers.length} of 100 callers currently in this campaign.`}><input type="file" accept=".csv,text/csv" onChange={onAdditionalCallerFile} /></Field>
           {additionalCallerHeaders.length > 0 && <div className="campaign-mapping"><div className="campaign-map-grid">
