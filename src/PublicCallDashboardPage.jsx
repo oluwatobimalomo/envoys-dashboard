@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { BarChart3, CalendarDays, CircleCheck, ContactRound, KeyRound, PhoneCall, RefreshCw, UserRound, Users } from "lucide-react";
-import { CallPageFrame, Field, invokeCallCampaign } from "./callCampaignUtils.jsx";
+import { useMemo, useState } from "react";
+import { BarChart3, CalendarDays, CircleCheck, ContactRound, Download, KeyRound, PhoneCall, RefreshCw, Search, UserRound, Users } from "lucide-react";
+import { CallPageFrame, callStatusLabel, downloadCallCSV, Field, invokeCallCampaign, normalizeNigerianPhone } from "./callCampaignUtils.jsx";
 
 const OUTCOMES = [
   ["not_called", "Not called"],
@@ -21,6 +21,8 @@ export default function PublicCallDashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const openDashboard = async event => {
     event?.preventDefault();
@@ -51,6 +53,21 @@ export default function PublicCallDashboardPage() {
   const total = Number(metrics?.total_contacts || 0);
   const outcomes = OUTCOMES.map(([key, label]) => [label, Number(metrics?.[key] || 0)]);
   const maxOutcome = Math.max(1, ...outcomes.map(([, count]) => count));
+  const contacts = data?.contacts || [];
+  const visibleContacts = useMemo(() => contacts.filter(contact => {
+    const searchable = `${contact.full_name || ""} ${normalizeNigerianPhone(contact.phone)} ${contact.caller_name || ""}`.toLowerCase();
+    return (!query || searchable.includes(query.toLowerCase())) && (statusFilter === "all" || (contact.status || "pending") === statusFilter);
+  }), [contacts, query, statusFilter]);
+
+  const downloadResponses = () => {
+    const header = ["Name", "Phone", "Membership status", "Caller", "Current status", "Attempts", "Call status", "Feedback", "Callback time", "Call time"];
+    const rows = contacts.flatMap(contact => {
+      const logs = contact.logs?.length ? contact.logs : [{ outcome: "", feedback: "", callback_at: "", created_at: "" }];
+      return logs.map(log => [contact.full_name, normalizeNigerianPhone(contact.phone), contact.membership_status, contact.caller_name, callStatusLabel(contact.status), contact.attempt_count, callStatusLabel(log.outcome), log.feedback, log.callback_at, log.created_at]);
+    });
+    const filename = `${(data?.campaign?.name || "campaign").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-responses.csv`;
+    downloadCallCSV(filename, [header, ...rows]);
+  };
 
   return <CallPageFrame eyebrow="Outreach workspace" title="Campaign manager" subtitle="Review progress, caller activity and every logged response." wide>
     <nav className="public-call-dashboard-nav" aria-label="Call campaign pages">
@@ -86,6 +103,16 @@ export default function PublicCallDashboardPage() {
       <section className="outbound-panel public-call-caller-performance">
         <div className="outbound-section-heading"><span className="outbound-icon"><Users size={19} aria-hidden="true" /></span><div><h2>Caller performance</h2><p>Allocation and outcomes for each caller.</p></div></div>
         <div className="campaign-manager-list campaign-manager-list-analytics">{(data.callers || []).map((caller, index) => <article key={`${caller.name}-${index}`}><strong title={caller.name}><Users size={16} aria-hidden="true" />{caller.name}</strong><span>{Number(caller.total || 0).toLocaleString()} assigned · {Number(caller.called || 0).toLocaleString()} called · {Number(caller.reached || 0).toLocaleString()} reached · {Number(caller.callbacks || 0).toLocaleString()} callbacks · {Number(caller.not_reached || 0).toLocaleString()} not reached</span></article>)}</div>
+      </section>
+      <section className="outbound-panel campaign-analytics-panel public-call-records">
+        <div className="campaign-table-heading"><div><h2>Call records</h2><p>{visibleContacts.length.toLocaleString()} of {contacts.length.toLocaleString()} contacts</p></div><button className="campaign-button secondary" type="button" onClick={downloadResponses}><Download size={17} aria-hidden="true" /> Download responses</button></div>
+        <div className="campaign-queue-controls campaign-manager-filters"><Field label="Search records"><span className="campaign-search-field"><Search size={17} aria-hidden="true" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Name, phone or caller" /></span></Field><Field label="Filter by call status"><select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Not called</option><option value="reachable">Reachable</option><option value="call_back_later">Call Back Later</option><option value="unavailable">Unavailable</option><option value="invalid_number">Invalid Number</option><option value="wrong_contact">Wrong Contact</option></select></Field></div>
+        <div className="campaign-manager-table-wrap"><table className="campaign-manager-table"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Membership</th><th scope="col">Caller</th><th scope="col">Status</th><th scope="col">Latest feedback &amp; history</th></tr></thead><tbody>{visibleContacts.map(contact => {
+          const phone = normalizeNigerianPhone(contact.phone);
+          const latestLog = contact.logs?.[0];
+          return <tr key={contact.id}><td data-label="Name">{contact.full_name}</td><td data-label="Phone"><a href={`tel:${phone}`}>{phone}</a></td><td data-label="Membership">{contact.membership_status || "—"}</td><td data-label="Caller">{contact.caller_name || "Unassigned"}</td><td data-label="Status"><span className={`campaign-status status-${contact.status || "pending"}`}>{callStatusLabel(contact.status)}</span></td><td data-label="Latest feedback" className="campaign-latest-feedback">{latestLog?.feedback || "—"}{latestLog?.callback_at && <small>Callback: {new Date(latestLog.callback_at).toLocaleString()}</small>}{contact.logs?.length > 0 && <details className="campaign-call-history"><summary>View all {contact.logs.length} call{contact.logs.length === 1 ? "" : "s"}</summary><div>{contact.logs.map((log, index) => <article key={`${contact.id}-${index}`}><strong>{callStatusLabel(log.outcome)} · {new Date(log.created_at).toLocaleString()}</strong><p>{log.feedback || "No feedback entered."}</p>{log.callback_at && <small>Callback: {new Date(log.callback_at).toLocaleString()}</small>}</article>)}</div></details>}</td></tr>;
+        })}</tbody></table></div>
+        {visibleContacts.length === 0 && <div className="campaign-empty"><h3>No records match these filters</h3><p>Change the search or call status filter to see more records.</p><button className="campaign-button secondary" type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Clear filters</button></div>}
       </section>
       <p className="public-call-dashboard-updated">Dashboard data refreshes when this page is opened or refreshed.</p>
     </>}
