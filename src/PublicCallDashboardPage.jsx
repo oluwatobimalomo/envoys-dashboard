@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { BarChart3, CalendarDays, CircleCheck, ContactRound, PhoneCall, RefreshCw, UserRound, Users } from "lucide-react";
-import { CallPageFrame, invokeCallCampaign } from "./callCampaignUtils.jsx";
+import { useState } from "react";
+import { BarChart3, CalendarDays, CircleCheck, ContactRound, KeyRound, PhoneCall, RefreshCw, UserRound, Users } from "lucide-react";
+import { CallPageFrame, Field, invokeCallCampaign } from "./callCampaignUtils.jsx";
 
 const OUTCOMES = [
   ["not_called", "Not called"],
@@ -17,24 +17,35 @@ function formatCreatedDate(value) {
 }
 
 export default function PublicCallDashboardPage() {
+  const [campaignKey, setCampaignKey] = useState("");
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const refresh = useCallback(async () => {
+  const openDashboard = async event => {
+    event?.preventDefault();
+    const key = campaignKey.trim();
+    if (key.length < 20) {
+      setError("Enter the campaign key with at least 20 characters.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      const result = await invokeCallCampaign("get_public_outbound_call_campaign_dashboard", {});
-      setData(result);
+      const result = await invokeCallCampaign("get_public_outbound_call_campaign_dashboard", { p_campaign_key: key });
+      if (!result?.campaign) {
+        setData(null);
+        setError("That campaign key was not recognized. Check the key and try again.");
+      } else {
+        setData(result);
+      }
     } catch (err) {
+      setData(null);
       setError(err.message || "Unable to load the campaign dashboard.");
     } finally {
       setLoading(false);
     }
-  }, []);
-
-  useEffect(() => { refresh(); }, [refresh]);
+  };
 
   const metrics = data?.metrics;
   const total = Number(metrics?.total_contacts || 0);
@@ -49,12 +60,18 @@ export default function PublicCallDashboardPage() {
         <a className="campaign-button secondary" href="/calls/allocate"><ContactRound size={17} aria-hidden="true" /> Allocate contacts</a>
       </div>
     </nav>
-    {error && <section className="outbound-panel public-call-dashboard-state" role="alert"><p>{error}</p><button className="campaign-button secondary" type="button" onClick={refresh}><RefreshCw size={16} aria-hidden="true" /> Try again</button></section>}
-    {!error && loading && <section className="outbound-panel public-call-dashboard-state" role="status">Loading campaign progress…</section>}
-    {!error && !loading && data?.campaign && <>
+    {!data && <section className="outbound-panel public-call-key-panel">
+      <div className="outbound-section-heading"><span className="outbound-icon"><KeyRound size={19} aria-hidden="true" /></span><div><h2>Open a campaign dashboard</h2><p>Enter the campaign key shared with the pastorate team to view its progress.</p></div></div>
+      <form className="public-call-key-form" onSubmit={openDashboard}>
+        <Field label="Campaign key"><input type="password" value={campaignKey} onChange={event => setCampaignKey(event.target.value)} placeholder="Enter campaign key" autoComplete="one-time-code" minLength={20} required /></Field>
+        <button className="campaign-button" type="submit" disabled={loading}>{loading ? "Loading dashboard…" : "Open dashboard"}</button>
+      </form>
+      {error && <p className="campaign-error" role="alert">{error}</p>}
+    </section>}
+    {data?.campaign && <>
       <div className="public-call-campaign-heading">
         <div><span className="outbound-kicker">{data.campaign.status === "closed" ? "Closed campaign" : "Active campaign"}</span><h2>{data.campaign.name}</h2><p><CalendarDays size={15} aria-hidden="true" /> Created {formatCreatedDate(data.campaign.created_at)}</p></div>
-        <button className="campaign-icon-button" type="button" onClick={refresh} aria-label="Refresh campaign dashboard" disabled={loading}><RefreshCw size={18} aria-hidden="true" /></button>
+        <button className="campaign-icon-button" type="button" onClick={openDashboard} aria-label="Refresh campaign dashboard" disabled={loading}><RefreshCw size={18} aria-hidden="true" /></button>
       </div>
       <div className="campaign-stats campaign-stats-four public-call-dashboard-stats">
         <div className="campaign-stat-card stat-total"><span className="campaign-stat-icon"><Users size={18} aria-hidden="true" /></span><strong>{total.toLocaleString()}</strong><span>Total contacts</span></div>
@@ -68,6 +85,5 @@ export default function PublicCallDashboardPage() {
       </section>
       <p className="public-call-dashboard-updated">Dashboard data refreshes when this page is opened or refreshed.</p>
     </>}
-    {!error && !loading && !data?.campaign && <section className="outbound-panel public-call-dashboard-state"><h2>No active campaign</h2><p>Campaign progress will appear here when a follow-up campaign is active.</p></section>}
   </CallPageFrame>;
 }

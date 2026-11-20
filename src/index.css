@@ -4248,6 +4248,9 @@ ion-textarea.field-control:focus-within {
 .public-call-dashboard-nav .campaign-nav-current { min-height: 44px; text-decoration: none; }
 .public-call-dashboard-nav .campaign-nav-actions { display: flex; align-items: center; gap: 10px; }
 .public-call-dashboard-nav .campaign-button { min-height: 44px; padding-inline: 18px; }
+.public-call-key-panel { width: min(100%, 720px); margin-inline: auto; }
+.public-call-key-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.public-call-key-form > .campaign-button { min-width: 160px; }
 .public-call-campaign-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 4px 0 2px; }
 .public-call-campaign-heading .outbound-kicker { margin: 0 0 4px; }
 .public-call-campaign-heading h2 { color: #183b2e; font-size: 22px; line-height: 1.3; }
@@ -4340,6 +4343,8 @@ ion-textarea.field-control:focus-within {
   .public-call-dashboard-nav { align-items: stretch; flex-direction: column; gap: 8px; }
   .public-call-dashboard-nav .campaign-nav-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .public-call-dashboard-nav .campaign-button { min-width: 0; padding-inline: 10px; font-size: 13px; }
+  .public-call-key-form { grid-template-columns: minmax(0, 1fr); }
+  .public-call-key-form > .campaign-button { width: 100%; }
   .public-call-campaign-heading h2 { font-size: 20px; }
   .public-call-outcomes { padding: 16px; }
   .outbound-panel, .outbound-workspace { padding: 16px; border-radius: 16px; }
