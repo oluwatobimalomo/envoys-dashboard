@@ -76,8 +76,12 @@ export default function CallAllocationPage({ session }) {
   const remaining = Number(data?.unassigned || 0);
   const quantity = allocationSize === "custom" ? Number(customSize) : Number(allocationSize);
   const perCallerCapacity = data?.callers?.length ? Math.floor(remaining / data.callers.length) : 0;
-  const unallocatedCallers = useMemo(() => (data?.callers || []).filter(caller => Number(caller.total || 0) === 0), [data?.callers]);
-  const selectedCallers = useMemo(() => unallocatedCallers.filter(caller => selectedCallerIds.includes(caller.id)), [unallocatedCallers, selectedCallerIds]);
+  const eligibleCallers = useMemo(() => (data?.callers || []).filter(caller => {
+    const assigned = Number(caller.total || 0);
+    const called = Number(caller.called || 0);
+    return assigned === 0 || called >= assigned;
+  }), [data?.callers]);
+  const selectedCallers = useMemo(() => eligibleCallers.filter(caller => selectedCallerIds.includes(caller.id)), [eligibleCallers, selectedCallerIds]);
   const selectedPerCallerCapacity = selectedCallers.length ? Math.floor(remaining / selectedCallers.length) : 0;
   const selectedQuantity = selectedAllocationSize === "custom" ? Number(selectedCustomSize) : Number(selectedAllocationSize);
 
@@ -214,7 +218,7 @@ export default function CallAllocationPage({ session }) {
 
   const allocateToSelectedCallers = async event => {
     event.preventDefault(); setSelectedAllocationError(""); setSelectedAllocationMessage("");
-    if (!selectedCallers.length) return setSelectedAllocationError("Select at least one caller who has no contacts assigned yet.");
+    if (!selectedCallers.length) return setSelectedAllocationError("Select a new caller or a caller who has attempted every contact in their current batch.");
     if (!Number.isInteger(selectedQuantity) || selectedQuantity < 1) return setSelectedAllocationError("Enter a whole number greater than zero.");
     if (selectedQuantity > selectedPerCallerCapacity) return setSelectedAllocationError(`Only ${selectedPerCallerCapacity} contacts per selected caller can be allocated with the ${remaining} contacts currently unassigned.`);
     setBusy(true);
@@ -383,11 +387,16 @@ export default function CallAllocationPage({ session }) {
         {error && <p className="campaign-error" role="alert">{error}</p>}{message && <p className="campaign-notice" role="status">{message}</p>}
       </section>
       <section className="outbound-panel campaign-individual-allocation">
-        <div className="outbound-section-heading"><span className="outbound-icon"><UserRoundPlus size={19} aria-hidden="true" /></span><div><h2>Allocate to selected callers</h2><p>Select callers who don’t have contacts yet, then choose how many contacts each should receive.</p></div></div>
-        {unallocatedCallers.length === 0 ? <div className="campaign-empty"><h3>No callers are waiting for an allocation</h3><p>New callers will appear here until they receive their first contacts.</p></div> : <>
-          <div className="campaign-individual-select-actions"><span>{selectedCallers.length} of {unallocatedCallers.length} selected</span><div><button className="campaign-button secondary" type="button" onClick={() => { setSelectedCallerIds(unallocatedCallers.map(caller => caller.id)); setSelectedAllocationError(""); }}>Select all</button><button className="campaign-button secondary" type="button" onClick={() => { setSelectedCallerIds([]); setSelectedAllocationError(""); }} disabled={!selectedCallerIds.length}>Clear</button></div></div>
-          <div className="campaign-individual-caller-list" aria-label="Callers without allocations">
-            {unallocatedCallers.map(caller => <label className="campaign-individual-caller" key={caller.id}><input type="checkbox" checked={selectedCallerIds.includes(caller.id)} onChange={event => { setSelectedCallerIds(current => event.target.checked ? [...new Set([...current, caller.id])] : current.filter(id => id !== caller.id)); setSelectedAllocationError(""); }} /><span>{caller.name}</span><small>0 contacts</small></label>)}
+        <div className="outbound-section-heading"><span className="outbound-icon"><UserRoundPlus size={19} aria-hidden="true" /></span><div><h2>Allocate to selected callers</h2><p>Select a new caller or callers who have attempted every contact in their current batch, then choose how many more contacts each should receive.</p></div></div>
+        {eligibleCallers.length === 0 ? <div className="campaign-empty"><h3>No callers are ready for another allocation</h3><p>Callers with an active batch will appear here after they have attempted every contact currently assigned to them.</p></div> : <>
+          <div className="campaign-individual-select-actions"><span>{selectedCallers.length} of {eligibleCallers.length} ready callers selected</span><div><button className="campaign-button secondary" type="button" onClick={() => { setSelectedCallerIds(eligibleCallers.map(caller => caller.id)); setSelectedAllocationError(""); }}>Select all</button><button className="campaign-button secondary" type="button" onClick={() => { setSelectedCallerIds([]); setSelectedAllocationError(""); }} disabled={!selectedCallerIds.length}>Clear</button></div></div>
+          <div className="campaign-individual-caller-list" aria-label="Callers eligible for contact allocation">
+            {eligibleCallers.map(caller => {
+              const assigned = Number(caller.total || 0);
+              const called = Number(caller.called || 0);
+              const batchLabel = assigned === 0 ? "New · no contacts" : `${called}/${assigned} called · batch complete`;
+              return <label className="campaign-individual-caller" key={caller.id}><input type="checkbox" checked={selectedCallerIds.includes(caller.id)} onChange={event => { setSelectedCallerIds(current => event.target.checked ? [...new Set([...current, caller.id])] : current.filter(id => id !== caller.id)); setSelectedAllocationError(""); }} /><span>{caller.name}</span><small>{batchLabel}</small></label>;
+            })}
           </div>
           <form className="campaign-individual-allocation-form" onSubmit={allocateToSelectedCallers}>
             <Field label="Contacts per selected caller"><select value={selectedAllocationSize} onChange={event => setSelectedAllocationSize(event.target.value)} disabled={!selectedCallers.length}><option value="10" disabled={selectedPerCallerCapacity < 10}>10 contacts each</option><option value="20" disabled={selectedPerCallerCapacity < 20}>20 contacts each</option><option value="custom" disabled={!selectedPerCallerCapacity}>Custom amount</option></select></Field>

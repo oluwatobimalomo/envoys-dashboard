@@ -52,10 +52,10 @@ export function normalizeNigerianPhone(phone) {
   const source = String(phone ?? "").trim();
   const digits = source.replace(/\D/g, "");
   if (!digits) return "";
-  if (digits.startsWith("234")) return digits;
-  if (!source.startsWith("+") && digits.length === 11 && digits.startsWith("0")) return `234${digits.slice(1)}`;
-  if (!source.startsWith("+") && digits.length === 10) return `234${digits}`;
-  return source.startsWith("+") ? `+${digits}` : digits;
+  if (digits.startsWith("234")) return `+${digits}`;
+  if (!source.startsWith("+") && digits.length === 11 && digits.startsWith("0")) return `+234${digits.slice(1)}`;
+  if (!source.startsWith("+") && digits.length === 10) return `+234${digits}`;
+  return `+${digits}`;
 }
 
 export function normalizeCallerPhone(phone) {
