@@ -5,9 +5,10 @@ import { CallPageFrame, callStatusLabel, downloadCallCSV, Field, invokeCallCampa
 
 function managerExportRows(data) {
   const headers = ["Name", "Phone", "Membership status", "Caller", "Current status", "Attempts", "Call status", "Feedback", "Callback time", "Call time"];
+  const callerNames = new Map((data.callers || []).map(caller => [caller.id, caller.name]));
   const rows = data.contacts.flatMap(contact => {
     const logs = contact.logs?.length ? contact.logs : [{ outcome: "", feedback: "", callback_at: "", created_at: "" }];
-    return logs.map(log => [contact.full_name, normalizeNigerianPhone(contact.phone), contact.membership_status, contact.caller_name, callStatusLabel(contact.status), contact.attempt_count, callStatusLabel(log.outcome), log.feedback, log.callback_at, log.created_at]);
+    return logs.map(log => [contact.full_name, normalizeNigerianPhone(contact.phone), contact.membership_status, callerNames.get(log.caller_id) || contact.caller_name || "", callStatusLabel(contact.status), contact.attempt_count, callStatusLabel(log.outcome), log.feedback, log.callback_at, log.created_at]);
   });
   return [headers, ...rows];
 }
@@ -35,6 +36,9 @@ export default function CallCampaignPage({ session }) {
   const [selectedContactIds, setSelectedContactIds] = useState([]);
   const [reassignCallerId, setReassignCallerId] = useState("");
   const [reassigning, setReassigning] = useState(false);
+  const [unassigning, setUnassigning] = useState(false);
+  const [closingCampaign, setClosingCampaign] = useState(false);
+  const [confirmCloseCampaign, setConfirmCloseCampaign] = useState(false);
   const [reallocationMessage, setReallocationMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -119,6 +123,47 @@ export default function CallCampaignPage({ session }) {
     }
   };
 
+  const unassignSelectedContacts = async () => {
+    if (!selectedContactIds.length) return;
+    setUnassigning(true);
+    setError("");
+    setReallocationMessage("");
+    try {
+      const result = await invokeCallCampaign("unassign_outbound_call_campaign_contacts", {
+        p_manager_code: managerCode.trim(),
+        p_contact_ids: selectedContactIds,
+      });
+      const count = Number(result?.unassigned || selectedContactIds.length);
+      setSelectedContactIds([]);
+      setReallocationMessage(`${count.toLocaleString()} contact${count === 1 ? "" : "s"} unassigned. Call feedback and history are preserved.`);
+      await load();
+    } catch (err) {
+      setError(err.message || "Unable to unassign the selected contacts.");
+    } finally {
+      setUnassigning(false);
+    }
+  };
+
+  const closeCampaign = async () => {
+    setClosingCampaign(true);
+    setError("");
+    try {
+      await invokeCallCampaign("close_outbound_call_campaign", { p_manager_code: managerCode.trim() });
+      setConfirmCloseCampaign(false);
+      setSelectedContactIds([]);
+      await load();
+    } catch (err) {
+      setError(err.message || "Unable to close this campaign.");
+    } finally {
+      setClosingCampaign(false);
+    }
+  };
+
+  const startFreshCampaign = () => {
+    sessionStorage.setItem("outbound_call_new_campaign_mode", "true");
+    navigate("/calls/allocate");
+  };
+
   const metrics = data ? analytics(data) : null;
   const visible = useMemo(() => (data?.contacts || []).filter(contact => {
     const haystack = `${contact.full_name} ${normalizeNigerianPhone(contact.phone)} ${contact.caller_name || ""}`.toLowerCase();
@@ -143,7 +188,7 @@ export default function CallCampaignPage({ session }) {
   </CallPageFrame>;
 
   return <CallPageFrame eyebrow="Outreach workspace" title="Campaign manager" subtitle="Review progress, caller activity and every logged response.">
-    <nav className="campaign-manager-nav" aria-label="Campaign management"><span className="campaign-nav-current"><BarChart3 size={17} /> Analytics dashboard</span><div className="campaign-nav-actions"><a className="campaign-button secondary" href="/members-followup">Caller page</a><button type="button" className="campaign-button secondary" onClick={() => navigate("/calls/allocate")}><UserRoundPlus size={17} /> Allocate contacts</button></div></nav>
+    <nav className="campaign-manager-nav" aria-label="Campaign management"><span className="campaign-nav-current"><BarChart3 size={17} /> Analytics dashboard</span><div className="campaign-nav-actions"><a className="campaign-button secondary" href="/members-followup">Caller page</a>{data?.campaign.status === "closed" ? <button type="button" className="campaign-button" onClick={startFreshCampaign}><UserRoundPlus size={17} /> Start new campaign</button> : <button type="button" className="campaign-button secondary" onClick={() => navigate("/calls/allocate")}><UserRoundPlus size={17} /> Allocate contacts</button>}</div></nav>
     {!data && <section className="outbound-panel">
       <div className="outbound-section-heading"><span className="outbound-icon"><BarChart3 size={19} /></span><div><h2>Open campaign analytics</h2><p>Use the campaign manager key created with the contact upload.</p></div></div>
       <form className="campaign-access-form" onSubmit={load}>
@@ -170,8 +215,10 @@ export default function CallCampaignPage({ session }) {
     {data && <>
       <div className="outbound-workspace-heading">
         <div><span className="outbound-kicker">{data.campaign.status === "closed" ? "Closed campaign" : "Active campaign"}</span><h2>{data.campaign.name}</h2><p>Created {new Date(data.campaign.created_at).toLocaleDateString()}</p></div>
-        <button className="campaign-icon-button" type="button" onClick={load} aria-label="Refresh campaign analytics"><RefreshCw size={18} /></button>
+        <div className="campaign-header-actions">{data.campaign.status === "active" && <button className="campaign-button secondary" type="button" onClick={() => setConfirmCloseCampaign(true)}>Close campaign</button>}<button className="campaign-icon-button" type="button" onClick={load} aria-label="Refresh campaign analytics"><RefreshCw size={18} /></button></div>
       </div>
+      {data.campaign.status === "closed" && <div className="campaign-archive-notice"><strong>This campaign is archived.</strong><span>Caller access is closed. Allocations, call statuses, and feedback remain available here and in the response download. Use “Start new campaign” to create a fresh caller workspace.</span></div>}
+      {confirmCloseCampaign && data.campaign.status === "active" && <div className="campaign-close-confirm" role="alertdialog" aria-labelledby="close-campaign-title" aria-describedby="close-campaign-description"><div><strong id="close-campaign-title">Close this campaign?</strong><p id="close-campaign-description">Caller access will stop. This campaign’s assignments and call feedback remain saved and downloadable. You can create a fresh campaign and import the same callers again.</p></div><div><button className="campaign-button secondary" type="button" onClick={() => setConfirmCloseCampaign(false)} disabled={closingCampaign}>Keep it open</button><button className="campaign-button" type="button" onClick={closeCampaign} disabled={closingCampaign}>{closingCampaign ? "Closing…" : "Close campaign"}</button></div></div>}
       <div className="campaign-stats campaign-stats-four">
         <div className="campaign-stat-card stat-total"><span className="campaign-stat-icon"><Users size={18} aria-hidden="true" /></span><strong>{data.contacts.length.toLocaleString()}</strong><span>Total contacts</span></div>
         <div className="campaign-stat-card stat-called"><span className="campaign-stat-icon"><PhoneCall size={18} aria-hidden="true" /></span><strong>{metrics.called.toLocaleString()}</strong><span>Numbers called</span></div>
@@ -189,14 +236,14 @@ export default function CallCampaignPage({ session }) {
       <section className="outbound-panel campaign-analytics-panel">
         <div className="campaign-table-heading"><div><h2>Call records</h2><p>{visible.length.toLocaleString()} of {data.contacts.length.toLocaleString()} contacts</p></div><button className="campaign-button secondary" type="button" onClick={() => downloadCallCSV(`${data.campaign.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-campaign-responses.csv`, managerExportRows(data))}><Download size={17} /> Download responses</button></div>
         <div className="campaign-queue-controls campaign-manager-filters"><Field label="Search records"><span className="campaign-search-field"><Search size={17} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Name, phone or caller" /></span></Field><Field label="Filter by call status"><select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}><option value="all">All statuses</option><option value="pending">Not called</option><option value="reachable">Reachable</option><option value="call_back_later">Call Back Later</option><option value="unavailable">Unavailable</option><option value="invalid_number">Invalid Number</option><option value="wrong_contact">Wrong Contact</option></select></Field></div>
-        <div className="campaign-reassign-toolbar">
+        {data.campaign.status === "active" && <div className="campaign-reassign-toolbar">
           <div className="campaign-reassign-selection"><strong>{selectedContactIds.length.toLocaleString()} selected</strong><button type="button" className="campaign-button secondary" onClick={toggleVisibleSelection}>{allVisibleSelected ? "Deselect visible" : "Select visible"}</button><button type="button" className="campaign-text-button" onClick={() => setSelectedContactIds([])} disabled={!selectedContactIds.length}>Clear</button></div>
-          <div className="campaign-reassign-actions"><Field label="Reassign to caller"><select value={reassignCallerId} onChange={event => setReassignCallerId(event.target.value)}><option value="">Choose caller</option>{data.callers.map(caller => <option key={caller.id} value={caller.id}>{caller.name}</option>)}</select></Field><button type="button" className="campaign-button" onClick={reassignSelectedContacts} disabled={!selectedContactIds.length || !reassignCallerId || reassigning}><ArrowRightLeft size={17} aria-hidden="true" />{reassigning ? "Reassigning…" : "Reassign contacts"}</button></div>
-          <p className="campaign-reassign-hint">Select allocated contacts from the list below. Their call history stays with each contact.</p>
-        </div>
+          <div className="campaign-reassign-actions"><Field label="Reassign to caller"><select value={reassignCallerId} onChange={event => setReassignCallerId(event.target.value)}><option value="">Choose caller</option>{data.callers.map(caller => <option key={caller.id} value={caller.id}>{caller.name}</option>)}</select></Field><button type="button" className="campaign-button" onClick={reassignSelectedContacts} disabled={!selectedContactIds.length || !reassignCallerId || reassigning}><ArrowRightLeft size={17} aria-hidden="true" />{reassigning ? "Reassigning…" : "Reassign contacts"}</button><button type="button" className="campaign-button secondary" onClick={unassignSelectedContacts} disabled={!selectedContactIds.length || reassigning || unassigning}>{unassigning ? "Unassigning…" : "Unassign selected"}</button></div>
+          <p className="campaign-reassign-hint">Reassign or unassign selected contacts. Their call history stays saved under this campaign.</p>
+        </div>}
         {reallocationMessage && <p className="campaign-notice" role="status">{reallocationMessage}</p>}
         {error && data && <p className="campaign-error" role="alert">{error}</p>}
-        <div className="campaign-manager-table-wrap"><table className="campaign-manager-table"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Membership</th><th scope="col">Caller</th><th scope="col">Status</th><th scope="col">Latest feedback & history</th></tr></thead><tbody>{visible.map(contact => { const phone = normalizeNigerianPhone(contact.phone); return <tr key={contact.id}><td data-label="Name"><label className="campaign-reassign-contact"><input type="checkbox" aria-label={`Select ${contact.full_name} for reassignment`} checked={selectedContactIds.includes(contact.id)} onChange={() => toggleContactSelection(contact.id)} disabled={!contact.caller_id} /><span>{contact.full_name}</span></label></td><td data-label="Phone"><a href={`tel:${phone}`}>{phone}</a></td><td data-label="Membership">{contact.membership_status || "—"}</td><td data-label="Caller">{contact.caller_name || "Unassigned"}</td><td data-label="Status"><span className={`campaign-status status-${contact.status || "pending"}`}>{callStatusLabel(contact.status)}</span></td><td data-label="Latest feedback" className="campaign-latest-feedback">{contact.logs?.[0]?.feedback || "—"}{contact.logs?.[0]?.callback_at && <small>Callback: {new Date(contact.logs[0].callback_at).toLocaleString()}</small>}{contact.logs?.length > 0 && <details className="campaign-call-history"><summary>View all {contact.logs.length} call{contact.logs.length === 1 ? "" : "s"}</summary><div>{contact.logs.map((log, index) => <article key={`${contact.id}-${index}`}><strong>{callStatusLabel(log.outcome)} · {new Date(log.created_at).toLocaleString()}</strong><p>{log.feedback || "No feedback entered."}</p>{log.callback_at && <small>Callback: {new Date(log.callback_at).toLocaleString()}</small>}</article>)}</div></details>}</td></tr>; })}</tbody></table></div>
+        <div className="campaign-manager-table-wrap"><table className="campaign-manager-table"><thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col">Membership</th><th scope="col">Caller</th><th scope="col">Status</th><th scope="col">Latest feedback & history</th></tr></thead><tbody>{visible.map(contact => { const phone = normalizeNigerianPhone(contact.phone); return <tr key={contact.id}><td data-label="Name"><label className="campaign-reassign-contact">{data.campaign.status === "active" && <input type="checkbox" aria-label={`Select ${contact.full_name} for reassignment or unassignment`} checked={selectedContactIds.includes(contact.id)} onChange={() => toggleContactSelection(contact.id)} disabled={!contact.caller_id} />}<span>{contact.full_name}</span></label></td><td data-label="Phone"><a href={`tel:${phone}`}>{phone}</a></td><td data-label="Membership">{contact.membership_status || "—"}</td><td data-label="Caller">{contact.caller_name || "Unassigned"}</td><td data-label="Status"><span className={`campaign-status status-${contact.status || "pending"}`}>{callStatusLabel(contact.status)}</span></td><td data-label="Latest feedback" className="campaign-latest-feedback">{contact.logs?.[0]?.feedback || "—"}{contact.logs?.[0]?.callback_at && <small>Callback: {new Date(contact.logs[0].callback_at).toLocaleString()}</small>}{contact.logs?.length > 0 && <details className="campaign-call-history"><summary>View all {contact.logs.length} call{contact.logs.length === 1 ? "" : "s"}</summary><div>{contact.logs.map((log, index) => <article key={`${contact.id}-${index}`}><strong>{callStatusLabel(log.outcome)} · {new Date(log.created_at).toLocaleString()}{log.caller_id && data.callers.find(caller => caller.id === log.caller_id)?.name ? ` · ${data.callers.find(caller => caller.id === log.caller_id).name}` : ""}</strong><p>{log.feedback || "No feedback entered."}</p>{log.callback_at && <small>Callback: {new Date(log.callback_at).toLocaleString()}</small>}</article>)}</div></details>}</td></tr>; })}</tbody></table></div>
         {visible.length === 0 && <div className="campaign-empty"><h3>No records match these filters</h3><p>Change the search or call status filter to see more records.</p><button className="campaign-button secondary" type="button" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Clear filters</button></div>}
       </section>
       <div className="campaign-manager-footer"><button className="campaign-button secondary" type="button" onClick={() => { sessionStorage.removeItem("outbound_call_manager_code"); setManagerCode(""); setData(null); }}>Close campaign dashboard</button></div>

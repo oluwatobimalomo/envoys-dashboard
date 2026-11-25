@@ -4441,6 +4441,12 @@ ion-textarea.field-control:focus-within {
 .campaign-call-history article strong { font-size: 11px; }
 .campaign-call-history article p { margin: 4px 0 0; white-space: pre-wrap; }
 .campaign-manager-footer { display: flex; justify-content: flex-end; }
+.campaign-header-actions { display: flex; align-items: center; gap: 10px; }
+.campaign-close-confirm, .campaign-archive-notice { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 18px; padding: 16px; border: 1px solid #dce8e1; border-radius: 13px; background: #f8fbf9; }
+.campaign-close-confirm strong, .campaign-archive-notice strong { color: #183b2e; font-size: 15px; }
+.campaign-close-confirm p, .campaign-archive-notice span { margin-top: 4px; color: #6b8075; font-size: 13px; line-height: 1.5; }
+.campaign-close-confirm > div:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.campaign-archive-notice { grid-template-columns: minmax(0, 1fr); border-color: #c9dfd0; background: #eff7f1; }
 .campaign-nav-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 .campaign-nav-actions > .campaign-button { min-width: 160px; }
 .campaign-allocation-capacity { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 16px; }
@@ -4524,6 +4530,11 @@ ion-textarea.field-control:focus-within {
   .campaign-caller-table .campaign-log-button { min-width: 118px; padding-inline: 12px; }
 }
 @media (max-width: 620px) {
+  .campaign-header-actions { gap: 6px; }
+  .campaign-header-actions > .campaign-button { min-height: 40px; padding: 8px 10px; font-size: 12px; }
+  .campaign-close-confirm, .campaign-archive-notice { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .campaign-close-confirm > div:last-child { justify-content: stretch; }
+  .campaign-close-confirm > div:last-child > .campaign-button { width: 100%; grid-column: auto; grid-row: auto; }
   .campaign-manager-nav { align-items: stretch; flex-direction: column; }
   .campaign-manager-nav > * { justify-content: center; }
   .campaign-nav-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }

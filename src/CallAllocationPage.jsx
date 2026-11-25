@@ -343,11 +343,12 @@ export default function CallAllocationPage({ session }) {
 
     {data && <>
       <section className="outbound-workspace campaign-allocation-summary">
-        <div className="outbound-workspace-heading"><div><span className="outbound-kicker">Active campaign</span><h2>{data.campaign.name}</h2><p>{data.contacts.length.toLocaleString()} contacts · {data.unassigned.toLocaleString()} unassigned</p></div><div className="campaign-allocation-heading-actions"><button type="button" className="campaign-button secondary" onClick={startNewCampaign}><Plus size={17} aria-hidden="true" /> Start new campaign</button><CheckCircle size={22} color="#167743" aria-label="Campaign active" /></div></div>
+        <div className="outbound-workspace-heading"><div><span className="outbound-kicker">{data.campaign.status === "closed" ? "Archived campaign" : "Active campaign"}</span><h2>{data.campaign.name}</h2><p>{data.contacts.length.toLocaleString()} contacts · {data.unassigned.toLocaleString()} unassigned</p></div><div className="campaign-allocation-heading-actions">{data.campaign.status === "active" ? <><button type="button" className="campaign-button secondary" onClick={startNewCampaign}><Plus size={17} aria-hidden="true" /> Start new campaign</button><CheckCircle size={22} color="#167743" aria-label="Campaign active" /></> : <button type="button" className="campaign-button" onClick={startNewCampaign}><Plus size={17} aria-hidden="true" /> Start fresh campaign</button>}</div></div>
         {created && <div className="campaign-created" role="status"><h3>Campaign access details</h3><p>Keep this manager key to reopen analytics and allocations on another device.</p><div className="campaign-code-row"><strong>Manager key</strong><code>{created.manager_code}</code><button type="button" onClick={() => navigator.clipboard?.writeText(created.manager_code)}>Copy</button></div></div>}
         <div className="campaign-manager-list">{data.callers.map(caller => <article key={caller.id}><strong>{caller.name}</strong><span>{caller.total} assigned · {caller.called} called · {callerAccessLabel(caller.last_name)} <b>{callerAccessValue(caller.last_name)}</b></span></article>)}</div>
         <button type="button" className="campaign-button secondary" onClick={() => downloadCallCSV("call-campaign-caller-access.csv", [["Caller name", "Caller access phone or legacy surname"], ...data.callers.map(caller => [caller.name, callerAccessValue(caller.last_name)])])}><Download size={17} /> Download caller access list</button>
       </section>
+      {data.campaign.status === "closed" ? <section className="outbound-panel campaign-archive-notice"><strong>This campaign is archived and caller access has ended.</strong><span>The call records are still available in the campaign dashboard. Select “Start fresh campaign” above, then upload the caller access list from this campaign to reuse those callers.</span></section> : <>
       <section className="outbound-panel campaign-add-callers-panel">
         <div className="outbound-section-heading"><span className="outbound-icon"><UserRoundPlus size={19} aria-hidden="true" /></span><div><h2>Add callers</h2><p>Add one caller directly or import a CSV to add a group. New callers become available in the allocation list.</p></div></div>
         <div className="campaign-single-caller-section">
@@ -407,6 +408,7 @@ export default function CallAllocationPage({ session }) {
         </>}
         {selectedAllocationError && <p className="campaign-error" role="alert">{selectedAllocationError}</p>}{selectedAllocationMessage && <p className="campaign-notice" role="status">{selectedAllocationMessage}</p>}
       </section>
+      </>}
       <div className="campaign-manager-footer"><button className="campaign-button secondary" type="button" onClick={() => navigate("/calls")}>Open campaign analytics</button></div>
     </>}
   </CallPageFrame>;
